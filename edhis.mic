@@ -12,7 +12,7 @@
 ;	DIGITAL EQUIPMENT CORPORATION ASSUMES NO RESPONSIBILITY FOR THE
 ; USE OR RELIABILITY OF ITS SOFTWARE ON EQUIPMENT THAT IS NOT SUPPLIED
 ; BY DIGITAL.
-; COPYRIGHT (C) 1975,1976,1977,1978,1979,1980,1981,1982,1983,1984,1985 DIGITAL EQUIPMENT CORPORATION
+; COPYRIGHT (C) 1975,1976,1977,1978,1979,1980,1981,1982,1983,1984,1985,1986 DIGITAL EQUIPMENT CORPORATION
 
 .TOC	"REVISION HISTORY"
 
@@ -26,10 +26,129 @@
 ;	Mike Newman
 ;	Jud Leonard
 ;
-.TITLE	"KL10 Microcode for TOPS-10 and TOPS-20		24 July 1985"
-.VERSION/MAJOR=2/MINOR=0/EDIT=411/WHO=0
+.TITLE	"KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986"
+.VERSION/MAJOR=2/MINOR=1/EDIT=442/WHO=0
 ;REV	WHY
 ;
+;442	29 May 86--Clean up the listing a bit in a few miscellaneous places.
+;	Rewrite the SETCA group to use AR_AC0 COMP (looks more obvious than
+;	the previous stuff).  Avoid the write test for HRRZM, using the last
+;	remaining microword to optimize it.  This looks like the last edit
+;	from QQSV.  So long, everybody.  It's been real!
+;441	27 May 86--An afterthought edit.  Move DB2WD in line with CVTDBx
+;	code, and use the space to make JUMPA fetch faster.  This required
+;	moving the TDN dispatch block as well due to DRAM constraints.
+;440	23 May 86--A final omnibus speedup edit.  Add an instruction to allow
+;	TLO/TSO/TLZ/TSZ/TLC/TSC to prefetch.  Special case AOJ, AOJA, SOJ,
+;	SOJA, AOS, and SOS to speed the next instruction fetch in all cases.
+;	Allow JFCL 0, to take a fast path.  Make MOVES, SKIP, HLLS, and HRRS
+;	all use new code that starts the instruction fetch a fair amount
+;	quicker in a few cases.  Juggle the DRAM for all adjacent instructions,
+;	and reconfigure the explicit CRAM addresses where necessary.
+;437	22 May 86--Make MOVSO and MOVST start the I FETCH a few micro-
+;	instructions later when they abort.  A page fault on the I FETCH was
+;	leaving the SR set, and resulted in random garbage ending up in AC0.
+;	Merge GTST and CNV2WD into TST2WD, saving a few words and a little bit
+;	of time.
+;436	17 Apr 86--Back off optimization of JRSTF.  Going to user mode doesn't
+;	set USER in time for the FETCH to occur on the same microinstruction.
+;435	14 Apr 86--Install bit 4 of APRID as PMOVE present option bit.
+;434	7 Apr 86--Edit PMOVE and PMOVEM onto proper op codes.
+;433	4 Apr 86--Edit new JFFO onto proper op code.  Install prototype PMOVE
+;	and PMOVEM, using op codes 100 and 101 for now.
+;432	1 Apr 86--Edit new ADJSP onto proper op code.  Rewrite JFFO to isolate
+;	the bit number within a group more quickly, and install it on op codes
+;	100 and 101 for debugging.
+;431	31 Mar 86--Rewrite ADJSP to start the I FETCH several cycles earlier
+;	by not using PUSH code to set TRAP2.
+;430	20 Mar 86--Start the I FETCH for IMULB, IDIVB, and friends at ST2AC+1
+;	by making it use the DSHIFT code.  Eliminate the EXIT DBL macro as
+;	obsolete.  Move the op code 247 dispatch in with other UUOs in
+;	SKPJMP.  Knock a cycle out of SETMM and SETMB by making them go
+;	directly to IFNOP and IFSTAC.  (This is pretty useless, but
+;	harmless and correct.)  Make a few cosmetic edits.
+;427	18 Mar 86--Install rewritten XBLT in production form, and eliminate
+;	old code.  This makes the BLT file entirely new code.  Make room
+;	for this by rewriting effective address decodes for EXTEND sub
+;	op and for byte pointer in string instructions, making use of
+;	indirection decoder used for single byte instructions.  (Note that
+;	this could impact the PXCTability of EXTEND op codes, but since
+;	only XBLT is supposed to be PXCTed, this should never matter.)  In
+;	the process, fix bug where indirection in byte pointer calculations
+;	was taking interrupt without going to CLEAN first.  Also fix bug in
+;	LDB of an illegal OWG, where an LDB of an OWG with a P&S field of
+;	(for example) 45 was not properly clearing the right half.  This
+;	was introduced when we rewrote SETZ.
+;426	13 Mar 86--Rewrite XBLT.  Implement it on opcodes 100 and 101 for
+;	debugging convenience.
+;425	8 Mar 86--Install optimized BLT.  Eliminate obsolete conditionals
+;	BACK.BLT, BLT.PXCT, and RPW (not related) in the process.
+;424	17 Feb 86--Remove IMULM and IMULB from IMULx optimization, allowing
+;	IMUL and IMULI to begin their I FETCH one microinstruction earlier.
+;	Fix ADJBP of a TWG with byte size zero to correctly load both
+;	halves of the byte pointer (at TWGCPY+1).  Reedit BYTSUB.MIC to
+;	remove a few extraneous words that are no longer needed now that
+;	the single byte instructions have been rewritten.
+;423	13 Feb 86--Install upgraded ASH code. Reedit ASHC to remove code
+;	used only by ASH previously.
+;422	29 Jan 86--Rework speeded IDIVx code onto the proper opcodes, and
+;	delete old IDIVx code.  Reedit a few instructions in that vicinity
+;	to clean up the listing, and remove references to NODIVD label by
+;	making those instructions do SET NO DIVIDE on their own.
+;421	23 Jan 86--Force the SETZ group to use HLLZ code, saving a word.
+;	Make sure DMOVNM loads both halves of AC1 when it starts.
+;	Implement speeded up IDIVx on opcodes 100 and 101 for easy debugging.
+;420	21 Jan 86--Add logic to the integer divide instructions to enable
+;	generating the maximum negative number as a quotient.  This is
+;	in preparation for the IDIVx optimization.
+;417	10 Jan 86--Prevent ROT from (sometimes) clobbering the next
+;	instruction in ARX on a short right rotation (the timing was
+;	close, so it worked most of the time--very bad).  Costs a
+;	microword (sigh).
+;416	7 Dec 85--Rewrite IMULx to do what the old IMULI.OPT should have
+;	done, namely, optimize IMULx of a positive by a positive when
+;	we can be sure that no overflow will occur.  Costs five words,
+;	only two more than the original (broken) IMULI.OPT.  Eliminate
+;	that conditional as obsolete.
+;415	7 Dec 85--Rewrite LSHC and ROTC (at a cost of one word), saving
+;	some time, particularly on right rotates and shifts.
+;414	5 Dec 85--Rewrite the JRST group, not affecting speed very much
+;	but saving many microwords in the process.  Shuffle MOVMI dispatch
+;	to make it identical to HRRZI, saving a bit of time.  Work on UUO
+;	code to save some space.  Crack a couple of words out of JRA,
+;	speeding it up (almost in spite of ourselves).  Force old EIS
+;	effective address dispatch to exit to 3177 instead of 3077, releasing
+;	3077 for other uses.  Knock another word out of POPJ.  Make PF24
+;	go directly to PFPAR, saving a cycle for illegal indirect page
+;	faults (and buying back three words in the process).  Edits 234,
+;	242, and 271 appear ill conceived.  Fix ARL IND and TIME fields
+;	for second counting loop in JFFO, buying a little free speed.
+;	Rework dispatches for FAD/FSB/FMP/FDV, and fix FPLONG conditional,
+;	saving a couple of words and making FADL/FSBL/FMPL/FDVL work when
+;	the conditional is turned on.  Also twiddle definitions of EXP_SIGN
+;	macros to fix a couple of conflicts.  Make FMPRI and FDVRI go to
+;	same spot, as well as FDVx and FMPx, saving a couple of words.
+;413	24 Sept 85--Continue the cleanup/speedup begun in 412.  Rewrite LSH
+;	and ROT, spending some CRAM for speed.  Rework the DMOVxx group to
+;	minimize the memory dead time for DMOVE and DMOVEM, particularly.
+;	Prevent SETA from referencing memory (useless, but harmless and
+;	correct).  Squeeze words out of POP and POPJ.  There are some old
+;	tailings from the DMOVxx code left for use by floating point and
+;	IO code; it would be nice to clean them up.
+;412	12 Sept 85--Freeze work on strings and start doing cleanup and
+;	speedup on other (simpler) instructions.  Move around DRAM and
+;	first words of several instructions (e.g., BLT, EXTEND, XCT,
+;	and several EXTEND sub ops) so that instructions don't jump around
+;	from place to place so much.  Decommit obsolete conditionals WRTST,
+;	XADDR, EPT540, LONG.PC, MODEL.B, KLPAGE, SMP, SHIFT.MUUO, SXCT,
+;	PUSHM, EXTEND, DIAG.INST, and DBL.INT--we haven't supported one
+;	side or the other of these for a long time, in some cases.
+;	Rework all noops and pure skips to use the same code as TRN and
+;	TRNA.  Make TRO, TDO, TRC, TDC, TRZ, and TDZ use the equivalent
+;	boolean code.  Make SETAM and SETAB equivalent to MOVEM.  Save a
+;	cycle in MOVN by having it exit directly without going through MOVE.
+;	All of this involves moving some code around in a few cases.  Clean
+;	up the listings a bit.
 ;411	24 July 85--Another try at the SMP fix.  PI cycle 7 must go to
 ;	memory for interlock to work, so delete use of the cache on the
 ;	PHYS REF.  This may have performance drawbacks for TOPS-20 and
@@ -46,6 +165,23 @@
 ;406	11 Mar 85--Define R17 as HARDPFW, and save the hard page fail word
 ;	there for TOPS-10, thus protecting it from getting clobbered by a
 ;	later soft page fail.
+;405	15 Jan 84--Finish initial installation of rewritten MOVSLJ and
+;	MOVSO code.  Also, remove obsolete conditional code for SXCT and
+;	SHIFT.MUUO, and for the .IFNOT cases of LONG.PC, MODEL.B, XADDR,
+;	DBL.INT, EXTEND, and EPT540.  Remove some code from IBPS (not
+;	needed by DTE support), and an obsolete constraint above PGRST1.
+;	Also put all statistics code into separate assembly.  As currently
+;	implemented, the statistics code won't fit into CRAM without removing
+;	something else.
+;404	12 Oct 84--Fix THAW so that source VMA doesn't get complemented
+;	for OWGs.
+;403	9 Oct 84--Special case the null destination length so that the
+;	byte pointers don't get clobbered when nothing gets done.
+;402	5 Oct 84--Fix byte counting in OWG decode subroutine so that
+;	references to the zeroth byte don't force the pointer forward
+;	one word (shifting P can't easily sign extend here).  Do this by
+;	forcing PLOOP to loop one extra time.
+;401	5 Oct 84--Add code to support OWGs for version 2 MOVSLJ.
 ;400	9 Aug 84--Initial first edit number for releasable version 2.0.
 ;377	9 Aug 84--All of these are reserved (somewhat paranoically, I think)
 ; .	for version 1 as well.  The likelihood of them actually being used
@@ -54,6 +190,19 @@
 ;356	8 Aug 84--Make the # field of location 136 contain the major and
 ;	minor version numbers.  Grab a random instruction with no # field
 ;	in use to do this.
+;355	29 May 84--Make BPEA hang on to the original Y field when doing
+;	the EA calculation for an OWL which does not overflow to the next
+;	word.  Untangle copy length calculation, which was confusing
+;	source and destination lengths.  Fix generation of fill count in
+;	loop (a decimal number used where octal was needed).  Make sure
+;	that the fill character gets stored the first time through the fill
+;	loop.  Build the final source count from the proper numbers (not
+;	from a byte pointer!).  Fix the test for storing the final buffer
+;	if no filling was required.  Force the final destination byte pointer
+;	Y field to the proper value by making IDSTMA be the actual first
+;	destination VMA, saving two words in the process.
+;354	25 May 84--Implement recoded version of MOVSLJ.  Temporarily
+;	decommit the G floating instructions in order to make room for it.
 ;353	21 May 84--LDB and DPB in version 1 were leaving state register bit
 ;	3 set when the byte word was loaded, resulting in the page fault
 ;	handler treating it as if it were a string instruction and trying
@@ -314,7 +463,7 @@
 ;235	FIX JRA SO IT DOESN'T FALL INTO SECTION ZERO FROM A NON-ZERO
 ;	SECTION EVERY TIME BY WRITING THE PC SECTION INTO THE VMAX.
 ;234	BUILD A PAGE FAIL CODE OF 24 WHEN AN ILLEGAL INDIRECT WORD
-;	IS FOUND DURING THE EFFECTIVE ADDRESS CALCULATION IN
+;	IS FOUND DURING THE EFFECTIVE ADDRESS CALCULATION IN 
 ;	A NON-ZERO SECTION. THE PAGE FAIL CODE WAS PREVIOUSLY NOT
 ;	BEING REPORTED.
 ;233	SAVE THE IOP FUNCTION WORD THAT APPEARS ON THE EBUS WHEN AN
@@ -387,14 +536,14 @@
 ;	CAUSES THE MICROCODE TO INCLUDE SMP SUPPORT BY DEFAULT.
 ;215	CHANGES DPB INSTRUCTION TO R-P-W CYCLE ON DATA FETCH PORTION OF
 ;	INSTRUCTION TO SOLVE AN INTERACTION PROBLEM IN AN SMP OPERATING
-;	SYSTEM.  THIS CHANGE ONLY APPLIES TO MICROCODES FOR TOPS-10
+;	SYSTEM.  THIS CHANGE ONLY APPLIES TO MICROCODES FOR TOPS-10 
 ;	AND TOPS-20, MODEL A.
 ;214	ADDED CHANGES FOR XADR, RELEASE 4 AS FOLLOWS.
 ;	STORE PREVIOUS CONTEXT SECTION (PCS) IN FLAGS WORD (BITS 31-35)
 ;	IF EXEC MODE AND XSFM OR XPCW INSTRUCTION,MUUO OR PAGE FAIL.
 ;	RESTORE PCS FROM FLAGS WORDS (BITS 31-35) WHEN XJRSTF OR XJEN
 ;	IS EXECUTED IN EXEC MODE AND THE NEW PC IS ALSO IN EXEC MODE.
-;213	SET/FPLONG=0 PARAMETER ADDED TO TOPS-10 MICROCODE FOR KL MODEL
+;213	SET/FPLONG=0 PARAMETER ADDED TO TOPS-10 MICROCODE FOR KL MODEL 
 ;	A AND MODEL B.
 ;212	CHANGE THE CODE AT LDIND: TO TEST FOR USER MODE IF USER MODE
 ;	TURN OFF SPECIAL CYCLE THAT MAY STILL BE ON. THE MICROCODE WILL DEPEND
@@ -425,7 +574,7 @@
 ;	THE AR WITH A CORRECT FINAL RESULT. THE EFFECTIVE ADDRESS CALCULATION
 ;	AROUND EXTLA: GOT A NEW MACRO ADDED FOR INDEXING THAT DOES THE AREAD.
 ;	ABSOLUTE LOCATIONS IN THE RANGE 3040 GET USED AS TARGETS FOR THIS
-;	AREAD THEN THE CODE REJOINS THE OLD CODE AT EXT2:
+;	AREAD THEN THE CODE REJOINS THE OLD CODE AT EXT2: 
 ;	THE AREAD WAS NECESSARY FOR THE HARDWARE MAGIC TO LOAD PARTS OF THE
 ;	AR DEPENDING ON THE INDEX REGISTER AND OTHER EXTENDED ADRESSING
 ;	PARAMETERS.
@@ -591,7 +740,7 @@
 ;	PLACES, BUT, SINCE THAT CAUSES A PERFORMANCE DEGRADATION IT WAS NOT
 ;	DONE.
 ;260	DIVERGANT CHANGES TO MAKE KLPAGING PHYS REFS THE OLD WAY
-;	CAUSE ALL CASES OF VMA_XXX+LD AR.PHYS TO GO BACK TO THE
+;	CAUSE ALL CASES OF VMA_XXX+LD AR.PHYS TO GO BACK TO THE 
 ;	OLD PHYS REF WAY
 ;257	IN MODEL B MACHINES AT LDPT+1 THE VMA IS GETTING GARBAGE IN THE
 ;	LEFT HALF BECAUSE IT ADDED IN JUNK THAT WAS IN AR LEFT. FIX IS TO

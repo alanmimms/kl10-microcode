@@ -1,10 +1,10 @@
 .TOC	"ADD, SUB"
 
 	.DCODE
-270:	R-PF,	AC,	J/ADD
-	I-PF,	AC,	J/ADD
-	RPW,	M,	J/ADD
-	RPW,	B,	J/ADD
+270:	R-PF,	AC,	J/ADD		;ADD
+	I-PF,	AC,	J/ADD		;ADDI
+	RPW,	M,	J/ADD		;ADDM
+	RPW,	B,	J/ADD		;ADDB
 	.UCODE
 
 =0****00****
@@ -13,10 +13,10 @@ ADD:	AR_AR*AC0,AD/A+B,AD FLAGS,EXIT
 
 
 	.DCODE
-274:	R-PF,	AC,	J/SUB
-	I-PF,	AC,	J/SUB
-	RPW,	M,	J/SUB
-	RPW,	B,	J/SUB
+274:	R-PF,	AC,	J/SUB		;SUB
+	I-PF,	AC,	J/SUB		;SUBI
+	RPW,	M,	J/SUB		;SUBM
+	RPW,	B,	J/SUB		;SUBB
 	.UCODE
 
 =0****00****
@@ -25,52 +25,57 @@ SUB:	AR_AC0,BR/AR
 .TOC	"MUL, IMUL"
 
 	.DCODE
-220:	R,	AC,	J/IMUL
-	I,	AC,	J/IMULI
-	RW,	M,	J/IMUL
-	RW,	B,	J/IMUL
+220:	R,	AC,	J/IMUL		;IMUL
+	I,	AC,	J/IMUL		;IMULI [416]
+	RW,	M,	J/IMULM		;IMULM [424]
+	RW,	B,	J/IMULM		;IMULB [424]
 	.UCODE
-
-.IFNOT/IMULI.OPT
-=0****00*01*
-IMULI:
-.IF/IMULI.OPT
-=0****00*000
-IMULI:	SKP AR18,GEN AC0,SIGNS DISP,	;OPTIMIZE SPECIAL CASE
-		TIME/3T,SC_#,#/17.
-=010	MQ_AR,AR_AC0,			;HERE FOR IMULI OF + BY +
-		CLR ARX,FE_#,#/-9.,	; 9 STEPS WILL DO
-		CALL,J/MULSUB
-.ENDIF/IMULI.OPT
-IMUL:	MQ_AR,AR_AC0,			;M'IER TO MQ, M'CAND TO AR
-		CLR ARX,FE_#,#/-18.,
-		CALL,J/MULSUB		;CALL MULTIPLY SUBROUTINE
-.IF/IMULI.OPT
-=110	AR_SHIFT,SKP AR NE,INH CRY18,	;HERE FROM IMULI
-		I FETCH,J/MUL1		; AFTER SHORT MULTIPLY
-.ENDIF/IMULI.OPT
-	SC_#,#/35.,SKP AR SIG		;CHECK OVERFLOW AND STORE
+;
+;	In days of old when knights were bold and PDP-10s were alive and
+;	kicking, someone decided to try to optimize IMULtIplication of a
+;	positive number by a positive number.  That attempt failed because
+;	the code necessary to test for overflow in the general case becomes
+;	complex enough to cost much of the time saved by shortening the
+;	multiplication loop.  We are now improving on the original idea a
+;	bit by optimizing all IMUL(I)s of a positive by a positive, as long
+;	as we can quickly guarantee that no overflow will occur.  This
+;	requires that the high order 19 bits of the multiplier and the
+;	high order 18 bits of the multiplicand be zero.  [416][424]
+;
+=0****00**00
+IMUL:	MQ_AR,ARX_AC0,SC_#,#/18.,	;MQ_multiplier, ARX_multiplicand
+	    FE/SCAD,SKP AR18		; Too much multiplier?
+=10	ARL_ARL,ARR_SHIFT,SC_FE-1,J/IMFAST;Maybe not. Test further, set SC
+IMULM:	MQ_AR,AR_AC0,CLR ARX,FE_-1,J/IMLONG;[424] Yes, or IMULM/B. No opt
 =
+;
+IMFAST:	AR_ARX,ARL/SH,ARX_0.M,FE_-1,	;Finish setup (FE to force MUL DISP
+	    SKP AR NZ			; to work.) Can we optimize?
+=010	BR_AR LONG,AR_0S,FE_#,#/-8,	;Yes. Set for truncated loop and
+	    MUL DISP,CALL [MULP]	; start (note that SC has 17.)
+IMLONG:	BR_AR LONG,AR_0S,FE_#,#/-17.,	;No. Do the full loop, starting
+	    MUL DISP,CALL [MULP]	; here
+	AR_SHIFT,I FETCH,J/STORAC	;[424] Short IMUL(I). Load AC
+	SC_#,#/35.,SKP AR SIG		;Long IMULx. Did we overflow?
 =0
-IMUL2:	AR_SHIFT,B WRITE,J/ST6		;STORE LOW WORD OF PRODUCT
-	SET AROV,AR_SIGN,J/IMUL2	;NOTE OVERFLOW...
+IMDONE:	AR_SHIFT,B WRITE,J/ST6		;[424] No. Just store product
+	SET AROV,AR_SIGN,J/IMDONE	;Yes. Set overflow, force good sign
 
 
 	.DCODE
-224:	R,	DBL AC,	J/MUL
-	I,	DBL AC,	J/MUL
-	RW,	M,	J/MUL
-	RW,	DBL B,	J/MUL
+224:	R,	DBL AC,	J/MUL		;MUL
+	I,	DBL AC,	J/MUL		;MULI
+	RW,	M,	J/MUL		;MULM
+	RW,	DBL B,	J/MUL		;MULB
 	.UCODE
 
 =0****00*000
-MUL:	MQ_AR,CLR ARX,			;MULTIPLIER TO MQ
-		AR_AC0,FE_#,#/-18.,	;SETUP MULTIPLICAND AND STEP CNT
-		CALL,J/MULSUB		;AND GO TO SUBROUTINE
-=100	GEN AR*BR,AD/AND,SKP AD0	;M'IER NEG, CHECK M'CAND & PROD TOO
-=110
-MUL1:	SC_#,#/35.,EXIT			;STORE DOUBLE RESULT
-	SET AROV,J/MUL1			;MUST HAVE SQUARED 400000,,0
+MUL:	MQ_AR,CLR ARX,AR_AC0,		;MULTIPLIER TO MQ. Set multiplicand
+	    FE_#,#/-18.,CALL,J/MULSUB	; and step count. Call subroutine
+=100	SC_#,#/35.,GEN AR*BR,AD/AND,	;[421] M'IER NEG, CHECK M'CAND
+	    SKP AD0			; and product
+=110	SC_#,#/35.,EXIT			;STORE DOUBLE RESULT
+	SET AROV,EXIT			;[421] MUST HAVE SQUARED 400000,,0
 =
 .TOC	"MULTIPLY SUBROUTINE"
 ; ENTER WITH MULTIPLIER IN MQ,
@@ -88,15 +93,12 @@ MUL1:	SC_#,#/35.,EXIT			;STORE DOUBLE RESULT
 MULSUB:	BR_AR LONG,AR_0S,ARX_0S,	;M'CAND TO BR LONG, CLEAR PROD
 		MUL,J/MULP		;START THE MULTIPLICATION
 =000					;GRAB AN 8-WORD BLOCK
-MULP:
-.IF/MODEL.B
-	(AR+ARX+MQ)*2,FE_SC,RETURN6	;XADDR MACHINE HAS
+MULP:	(AR+ARX+MQ)*2,FE_SC,RETURN6	;XADDR MACHINE HAS
 	(AR+ARX+MQ)*2,FE_SC,RETURN6	; NO "CRA MUL DONE"
 	(AR+ARX+MQ)*2,FE_SC,RETURN6
-.ENDIF/MODEL.B
-=011	(AR+ARX+MQ)*2,FE_SC,RETURN6	;DISCARD REDUNDANT SIGN BIT
+	(AR+ARX+MQ)*2,FE_SC,RETURN6	;DISCARD REDUNDANT SIGN BIT
 
-=100	AR_AR*.25 LONG,MUL,J/MULP	;M'IER BITS 00 AFTER POS STEP
+	AR_AR*.25 LONG,MUL,J/MULP	;M'IER BITS 00 AFTER POS STEP
 	AR_(AR+BR)*.25,ARX/ADX*.25,	;01 AFTER +
 		MUL,J/MULP
 	AR_(AR-2BR)*.25,ARX/ADX*.25,	;10 AFTER +
@@ -105,15 +107,12 @@ MULP:
 		MUL,J/MULM		;11 AFTER +
 
 =000					;ANOTHER 8-WORD BLOCK FOR
-MULM:					; AFTER SUBTRACTION STEPS
-.IF/MODEL.B
+MULM:	(AR+ARX+MQ)*2,FE_SC,RETURN4	; AFTER SUBTRACTION STEPS
 	(AR+ARX+MQ)*2,FE_SC,RETURN4
 	(AR+ARX+MQ)*2,FE_SC,RETURN4
-	(AR+ARX+MQ)*2,FE_SC,RETURN4
-.ENDIF/MODEL.B
-=011	(AR+ARX+MQ)*2,FE_SC,RETURN4	;M'IER WAS NEGATIVE
+	(AR+ARX+MQ)*2,FE_SC,RETURN4	;M'IER WAS NEGATIVE
 
-=100	AR_(AR+BR)*.25,ARX/ADX*.25,	;M'IER BITS 00 AFTER NEG STEP
+	AR_(AR+BR)*.25,ARX/ADX*.25,	;M'IER BITS 00 AFTER NEG STEP
 		MUL,J/MULP
 	AR_(AR+2BR)*.25,ARX/ADX*.25,	;01 AFTER -
 		MUL,J/MULP
@@ -128,66 +127,62 @@ MULREE:	AD/0S,MUL,J/MULP		;DIVE IN WITHOUT CLOBBERING AR
 .TOC	"DIV, IDIV"
 
 	.DCODE
-230:	R,	DBL AC,	J/IDIV
-	I,	DBL AC,	J/IDIV
-	RW,	M,	J/IDIV
-	RW,	DBL B,	J/IDIV
+230:	R,	DBL AC,	J/IDIV		;IDIV
+	I,	DBL AC,	J/IDIV		;IDIVI
+	RW,	M,	J/IDIV		;IDIVM
+	RW,	DBL B,	J/IDIV		;IDIVB
 
-234:	R,	DBL AC,	J/DIV
-	I,	DBL AC,	J/DIV
-	RW,	M,	J/DIV
-	RW,	DBL B,	J/DIV
+234:	R,	DBL AC,	J/DIV		;DIV
+	I,	DBL AC,	J/DIV		;DIVI
+	RW,	M,	J/DIV		;DIVM
+	RW,	DBL B,	J/DIV		;DIVB
 	.UCODE
 
 =0****00*000
-DIV:	BR/AR,ARX+MQ_0.M,		;DIVISOR TO BR
-		AR_AC1*2,ARL/AD*2,	;LOW DIVIDEND TO AR
-		CALL.M,J/DIV1		;GET HIGH DIVIDEND
-.IF/MODEL.B
-IDIV:	BR/AR, AR_1, J/IDIV2		;[236]
-IDIV1:	BR/AR,ARX+MQ_0.M,SC_1,		;DIVISOR TO BR
-		AR_AC0,ARL/AD,CALL.M,	;DIVIDEND TO AR
-		SKP AR0,J/DIV2		;TEST DIVISOR SIGN
-.IFNOT/MODEL.B
-=10
-IDIV:	BR/AR,ARX+MQ_0.M,SC_1,		;DIVISOR TO BR
-		AR_AC0,ARL/AD,CALL.M,	;DIVIDEND TO AR
-		SKP AR0,J/DIV2		;TEST DIVISOR SIGN
-.ENDIF/MODEL.B
-=011
-NODIVD:	SET NO DIVIDE,J/NOP		;HERE IF DIVIDE IMPOSSIBLE
+DIV:	BR/AR,AR_AC1*2,ARL/AD*2,	;DIVISOR TO BR, LOW DIVIDEND TO AR
+	    ARX+MQ_0.M,CALL.M,J/DIV1	;[422] GET HIGH DIVIDEND
+=010					;[422]
+IDIV:	BR/AR,ARR+MQ_0.S,ARX_AC0,ARL/AD,;[421] BR_divisor; fetch dividend
+	    SC_1,SKP AD0,CALL [IDIVGO]	; Isolate top half. Is it < 0?
+=110	ARX_AR,AR_-BRX,SC_#,#/36.,EXIT	;Remainder to ARX, negate quotient
+	ARX_AR,AR_BRX,SC_#,#/36.,EXIT	;HERE FOR POS QUOTIENT
+=		
 
-=110	ARX_AR,AR_-BRX,			;REMAIN TO ARX, GET CORRECT QUOTIENT
-		SC_#,#/36.,EXIT
-	ARX_AR,AR_BRX,			;HERE FOR POS QUOTIENT
-		SC_#,#/36.,EXIT
-=
-.IF/MODEL.B
-IDIV2:	GEN AR-BR, SKP AD NE		;[236] IS DIVISOR = 1?
-=0	AR_AC0, CLR ARX, SC_#, #/36.,	;[236] YES, ANSWER IS AC0.
-		EXIT			;[236]
-	AR_BR, J/IDIV1			;
-.ENDIF/MODEL.B
 ;HERE ON DIVIDE TO SET UP DIVIDEND
 
 DIV1:	BRX/ARX,ARX_AR,AR_AC0,		;CLR BRX, DIVIDEND IN AR LONG
 		FE_#,#/33.,TIME/3T,	;SETUP ITERATION COUNT
 		SIGNS DISP,J/DIVS1	;ENTER SUBR
-
-;HERE ON IDIV TO SET UP DIVIDEND.  SKIP IF DIVISOR NEG
-
+;
+;	Start of divide subroutine for IDIVx.  We will optimize the
+;	division by taking only 19 (instead of 36) divide steps if the
+;	top half of the absolute value of the dividend is zero.  Enter
+;	skipping if the dividend is positive.  This routine will set
+;	up for the division and go to DIVS1 (or DIVS2) to begin the
+;	actual division.  The latter take care of the subroutine return.
+;
 =0
-DIV2:	BRX/ARX,ARX_SHIFT,AR_SIGN,	;CLR BRX, DIVIDEND TO AR LONG
-		FE_#,#/33.,		;SETUP LOOP COUNT
-		SKP AR0,J/DIVS1		;ENTER SUBR ACCORDING TO SIGNS
-	BRX/ARX,ARX_SHIFT,AR_SIGN,	;CLR BRX, DIVIDEND TO AR LONG
-		FE_#,#/33.,		;SETUP LOOP COUNT
-		SKP AR0,J/DIVS2		;ENTER SUBR ACCORDING TO SIGNS
+IDIVGO:	AR_ARX,ARX/MQ,FE_#,#/33.,	;Recover positive dividend, set
+	    SKP AR NZ,J/IDVOPT		; long step count. Can we optimize?
+	ARX_-AC0,ARR_0.M,ARL/AD,	;Negative dividend. Start building
+	    FE_#,#/12,SKP AD0		; step count.  Is it max neg?
+=0	AR_ARX,ARX/MQ,FE_#,#/33.,	;No. Set long step count and
+	    SKP AR NZ,J/IDVOPT		; test for optimization
+	MQ_1,TIME/2T,ARX/MQ,FE_FE+#,#/27,;Yes. Set up for positive version
+	    AR CTL/0,EXP TST/0,J/IDVLNG	;and long count (avoid conflict) 
+;
+=0
+IDVOPT:	BRX/ARX,AR_0S,ARX_AR SWAP,FE_#,	;Can optimize. Left adjust dividend
+	    #/16.,SIGNS DISP,J/DIVS1	; Set short divide count and go
+IDVLNG:	BRX/ARX,AR_MQ,ARL/AD,ARX_SHIFT,	;Dividend too big. Kill sign bit,
+	    MQ_0.M,SIGNS DISP,J/DIVS1	; clear MQ, set AR (FE already 33.)
 .TOC	"INTEGER DIVIDE SUBROUTINE"
 ; ENTER WITH SIGNS DISPATCH OF DIVISOR AND DIVIDEND,
 ; DIVISOR IN BR, BRX CLR; DIVIDEND IN AR!ARX
 ; STEP COUNT IN FE (# OF QUOTIENT BITS -2)
-; IF NO DIVIDE, RETURN 3 WITH IFETCH STARTED
+; If no divide, check for the maximum negative number as a
+; quotient, and force it if it is there; otherwise, just set
+; no divide.  Exit the instruction in either case. [420]
 ; OTHERWISE, RETURN WITH SIGNED REMAINDER IN AR,
 ; POSITIVE QUOTIENT IN BRX AND MQ.
 ; RETURN 6 IF QUOTIENT SHOULD BE NEGATIVE,
@@ -206,22 +201,43 @@ DIVS2:	DIVIDE,AR_2(AR+BR),
 		ARX/ADX*2,J/DIVS4	;D'END POS, D'SOR NEG
 	AR_-AR LONG,J/DIVS2
 
-=010
+=0010
 DIVS3:	DIVIDE,AR_2(AR+BR),ARX/ADX*2,
 		ARL/AD*2,CALL.M,J/DIVLP	;START DIVIDING
-	I FETCH,RETURN3			;RETURN TO CALLER WITH NO DIVIDE
-
+	AR_AR*.25 LONG,FE_#,#/40,	;[420] Possible overflow, but
+	    CALL [MAXDIV]		; might be -2**-35 quotient
 	AR_-BR,BRX/ARX,RETURN6		;D'END NEG, SO NEGATE QUO & REM
 	BRX/ARX,RETURN7			;EVERYTHING POSITIVE
-
-
-=010
+=1111	MQ_ARX-BR			;Possible legal quotient. Check rem
+=1110	SC_#,#/36.,GEN MQ*AC0,AD/ORC,	;and make sure dividend was negative
+	    SKP AD0,CALL [MAXCHK]	;with remainder < divisor
+	ARX_-BRX,EXIT			;Looks OK. Negate remainder
+;
+=0010
 DIVS4:	DIVIDE,AR_2(AR-BR),ARX/ADX*2,
 		ARL/AD*2,CALL.M,J/DIVLP	;BEGIN DIVISION FOR REAL BITS
-	I FETCH,RETURN3			;ABORT FOR IMPOSSIBLE DIVISION
-
+	AR_AR*.25 LONG,FE_#,#/40,	;[420] Usually overflow, but might
+	    CALL [MAXDIV]		; be in range
 	BRX/ARX,RETURN6			;NEGATE QUO
 	AR_-BR,BRX/ARX,RETURN7		;NEGATE REM
+=1111	MQ_ARX+BR			;Look at bottom of dividend (must
+=1110	SC_#,#/36.,GEN MQ*AC0,AD/ORCA,	; < |divisor|); also original dividend
+	    SKP AD0,CALL [MAXCHK]	; must > 0
+	EXIT				;All conditions met. Force quotient
+;
+;	MAXDIV, MAXCHK--Helper subroutines to check for a quotient of
+;	-2**35.  This copies the low dividend half to BRX, sets up the
+;	quotient (in case we have to generate it) and tests the high
+;	dividend half to see if the first DIVIDE step generated a zero
+;	result.  If it did not, we have a true overflow and we exit
+;	sideways; otherwise we return 17.  The latter portion is reused
+;	for a subsequent test of the remainder.
+;
+MAXDIV:	BRX/ARX,P_FE,GEN AR*2 LONG,	;Set up quotient, save remainder
+	    SKP AD NZ			; Did first step generate a zero?
+=0
+MAXCHK:	RETURN17			;Yes. Look more closely
+	SET NO DIVIDE,I FETCH,J/NOP	;No. Must be a real overflow
 .TOC	"BASIC DIVIDE LOOP"
 ; THE LOOP ITSELF IS AN INNER SUBROUTINE, TO MAKE IT SUITABLE
 ; FOR USE IN DOUBLE-LENGTH DIVISION.
@@ -273,16 +289,10 @@ DDVSUB:	AR_2(AR-BR),ARX/ADX*2,DIVIDE,J/DDVLP
 .TOC	"DOUBLE INTEGER ARITHMETIC -- DADD, DSUB, DMUL, DDIV"
 
 	.DCODE
-.IFNOT/DBL.INT
-114:	EA,	J/UUO
-	EA,	J/UUO
-	EA,	J/UUO
-	EA,	J/UUO
-.IF/DBL.INT
 114:	R,	B/0,	J/DASMD		;DADD
 	R,	B/2,	J/DASMD		;DSUB
 	R,	B/4,	J/DASMD		;DMUL
-	R,		J/DDIV
+	R,		J/DDIV		;DDIV
 	.UCODE
 
 ;HERE FOR DOUBLE WORD ADD, SUBTRACT, MULTIPLY, OR DIVIDE
@@ -301,9 +311,9 @@ DASMD:	BR/AR,AR_AC1*2,ARL/AD*2,	;HIGH MEM WORD TO BR
 ;HERE WITH (E) IN BR, (E+1)*2 IN BRX
 ; (AC) IN AR, (AC+1)*2 IN ARX
 
-=00*	AR_AR+BR LONG,AD FLAGS,EXIT DBL	;DADD
+=00*	AR_AR+BR LONG,AD FLAGS,J/ST2AC	;[430] DADD
 
-	AR_AR-BR LONG,AD FLAGS,EXIT DBL	;DSUB
+	AR_AR-BR LONG,AD FLAGS,J/ST2AC	;[430] DSUB
 
 	MQ_SHIFT,AR_0S,ARX_0S,		;DMUL, USE AC1 AS INITIAL M'IER
 		FE_#,#/-18.,J/DMULT	;SETUP STEP COUNT
@@ -375,7 +385,7 @@ DDIV3:	AR_2(AR-BR),ARX/ADX*2,MQ_MQ*2,	;SEE IF FIRST DIVIDE STEP
 	AR_2(AR+BR),ARX/ADX*2,MQ_MQ*2,SKP CRY0
 =000
 DDIV4:	FE_#,#/33.,SKP BR0,CALL,J/DDVLP	;GO DO FIRST HALF OF DIVIDE
-	I FETCH,J/NODIVD		;TOO MANY QUOTIENT BITS
+	SET NO DIVIDE,I FETCH,J/NOP	;[422] TOO MANY QUOTIENT BITS
 =011	AC1_AR,CLR SC,J/DDIV6		;SAVE HI QUOTIENT IN AC1
 =101	AC1_AR,SC_1S			;SET FLAG FOR RESUMPTION
 =
@@ -388,9 +398,8 @@ DDIV6:	AR_T1				;GET LOWEST DIVIDEND BITS
 DDVX1:	BR_AR LONG,AR_BR LONG,J/DDVX2	;POS REMAINDER.  GO STORE
 	BR_AR LONG,AR_-BR LONG,J/DDVX2	;NEGATE REMAINDER
 DDVX2:	AC2_AR,AR_SIGN,SC_#,#/35.
-	AR_SHIFT,SR DISP		;GET LOW WORD OF REM.  TEST QUO SIGN
-=1110	AC3_AR,AR_BR,ARX/ADX*2,EXIT DBL	;GET QUOTIENT, SQUEEZE OUT HOLE
+	AR_SHIFT,SR DISP		;GET LOW WORD OF REM. TEST QUO SIGN
+=1110	AC3_AR,AR_BR,ARX/ADX*2,J/ST2AC	;[430] GET QUO, SQUEEZE OUT HOLE
 	AC3_AR,AR_-BR,ARX/ADX*2,AD LONG,;GET NEGATIVE QUOTIENT
-		EXIT DBL
-.ENDIF/DBL.INT
-    
+	    J/ST2AC			;[430]
+   

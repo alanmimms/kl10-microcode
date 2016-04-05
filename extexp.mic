@@ -1,13 +1,12 @@
 .TOC	"GFLT DOUBLE PRECISION ARITHMETIC"
 
-.IF/MODEL.B
 .IF/EXTEXP
 
 	.DCODE
-102:	R,	B/0,	J/EDFLOT	;EFAD
-103:	R,	B/2,	J/EDFLOT	;EFSB
-106:	R,	B/4,	J/EDFLOT	;EFMP
-107:	R,	B/6,	J/EDFLOT	;EFDV
+102:	R,	B/0,	J/EDFLOT	;GFAD
+103:	R,	B/2,	J/EDFLOT	;GFSB
+106:	R,	B/4,	J/EDFLOT	;GFMP
+107:	R,	B/6,	J/EDFLOT	;GFDV
 	.UCODE
 
 =0****00**0*
@@ -30,7 +29,7 @@ EDFL1:	SKP AR0, CALL [ISOEXP]		;save mem high word in E0.
 =0
 EF1:	AR_AC0, SKP AD0, CALL [ISOEXP]	;get AC op
 	FM[E1]_AR, BR/AR		;save AC exp in E1
-
+		
 ;Now have positive mem exponent in T2, pos AC exp in E1.
 ;Save larger exp in T2 and exp diff if less than 340 in SC.
 	[AR]_[AR]*FM[T2], AD/A-B,	;AR gets exp diff.
@@ -172,7 +171,7 @@ EFDV0:	FM[E1]_AR			;no sticky bits on divide.
 	SR_1, AR_AC1*2, CALL [EFDV1]	;note result if negative.
 
 =011	AC1_AR, AR_MQ, ARL/AD, FE_FE+1,	;set step count to 35-2.
-		MQ_0.M, CALL [DIV+]
+		MQ_0.M, CALL [DIV+]	
 =101	AC1_AR, AR_MQ, ARL/AD, FE_FE+1,
 		MQ_0.M, CALL [DIV-]
 =111	CLR AR, CLR FE			;exp must be adjusted-
@@ -283,7 +282,7 @@ ENNEG1:	MQ_AR, AR_BR COMP, ARX_BRX COMP,
 
 ENHI:	(AR+ARX+MQ)*.25, J/ENTRY	;go try again after setting SC.
 =0
-ENZERO:	SR_0, AR_0S, ARX_0S, J/DBLST	;result = 0, store in AC,AC+1.
+ENZERO:	SR_0,AR_0S,ARX_0S,I FETCH,J/DLOAD;[413] result 0, store in AC,AC+1
 	AR_SHIFT, FE_FE-SC, J/ENSHFT	;not zero, try next 35 bits.
 
 ERND1:	ARX_2+MQ0			;[407] build rounding constant.
@@ -327,7 +326,7 @@ ERND2:	AR_AR*.25 LONG,		;shift everything 2 bits right.
 ENFNL0:	ARX_AR, SC_#, #/35.,	; no problems.
 		J/ENFNL1
 	SET FLOV,  J/EEOV	; an overflow occurred.
-
+		
 	SR DISP			;floating underflow - is it real ?
 =1101	;test SR2.
 	SET FXU, J/EEOV		;yes, it is a real underflow.
@@ -356,7 +355,7 @@ ENTRY:	SC_#, #/3, GEN AR, NORM, J/ENORM; go normalize again.
 ;data. It also assumes that the maximum exponent value + 1 of either
 ;36 or 70 (decimal) are already in the FE. This is the positive exponent
 ;maximum; the code adjusts for the fact that a negative number can have
-;an exponent one greater than a positive number.
+;an exponent one greater than a positive number. 
 ;It uses all of the registers in the EBOX and returns 4 if the
 ;result is positive and returns 5 if the result is negative
 ;with the AR/ARX containing the double word integer. It is the
@@ -460,7 +459,7 @@ SGNEXT:	[AR]_[AR]*FM[EXPMSK], AD/AND, RET[1]  ;extend 0s into AR1-11.
 ;or all ones. The call is via "GEN AR, SKP AD NE, J/OVTEST".
 ;It assumes that the double integer is in the AR/ARX and the SC
 ;contains 35 decimal.
-;OVTEST will store the ARX*.5 and exit if the AR is all sign bits.
+;OVTEST will store the ARX*.5 and exit if the AR is all sign bits. 
 ;It will set AROV and jump to NOP if it finds some data bits.
 OVTST1:	AR_MQ, SKP AD NE		;get the sign bits from the MQ.
 =0
@@ -472,41 +471,23 @@ OVTST2:	AC0_AR, J/NOP			;finish the store.
 .ENDIF/EXTEXP
 .TOC	"GFLT DATA CONVERSION INSTRUCTIONS"
 
-1013:
-L-XBLT:	J/LUUO
-1014:
-L-GTPI:	J/LUUO
-.IF/EXTEXP				;[337]
-1104:
-L-SFTE:	J/LUUO
-1105:
-L-GTDI:	J/LUUO
-1106:
-L-GTSI:	J/LUUO
-1107:
-L-GTDR:	J/LUUO
-1110:
-L-GTSR:	J/LUUO
-1111:
-L-DITE:	J/LUUO
-1112:
-L-SITE:	J/LUUO
-1113:
-L-EFSC:	J/LUUO
-.ENDIF/EXTEXP				;[337]
-.IF/XADDR
-3013:	ARX_AC2, J/XBLT		; -20-  XBLT
-.ENDIF/XADDR
-.IFNOT/EXTEXP				;[337]
-3014:	J/MUUO				;[337] No GSNGL if no G floating
-.IF/EXTEXP				;[337]
-3014:	[AR]_FM[E1], J/L-GTSP	; -21-	GSNGL
-3104:	[AR]_FM[E1], J/L-EDBL	; -22-	GDBLE
-.IFNOT/GFTCNV		;[273]
-3105:	J/MUUO			; -23-	DGFIX	;[273]
-3106:	J/MUUO			; -24-	GFIX	;[273]
-3107:	J/MUUO			; -25-	DGFIXR	;[273]
-3110:	J/MUUO			; -26-	GFIXR	;[273]
+.IF/EXTEXP
+	.DCODE
+021:	EA,	AC,	J/L-GTPI	;GSNGL--Must mate with EXTEND
+	EA,		J/L-SFTE	;GDBLE
+.IF/GFTCNV
+	EA,	B/0,	J/L-GTDI	;GDFIX
+024:	EA,	B/2,	J/L-GTSI	;GFIX
+	EA,	B/4,	J/L-GTDR	;GDFIXR
+	EA,	B/6,	J/L-GTSR	;GFIXR
+.ENDIF/GFTCNV
+027:	EA,		J/L-DITE	;DGFLTR
+030:	EA,		J/L-SITE	;GFLTR
+	EA,		J/L-EFSC	;GFSC
+	.UCODE
+
+3116:	[AR]_FM[E1], J/L-GTSP	; -21-	GSNGL
+3114:	[AR]_FM[E1], J/L-EDBL	; -22-	GDBLE
 .IF/GFTCNV		;[273]
 3105:	[AR]_FM[E1], J/L-GTIN	; -23-	DGFIX
 3106:	[AR]_FM[E1], J/L-GTIN	; -24-	GFIX
@@ -694,4 +675,4 @@ L-FSC3:	FM[T2]_AR, ARX_ARX*2	;save new exponent fofr ENORM.
 	GEN AR, NORM, J/ENORM	;put the result back together.
 
 .ENDIF/EXTEXP
-.ENDIF/MODEL.B
+    
