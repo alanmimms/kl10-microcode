@@ -1,4 +1,7 @@
 'use strict';
+
+// Read and digest the microcode from the klx.mcr listing file.
+
 var fs = require('fs');
 var _ = require('lodash');
 
@@ -81,11 +84,17 @@ dramLines.forEach(l => {
 //console.log("dram=", dram);
 
 
+// Read DEFINE.MIC for all field definitions and the field values'
+// names.
 var fieldString = fs.readFileSync('define.mic').toString().split(/[\r\n\f]/);
 
+// These are indexed by microcode field. Each property here defines an
+// object whose properties are the field value names corresponding
+// values for that field.
 var cramDefs = {};
 var dramDefs = {};
 var fieldDefs = cramDefs;	// This points to one or the other as we go through define.mic
+
 var ramName = 'CRAM';
 
 var fn = null;
@@ -217,12 +226,58 @@ dram.forEach(
 // Define muxes.
 const muxes = 'ADA,ADB,AR,ARX,BR,BRX,MQ,FMADR,SCAD,SCADA,SCADA EN,SCADB'.split(/,/);
 
-// Compute pseudocode for each CRAM microstep.
-cram.forEach(row => {
+// Define special purpose field <75:83> use cases. The special case
+// version of the field name will be selected/disassembled only when
+// its conditions apply.
+const special = `\
+AR0-8=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
+CLR=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
+ARL=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
+EXP TST=COND/REG CTL
+AR CTL=COND/REG CTL
+MQ CTL=COND/REG CTL
+PC FLAGS=COND/PCF_#
+FLAG CTL=SPEC/FLAG CTL
+SPEC INSTR=COND/SPEC INSTR
+FETCH=MEM/FETCH
+EA CALC=MEM/EA CALC
+SP MEM=SPEC/SP MEM CYCLE
+MREG FNC=MEM/REG FUNC
+MBOX CTL=COND/MBOX CTL
+MTR CTL=COND/MTR CTL
+EBUS CTL=COND/EBUS CTL
+DIAG FUNC=COND/DIAG FUNC
+ACB=FMADR/#B#
+AC#=FMADR/#B#,   FMADR/AC+#
+AC-OP=FMADR/#B#, FMADR/AC+#
+PXCT=CON/SR_#, CON/LOAD IR, MEM/A RD
+`;
 
+// NOTES:
+
+// READ DISPATCH uses J-FIELD | DRAM A to calculate next microaddress.
+// MODEL.B doesn't OR 0o40 (as is described in EBOX UD p. A-13), so
+// new microaddress on A READ dispatch is J-FIELD | DRAM A.
+
+// Object whose properties are FIELDS/VALUE strings which have as
+// value an array of the overloaded uses of the Special field they
+// enable.
+let enables = {};
+
+special.split(/\n/).filter(s => s.length > 0)
+// Each entry is overloaded=xxx, where xxx is a comma separated list
+// of FIELD/VALUE names that, when present in the microword, enable
+// the overloaded field.
+.forEach(s => {
+  const m = s.match(/([^=]+)=(.*)/);
+  if (m.length !== 3) {console.log(`spec mismatch on line '${s}'`); return;}
+  const ov = m[1];
+  const ena = m[2].split(/, */); // Array of FIELD/VALUE
+  if (!enables[ena]) enables[ena] = [];
+  enables[ena].push(ov);
 });
 
-console.log('cram=', cram);
+//console.log('cram=', cram);
 
 
 // This can be used to extract a field's (specified by def) value from
