@@ -140,7 +140,8 @@
 						; 9	.SET/IPA20=1		;IPA20-L
 						; 10	.SET/GFTCNV=0		;DO NOT DO GFLOAT CONVERSION INSTRUCTIONS [273]
 						; 11				;SAVES 75 WORDS. MONITOR WILL TAKE CARE OF THEM.
-						; 12	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 12	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; EDHIS.MIC[4,24]	12:02 29-May-86				KLX.MIC[4,24]	15:48 8-Mar-86			
 
 ; 13	.NOBIN
@@ -198,7 +199,8 @@
 ; 65	;436	17 Apr 86--Back off optimization of JRSTF.  Going to user mode doesn't
 ; 66	;	set USER in time for the FETCH to occur on the same microinstruction.
 ; 67	;435	14 Apr 86--Install bit 4 of APRID as PMOVE present option bit.
-; 68	;434	7 Apr 86--Edit PMOVE and PMOVEM onto proper op codes.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+; 68	;434	7 Apr 86--Edit PMOVE and PMOVEM onto proper op codes.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 69	;433	4 Apr 86--Edit new JFFO onto proper op code.  Install prototype PMOVE
@@ -256,7 +258,8 @@
 ; 121	;	done, namely, optimize IMULx of a positive by a positive when
 ; 122	;	we can be sure that no overflow will occur.  Costs five words,
 ; 123	;	only two more than the original (broken) IMULI.OPT.  Eliminate
-; 124	;	that conditional as obsolete.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
+; 124	;	that conditional as obsolete.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 125	;415	7 Dec 85--Rewrite LSHC and ROTC (at a cost of one word), saving
@@ -314,7 +317,8 @@
 ; 177	;406	11 Mar 85--Define R17 as HARDPFW, and save the hard page fail word
 ; 178	;	there for TOPS-10, thus protecting it from getting clobbered by a
 ; 179	;	later soft page fail.
-; 180	;405	15 Jan 84--Finish initial installation of rewritten MOVSLJ and; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-3
+; 180	;405	15 Jan 84--Finish initial installation of rewritten MOVSLJ and
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-3
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 181	;	MOVSO code.  Also, remove obsolete conditional code for SXCT and
@@ -372,7 +376,8 @@
 ; 233	;	index AC had a global address.  Fix this by copying the updated
 ; 234	;	pointer into ARX, thus forcing EA MOD DISP to look at the proper
 ; 235	;	bit in ARX18.
-; 236	;350	15 Feb 84--Fix indexed indirection byte pointer effective address; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-4
+; 236	;350	15 Feb 84--Fix indexed indirection byte pointer effective address
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-4
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 237	;	calculations to load the indirect word into both AR and ARX.
@@ -430,7 +435,8 @@
 ; 289	;	and OWGs in section 0 fail for string instructions (they get converted
 ; 290	;	to TWGs, which are illegal in section 0).  For now, we will maintain
 ; 291	;	both sources.
-; 292	;335	Force memory to be released for SMP case of DPB if P > 36 causes no; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-5
+; 292	;335	Force memory to be released for SMP case of DPB if P > 36 causes no
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-5
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 293	;	actual data to be stored.  Make an OWG reference to an address >
@@ -488,7 +494,8 @@
 ; 345	;	counting only version use TRX2 and TRX3, removing physical contiguity
 ; 346	;	requirement.
 ; 347	;315	Op code counting lives again!  The setup code activated by DATAO PI
-; 348	;	was attempting to write the TRX registers with data fresh from memory,; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-6
+; 348	;	was attempting to write the TRX registers with data fresh from memory,
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-6
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 349	;	resulting in parity checks when it was used (see edit 73, for example).
@@ -546,7 +553,8 @@
 ; 401	;	CORRECT ON THE STRING INSTRUCTIONS.
 ; 402	;277	Add EA CALC table for SMP configurations of extended addressing
 ; 403	;	for TOPS-10.  (TOPS-20 paging)
-; 404	;276	Force global EA CALC for EXTEND instructions in PUTDST.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-7
+; 404	;276	Force global EA CALC for EXTEND instructions in PUTDST.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-7
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 405	;275	FIX THE ERROR CODE IN STRING COMPARE FOR ILLEGAL BITS IN THE
@@ -604,7 +612,8 @@
 ; 457	;	WITH EXTENDED ADDRESSING OUT OF SECTION 0
 ; 458	;244	FIX MOVST EXTEND INST. SO THAT ILLEGAL (> 36) S FIELD
 ; 459	;	DOES NOT CAUSE STOP CODE TO CRASH SYSTEM FOR TOPS-10 MODEL B.
-; 460	;243	WRTIME TRIED TO DO MEM WRITE EVEN THOUGH THE INSTRUCTION; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-8
+; 460	;243	WRTIME TRIED TO DO MEM WRITE EVEN THOUGH THE INSTRUCTION
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-8
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 461	;	DOES NOT DO ANYTHING TO MEMORY. CAUSED PROBLEMS IF THE MEMORY
@@ -662,7 +671,8 @@
 ; 513	;	EFFECTIVELY REMOVES EDIT 221.
 ; 514	;227	DELETE EDIT 222 AND RETURN THE CVTBDX INSTRUCTIONS TO THEIR
 ; 515	;	OLD, BROKEN FUNCTIONALITY SINCE ANY ATTEMPT TO PREVENT THE
-; 516	;	FLAGS FROM BEING CHANGED PREMATURELY HAS TO CONTEND WITH; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-9
+; 516	;	FLAGS FROM BEING CHANGED PREMATURELY HAS TO CONTEND WITH
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-9
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 517	;	INTERRUPTABILITY PROBLEMS. THE HARDWARE REFERENCE MANUAL
@@ -720,7 +730,8 @@
 ; 569	;	PREVIOUS MICROINSTRUCTION TO SOLVE A TIMONG GLITCH IN THE HARDWARE.
 ; 570	;	MAKE EXCHANG MARK AND DESTINATION POINTERS UUO IF THEY DO NOT
 ; 571	;	HAVE BYTE POINTERS OF EQUAL LENGTH. CHANGES PERVASIVE IN EIS ALSO IN PF
-; 572	;	RECOVERY IN IO.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-10
+; 572	;	RECOVERY IN IO.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-10
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 573	;	MAKE THE LOAD OF AN INDIRECT POINTER CLEAR PI CYCLE IF SET.
@@ -778,7 +789,8 @@
 ; 625	;170	MAKE CLRFPD: GO DIRECT TO FINI: INSTEAD OF THROUGH NOP: THIS WAS
 ; 626	;	COSTING 2 TICS IN BYTE INSTRUCTIONS
 ; 627	;	CHANGE IO PAGE FAIL TO SAVE A VIRTUAL ADDRESS IN THE AC BLOCK 7
-; 628	;	LOCATION 2 INSTEAD OF THE DATA THAT WAS ON THE EBUS CHANGES AT; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-11
+; 628	;	LOCATION 2 INSTEAD OF THE DATA THAT WAS ON THE EBUS CHANGES AT
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-11
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 629	;	PGF4:+1 AND IOPGF:
@@ -836,7 +848,8 @@
 ; 681	;	=0****00**** THIS IS BECAUSE THE MODEL B MACHINE CAN AND DID
 ; 682	;	REALLY SET THAT BIT. THE CHANGE MAKES THE MICROCODE INCOMPATIBLE
 ; 683	;	WITH THE OLD ASSEMBLER.
-; 684	;301	HALT IS CLEARING THE RUN FLOP WITH HARDWARE MUST CHECK FOR; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-12
+; 684	;301	HALT IS CLEARING THE RUN FLOP WITH HARDWARE MUST CHECK FOR
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-12
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 685	;	KERNAL MODE BEFOR THE HALT MACRO SO USER IOT MODE WILL
@@ -894,7 +907,8 @@
 ; 737	;262	PUT WORD AT INDR1+1 UNDER SXCT CONDITIONAL SO WHEN SXCT IS OFF WE
 ; 738	;	GET AN ADDITIONAL SAVINGS OF ONE WORD.
 ; 739	;261	ADD PHYS REFS AT PGRF6+4 AND PIDISP+4 TO MAKE MODEL.A LOAD A LONG
-; 740	;	VMA. PART OF THIS CODE IS NOT UNDER CONDITIONAL BECAUSE IT SHOULD NOT MATTER; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-13
+; 740	;	VMA. PART OF THIS CODE IS NOT UNDER CONDITIONAL BECAUSE IT SHOULD NOT MATTER
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-13
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 741	;	TO A MODEL.B MACHINE. PIDISP+4 ALSO GETS THE LOAD OF THE SAME DATA
@@ -952,7 +966,8 @@
 ; 793	;	FIGURE OUT HOW
 ; 794	;	ALSO FIX A PLACE WHERE A PHYS REF WAS LEFT IN THE MODEL A CODE
 ; 795	;	AT PGRF6+4 MODEL B CONDITIONAL IS AS IT WAS MODEL A IS NEW TO USE
-; 796	;	LD AR.PHYS MECHANISM; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-14
+; 796	;	LD AR.PHYS MECHANISM
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-14
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 797	;250	LOADING HIGH ORDER GARBAGE TO THE VMA WITH THE FIX FOR
@@ -1010,7 +1025,8 @@
 ; 849	;235	SLIGHTLY CLEANER FIXES FOR PROBLEMS IN 234 TO AVOID WASTING TIME
 ; 850	;	AND SPACE.  BYTE READ MACRO NEEDS TO SET VMA/LOAD, AND VMA_VMA
 ; 851	;	HELD MACRO DOESN'T USE MEM FIELD UNLESS MODEL B AND KL PAGING.
-; 852	;	ALSO FIX CONDITIONAL ASSEMBLY STUFF TO AVOID SPURIOUS ERRORS.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-15
+; 852	;	ALSO FIX CONDITIONAL ASSEMBLY STUFF TO AVOID SPURIOUS ERRORS.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-15
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 853	;234	INSTALL FIXES FOR SOME PLACES WHERE MODEL B CODE CAUSES CONFLICT
@@ -1068,7 +1084,8 @@
 ; 905	;	NOTABLY BLT, WHICH WAS USING WRONG SECTION.  FIX EXTEND TO
 ; 906	;	CONTROL VMA EXTENDED BEFORE FETCHING EXTEND-OP, SO AS NOT TO
 ; 907	;	LOOK "UNDER" THE AC'S.  FIX XBLT FOREWARD TO STOP WHEN AC GOES
-; 908	;	TO ZERO, NOT -1.  ALSO CONTROL SR BEFORE INITIAL STORE TO GET; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-16
+; 908	;	TO ZERO, NOT -1.  ALSO CONTROL SR BEFORE INITIAL STORE TO GET
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-16
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 909	;	CORRECT CONTEXT.
@@ -1126,7 +1143,8 @@
 ; 961	;	INSTR 1777 TIME.
 ; 962	;124	FIXES IN SEVERAL PLACES TO SET AND CLEAR ACCOUNT ENABLE SO AS
 ; 963	;	TO GET REPEATABLE ACCOUNTING MEASURES OF USEFUL WORK DONE. THE
-; 964	;	ENABLE IS NOW CLEARED FOR METER UPDATE CYCLES AND KL PAGE REFILL; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-17
+; 964	;	ENABLE IS NOW CLEARED FOR METER UPDATE CYCLES AND KL PAGE REFILL
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-17
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 965	;	CYCLES.  THE HARDWARE ALREADY TAKES CARE OF PI CYCLES.
@@ -1184,7 +1202,8 @@
 ; 1017	;	SEEN, SO AS NOT TO GET CONFUSED WHEN IT ARRIVES OR PAGE FAILS.
 ; 1018	;	ALSO IMPROVE CLRPT ROUTINE USED BY CONO AND DATAO PAG TO START
 ; 1019	;	LOOP WITH VMA CLEARED AND PT WR SELECTION SETUP CORRECTLY.
-; 1020	;107	FIX STRING COMPARES TO CHECK FOR INTERRUPT.  THIS INVOLVED; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-18
+; 1020	;107	FIX STRING COMPARES TO CHECK FOR INTERRUPT.  THIS INVOLVED
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-18
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 1021	;	CHECKING DURING GSRC ROUTINE, WHICH ELIMINATES NEED FOR CHECK
@@ -1242,7 +1261,8 @@
 ; 1073	;	A CYCLE FOR PARITY CHECK).  FIX DPB CODE TAKE ONLY 3 TICKS ON
 ; 1074	;	RETURN FROM BYTEA, SO THAT CACHE DATA DOESN'T ARRIVE INTO AR
 ; 1075	;	AND ARX UNTIL DPB1, WHEN THE BYTE HAS GOTTEN OUT TO MQ.
-; 1076	;72	FIX DEFINITION OF SP MEM/UNPAGED TO INHIBIT VMA USER.  FIX; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-19
+; 1076	;72	FIX DEFINITION OF SP MEM/UNPAGED TO INHIBIT VMA USER.  FIX
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-19
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 1077	;	PAGE FAIL CODE TO CHECK FOR VMA FETCH BEFORE LOOKING AT
@@ -1300,7 +1320,8 @@
 ; 1129	;	DEFINITIONS FOR SET SR?, WHICH WERE ALWAYS SETTING SR0.
 ; 1130	;51	OPTIMIZE IMULI OF TWO POSITIVE OPERANDS (TO SPEED UP SUBSCRIPT
 ; 1131	;	CALCULATIONS) BY TAKING ONLY 9 MULTIPLY STEPS AND STARTING
-; 1132	;	NEXT INSTRUCTION FETCH EARLIER.  OPTIMIZATION CAN BE REMOVED; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-20
+; 1132	;	NEXT INSTRUCTION FETCH EARLIER.  OPTIMIZATION CAN BE REMOVED
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-20
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 1133	;	BY COMMENTING OUT TWO INSTRUCTIONS AT IMULI, AND ONE FOLLOWING
@@ -1358,7 +1379,8 @@
 ; 1185	;23	FIX CONO PI, TO HOLD AR ONTO EBUS THRU REL EBUS, BECAUSE
 ; 1186	;	PI BOARD DELAYS CONO PI TO GET CONO SET EQUIVALENT.
 ; 1187	;22	MORE JFCL FIXES.  MUST USE FLAG CTL/JFCL WHILE CLEARING BITS,
-; 1188	;	AS WELL AS WHILE TESTING THEM.  BUM A WORD OUT OF JFFO BY; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-21
+; 1188	;	AS WELL AS WHILE TESTING THEM.  BUM A WORD OUT OF JFFO BY
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-21
 ; EDHIS.MIC[4,24]	12:02 29-May-86			REVISION HISTORY					
 
 ; 1189	;	MAKING THE SIXBIT COUNT NEGATIVE.  CHANGES SO SHIFT SUBR
@@ -1400,7 +1422,8 @@
 ; 1225	;	AND VARIOUS CHANGES FOR PROTO HARDWARE
 ; 1226	;00	CREATION, BASED ON BREADBOARD AS OF EDIT 66
 						; 1227	.BIN
-						; 1228	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 1228	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONDITIONAL ASSEMBLY VARIABLE DEFINITIONS		
 
 						; 1229	.TOC	"CONDITIONAL ASSEMBLY VARIABLE DEFINITIONS"
@@ -1458,7 +1481,8 @@
 ;;1281		.SET/INSTR.STAT=1	;ERROR IF TRACKS OR OP.CNT ALSO SET
 ; 1282	.ENDIF/OP.TIME
 ; 1283	
-;;1284	.IF/SO.CNT; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+;;1284	.IF/SO.CNT
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONDITIONAL ASSEMBLY VARIABLE DEFINITIONS		
 
 ;;1285		.SET/INSTR.STAT=1
@@ -1491,7 +1515,8 @@
 ; 1312	.DEFAULT/DDT.BUG=0		;[346] If on, enable APRID hack to move bit 23
 ; 1313	.DEFAULT/GFTCNV=1		;[273] GFLOAT CONVERSION INST.
 ; 1314	.DEFAULT/EDIT=1			;Edit is usually here  ****HACK****
-; 1315	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+; 1315	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; DEFINE.MIC[4,24]	16:58 23-May-86			HOW TO READ THE MICROCODE -- FORMATS & CONSTRUCTS	
 
 ; 1316	.TOC	"HOW TO READ THE MICROCODE -- FORMATS & CONSTRUCTS"
@@ -1549,7 +1574,8 @@
 ; 1368	; THE MICROASSEMBLER WILL ENSURE THAT THE FIELD IS 0.
 ; 1369	;	AD/=<12:17>	OR	AD/=0,6,17
 ; 1370	;	THE FIELD WHICH CONTROLS THE AD IS 6 BITS WIDE, ENDING ON
-; 1371	; BIT 17.  THE FOURTH PARAMETER OF THE FIELD IS OMITTED, SO THE FIELD; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
+; 1371	; BIT 17.  THE FOURTH PARAMETER OF THE FIELD IS OMITTED, SO THE FIELD
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
 ; DEFINE.MIC[4,24]	16:58 23-May-86			HOW TO READ THE MICROCODE -- FORMATS & CONSTRUCTS	
 
 ; 1372	; IS AVAILABLE TO THE MICROASSEMBLER (IF NO VALUE IS EXPLICITLY
@@ -1607,7 +1633,8 @@
 ; 1424	;(4)	COMMENTS
 ; 1425	;	A SEMICOLON ANYWHERE ON A LINE CAUSES THE REST OF THE LINE
 ; 1426	; TO BE IGNORED BY THE ASSEMBLER.  THIS TEXT IS AN EXAMPLE OF COMMENTS.
-; 1427	;; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-2
+; 1427	;
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-2
 ; DEFINE.MIC[4,24]	16:58 23-May-86			HOW TO READ THE MICROCODE -- FORMATS & CONSTRUCTS	
 
 ; 1428	;(5)	MICROINSTRUCTION DEFINITION
@@ -1665,7 +1692,8 @@
 ; 1480	; ADDRESS OF FOLLOWING MICROINSTRUCTIONS.  THE NUMBER OF CHARACTERS
 ; 1481	; IN THE CONSTRAINT STRING (EXCLUDING THE "=") IS THE NUMBER OF LOW-ORDER
 ; 1482	; BITS CONSTRAINED IN THE ADDRESS.  THE MICROASSEMBLER ATTEMPTS TO FIND
-; 1483	; AN UNUSED LOCATION WHOSE ADDRESS HAS 0 BITS IN THE POSITIONS; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-3
+; 1483	; AN UNUSED LOCATION WHOSE ADDRESS HAS 0 BITS IN THE POSITIONS
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-3
 ; DEFINE.MIC[4,24]	16:58 23-May-86			HOW TO READ THE MICROCODE -- FORMATS & CONSTRUCTS	
 
 ; 1484	; CORRESPONDING TO 0'S IN THE CONSTRAINT STRING AND 1 BITS WHERE THE
@@ -1702,7 +1730,8 @@
 ; 1515	;THIS LIMITATION HAS BEEN CHANGED WITH NEWER ASSEMBLER VERSIONS.
 ; 1516	;HOWEVER NONE OF THE LOCATIONS IN THE MICROCODE REQUIRE ANYTHING BUT THE
 ; 1517	;CONSTRAINT MENTIONED ABOVE.
-; 1518	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+; 1518	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; DEFINE.MIC[4,24]	16:58 23-May-86			MICROCODE LISTING TEMPLATE				
 
 ; 1519	.TOC	"MICROCODE LISTING TEMPLATE"
@@ -1755,7 +1784,8 @@
 ; 1566	;   !   !! !   + J = ADDRESS OF HANDLER FOR THIS INSTRUCTION
 ; 1567	; [--]  !! ! [--]
 ; 1568	; ----  ---- ----
-; 1569	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+; 1569	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; DEFINE.MIC[4,24]	16:58 23-May-86			KL10 INSTRUCTION OPCODE MAP				
 
 ; 1570	.TOC	"KL10 INSTRUCTION OPCODE MAP"
@@ -1813,7 +1843,8 @@
 ; 1622	;640	TRC	TLC	TRCE	TLCE	TRCA	TLCA	TRCN	TLCN
 ; 1623	;650	TDC	TSC	TDCE	TSCE	TDCA	TSCA	TDCN	TSCN
 ; 1624	;660	TRO	TLO	TROE	TLOE	TROA	TLOA	TRON	TLON
-; 1625	;670	TDO	TSO	TDOE	TSOE	TDOA	TSOA	TDON	TSON; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+; 1625	;670	TDO	TSO	TDOE	TSOE	TDOA	TSOA	TDON	TSON
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- J, AD			
 
 ; 1626	.TOC	"CONTROL RAM DEFINITIONS -- J, AD"
@@ -1871,7 +1902,8 @@
 ; 1678		CRY A EQ -1=60,1	;GENERATE CRY0 IF A=1S, AD=SETCA
 ; 1679		CRY A.B#0=36,1		;CRY 0 IF A&B NON-ZERO, AD=AND
 ; 1680		CRY A#0=37,1		;GENERATE CRY0 IF A .NE. 0, AD=A
-; 1681		CRY A GE B=71,1		;CRY0 IF A .GE. B, UNSIGNED; AD=XOR; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+; 1681		CRY A GE B=71,1		;CRY0 IF A .GE. B, UNSIGNED; AD=XOR
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- DATA PATH MIXERS		
 
 ; 1682	.TOC	"CONTROL RAM DEFINITIONS -- DATA PATH MIXERS"
@@ -1928,7 +1960,8 @@
 ; 1733		MQ*.25=1	;With SPEC/MQ SHIFT--High bits from ADX34, ADX35
 ; 1734		MQ SEL=0	;WITH COND/REG CTL
 ; 1735		MQM SEL=1	;WITH COND/REG CTL
-; 1736	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+; 1736	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- DATA PATH MIXERS		
 
 ; 1737	;FMADR SELECTS THE SOURCE OF THE FAST MEMORY ADDRESS,
@@ -1976,7 +2009,8 @@
 ; 1779	FE/=<47:47>D,0		;RECIRCULATE BY DEFAULT (SCD2)
 ; 1780		SCAD=1
 ; 1781	U48/=<48:48>D,0		;BIT 48 UNUSED
-; 1782	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+; 1782	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- SHIFT, ARMM, VMA, TIME	
 
 ; 1783	.TOC	"CONTROL RAM DEFINITIONS -- SHIFT, ARMM, VMA, TIME"
@@ -2033,7 +2067,8 @@
 ; 1834		RPW=15		;READ-PAUSE-WRITE
 ; 1835		WRITE=16	;FROM AR TO MEMORY
 ; 1836		IFET=17		;UNCONDITIONAL instruction FETCH
-; 1837	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+; 1837	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- SKIP/COND SPECIAL FUNCTIONS	
 
 ; 1838	.TOC	"CONTROL RAM DEFINITIONS -- SKIP/COND SPECIAL FUNCTIONS"
@@ -2074,7 +2109,8 @@
 ; 1873		-VMA SEC0=75	;VMA SECTION NUMBER (13-17) IS NOT ZERO
 ; 1874		AC REF=76,,1	;VMA .LT.20 ON READ OR WRITE
 ; 1875		-MTR REQ=77	;INTERRUPT REQUEST NOT DUE TO METER
-; 1876	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+; 1876	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- SKIP/COND SPECIAL FUNCTIONS	
 
 ; 1877	;SKIP/COND FIELD CONTINUED
@@ -2117,7 +2153,8 @@
 ; 1914	
 ; 1915	CALL/=<66:66>D,0	;CALL function--May not coexist with DISP/RETURN
 ; 1916		CALL=1		;GOOD TO 15 LEVELS IN MODEL B
-; 1917	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+; 1917	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- DISP/SPEC SPECIAL FUNCTIONS	
 
 ; 1918	.TOC	"CONTROL RAM DEFINITIONS -- DISP/SPEC SPECIAL FUNCTIONS"
@@ -2164,7 +2201,8 @@
 ; 1959	U73/=<72:73>D,0		;BITS 72-73 UNUSED
 ; 1960	
 ; 1961	MARK/=<74:74>D,0	;FIELD SERVICE "MARK" BIT
-; 1962	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+; 1962	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 1963	.TOC	"CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD"
@@ -2222,7 +2260,8 @@
 ; 2015	;	the address lines won't make it in time for the write pulse.  [210]
 ; 2016	;
 ; 2017	AC-OP/=<75:79>		;CONTROLS AC #.  AD functions < 40 all work
-; 2018		AC+#=6; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12-1
+; 2018		AC+#=6
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12-1
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 2019		#=32		;JUST AC#
@@ -2276,7 +2315,8 @@
 ; 2067		MQ*.25=1	;WITH MQ/MQM SEL--High bits are ADX34, ADX35
 ; 2068		1S=2		; "
 ; 2069		AD=3		; "
-; 2070	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+; 2070	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 2071	;SPECIAL CONTROL OF EBOX FLAGS & FUNCTIONS
@@ -2323,7 +2363,8 @@
 ; 2112		TEST=203,1
 ; 2113		JUMP=502,2	;AS IN JUMPX, ON AD AND DRAM B
 ; 2114		JFCL=503,1	;JUMP ON TEST CONDITION
-; 2115	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+; 2115	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 2116	;SPECIAL MEMORY REQUEST FUNCTIONS
@@ -2381,7 +2422,8 @@
 ; 2168		PT=33
 ; 2169		PT FETCH=433
 ; 2170	.ENDIF/MULTI
-; 2171	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+; 2171	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 2172	;MBOX CONTROLS
@@ -2415,7 +2457,8 @@
 ; 2200		LD PA RH=5
 ; 2201		CONO MTR=6
 ; 2202		CONO TIM=7
-; 2203	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
+; 2203	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
 ; DEFINE.MIC[4,24]	16:58 23-May-86			CONTROL RAM DEFINITIONS -- MAGIC NUMBER FIELD		
 
 ; 2204	;I/O FUNCTIONS
@@ -2468,7 +2511,8 @@
 ; 2251		RD EBUS REG=567,3	;EBUS REGISTER IN MBOX (MBZ1 & MBC1)
 ; 2252	
 ; 2253	PARITY/=0,0,0,P		;USE ANY AVAILABLE FIELD FOR PARITY
-; 2254	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
+; 2254	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
 ; DEFINE.MIC[4,24]	16:58 23-May-86			DISPATCH RAM DEFINITIONS				
 
 ; 2255	.TOC	"DISPATCH RAM DEFINITIONS"
@@ -2524,7 +2568,8 @@
 ; 2305		.UCODE
 ; 2306	
 						; 2307	.BIN
-						; 2308	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 2308	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--Miscellaneous and A			
 
 						; 2309	.TOC	"CRAM Macros--Miscellaneous and A"
@@ -2565,7 +2610,8 @@
 ; 2344	AD FLAGS	"COND/AD FLAGS"
 ; 2345	AD LONG		"SPEC/AD LONG"
 ; 2346	ADMSK		"R15"		;23 ONES
-; 2347	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+; 2347	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR						
 
 ; 2348	.TOC	"CRAM Macros--AR"
@@ -2623,7 +2669,8 @@
 ; 2400	AR_AR*.5 LONG	"ADA/AR,AD/A*2,SPEC/AD LONG,AR/AD*.25,ARX/ADX*.25"
 ; 2401	AR_AR*1.25 LONG	"ADA/AR,ADB/AR*4,AD/A+B,AR_AD*.25 LONG"
 ; 2402	AR_AR*10	"ADA/AR,ADB/AR*4,AD/A+B,AR/AD*2"
-; 2403	AR_AR*10 LONG	"ADA/AR,ADB/AR*4,AD/A+B,AR/AD*2,ARX/ADX*2,SPEC/AD LONG"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
+; 2403	AR_AR*10 LONG	"ADA/AR,ADB/AR*4,AD/A+B,AR/AD*2,ARX/ADX*2,SPEC/AD LONG"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR						
 
 ; 2404	AR_AR*2		"ADA/AR,AD/A,AR/AD*2"
@@ -2681,7 +2728,8 @@
 ; 2456	AR_ARX*BR	"ADA/ARX,ADB/BR,AR/AD"
 ; 2457	AR_ARX*BRX	"ADA/AR,ADB/BR,AR/ADX"
 ; 2458	AR_ARX*E1	"E1,ADB/FM,ADA/ARX,AR/AD"
-; 2459	AR_ARX+1	"ADA EN/EN,AD/A+1,AR/ADX"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-2
+; 2459	AR_ARX+1	"ADA EN/EN,AD/A+1,AR/ADX"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-2
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR						
 
 ; 2460	AR_ARX+1 (AD)	"ADA/ARX,AD/A+1,AR/AD"
@@ -2739,7 +2787,8 @@
 ; 2512	AR_MQ		"ADA/MQ,AD/A,AR/AD"
 ; 2513	AR_MQ COMP	"ADA/MQ,AD/SETCA,AR/AD"
 ; 2514	AR_MQ*.25	"ADA/MQ,AD/A,AR/AD*.25"
-; 2515	AR_MQ*2		"ADA/MQ,AD/A,AR/AD*2"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-3
+; 2515	AR_MQ*2		"ADA/MQ,AD/A,AR/AD*2"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-3
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR						
 
 ; 2516	AR_MQ*4		"ADA/MQ,AD/A*2,AR/AD*2"
@@ -2797,7 +2846,8 @@
 ; 2568	.ENDIF/TRXDEF
 ; 2569	AR_VMA HELD	"COND/SEL VMA,AR_PC"
 ; 2570	AR_XR		"FMADR/XR,ADB/FM,AD/B,AR/AD"
-; 2571	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+; 2571	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR Miscellaneous, ARL, and ARR		
 
 ; 2572	.TOC	"CRAM Macros--AR Miscellaneous, ARL, and ARR"
@@ -2855,7 +2905,8 @@
 ; 2624	ARL_SHIFT	"MEM/ARL IND,SH/SHIFT AR!ARX,ARL/SH"
 ; 2625	ARL_SIGN	"AD/XCRY-1,SPEC/XCRY AR0,COND/ARL IND,ARL/AD"
 ; 2626	ARL+ARX+MQ_0.M	"MEM/ARL IND,CLR/ARL+ARX+MQ"
-; 2627	ARL+ARX_0.M	"MEM/ARL IND,CLR/ARL+ARX"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
+; 2627	ARL+ARX_0.M	"MEM/ARL IND,CLR/ARL+ARX"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--AR Miscellaneous, ARL, and ARR		
 
 ; 2628	
@@ -2880,7 +2931,8 @@
 ; 2647	ARR_PC+1	"ADA/PC,AD/A+1,AR/AD"
 ; 2648	ARR_SHIFT	"AR_SHIFT"
 ; 2649	ARR+MQ_0.S	"SPEC/ARL IND,CLR/ARR+MQ"
-; 2650	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+; 2650	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--ARX					
 
 ; 2651	.TOC	"CRAM Macros--ARX"
@@ -2938,7 +2990,8 @@
 ; 2703	ARX_ARX*BRX	"ADA/AR,ADB/BR,ARX/ADX"
 ; 2704	ARX_ARX*EXPMSK	"EXPMSK,ADB/FM,ADA/ARX,ARX/AD"		;[224]
 ; 2705	ARX_ARX+1	"ADA EN/EN,AD/A+1,ARX/ADX"
-; 2706	ARX_ARX+1 (AD)	"ADA/ARX,AD/A+1,ARX/AD"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-1
+; 2706	ARX_ARX+1 (AD)	"ADA/ARX,AD/A+1,ARX/AD"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--ARX					
 
 ; 2707	ARX_ARX+AC0	"ADA/ARX,ADB/FM,FMADR/AC0,AD/A+B,ARX/AD"
@@ -2993,7 +3046,8 @@
 ; 2756	ARX0_AR35	"ADA/AR,AD/A*2+1,ARX/ADX*.25"	;[337]
 ; 2757	ARX0_MQ35	"ADA/MQ,AD/A*2+1,ARX/ADX*.25"
 ; 2758	ARX0-3 DISP	"SH/ARX,DISP/SH0-3"
-; 2759	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+; 2759	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--B, C, D					
 
 ; 2760	.TOC	"CRAM Macros--B, C, D"
@@ -3051,7 +3105,8 @@
 ; 2812	CONI PI(R)	"DIAG IN,DIAG FUNC/CONI PI(R)"
 ; 2813	CONO APR	"DIAG OUT,DIAG FUNC/CONO APR"
 ; 2814	CONO MTR	"SPEC/MTR CTL,DIAG OUT,DIAG FUNC/CONO MTR"
-; 2815	CONO PAG	"DIAG OUT,DIAG FUNC/CONO PAG"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
+; 2815	CONO PAG	"DIAG OUT,DIAG FUNC/CONO PAG"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--B, C, D					
 
 ; 2816	CONO PI		"DIAG OUT,DIAG FUNC/CONO PI"
@@ -3076,7 +3131,8 @@
 ; 2835	DSTP2_AR	"DSTP2,FM_AR"
 ; 2836	DSTW		"R14"
 ; 2837	DSTW_AR		"DSTW,FM_AR"
-; 2838	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+; 2838	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--E, F					
 
 ; 2839	.TOC	"CRAM Macros--E, F"
@@ -3134,7 +3190,8 @@
 ; 2891	FE_EXP-#	"SCADA/AR EXP,SCADB/#,SCAD/A-B,FE/SCAD"
 ; 2892	FE_EXP-1	"SCADA/AR EXP,SCAD/A-1,FE/SCAD"
 ; 2893	FE_FE AND #	"SCADA/FE,SCADB/#,SCAD/AND,FE/SCAD"
-; 2894	FE_FE AND AR0-8	"SCADA/FE,SCADB/AR0-8,SCAD/AND,FE/SCAD"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
+; 2894	FE_FE AND AR0-8	"SCADA/FE,SCADB/AR0-8,SCAD/AND,FE/SCAD"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--E, F					
 
 ; 2895	FE_FE OR #	"SCADA/FE,SCADB/#,SCAD/OR,FE/SCAD"
@@ -3176,7 +3233,8 @@
 ; 2931	FM[]_AR		"@1, FM_AR"
 ; 2932	FM(#)_AR	"FMADR/AC+#,AC-OP/AC+#,COND/FM WRITE"
 ; 2933	FORCE AR-ARX	"ADB/AR*4,AD/B,AR/AD*.25,ARX/ADX*.25"
-; 2934	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+; 2934	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--G, H, I, J, L				
 
 ; 2935	.TOC	"CRAM Macros--G, H, I, J, L"
@@ -3234,7 +3292,8 @@
 ; 2987	GEN FE		"SCADA/FE,SCAD/A"
 ; 2988	GEN FE AND #	"SCADA/FE,SCADB/#,SCAD/AND"
 ; 2989	GEN FE AND AR0-8 "SCADA/FE,SCADB/AR0-8,SCAD/AND"
-; 2990	GEN FE AND S	"SCADA/FE,SCADB/AR6-11,SCAD/AND"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7-1
+; 2990	GEN FE AND S	"SCADA/FE,SCADB/AR6-11,SCAD/AND"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--G, H, I, J, L				
 
 ; 2991	GEN FE AND SC	"SCADA/FE,SCADB/SC,SCAD/AND"
@@ -3288,7 +3347,8 @@
 ; 3039	LOAD UBR	"MEM/REG FUNC,MREG FNC/LOAD UBR"
 ; 3040	LOAD VMA(EA)	"MEM/EA CALC,EA CALC/LD AR(EA),VMA/LOAD"
 ; 3041	LONG EN		"COND/LONG EN"
-; 3042	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+; 3042	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--M, N, O, P					
 
 ; 3043	.TOC	"CRAM Macros--M, N, O, P"
@@ -3346,7 +3406,8 @@
 ; 3095	P_-SC		"SCADA EN/0S,SCADB/SC,SCAD/A-B,P_SCAD"
 ; 3096	P_0		"SCADA EN/0S,SCAD/A,P_SCAD"
 ; 3097	P_1S		"SCADA EN/0S,SCAD/A-1,P_SCAD"
-; 3098	P_FE		"SCADA/FE,SCAD/A,P_SCAD"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8-1
+; 3098	P_FE		"SCADA/FE,SCAD/A,P_SCAD"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--M, N, O, P					
 
 ; 3099	P_FE AND #	"SCADA/FE,SCADB/#,SCAD/AND,P_SCAD#"
@@ -3404,7 +3465,8 @@
 ; 3151	PT SEL_INVAL (KEEP) "COND/MBOX CTL,MBOX CTL/PT DIR CLR(NK)"
 ; 3152	PT SEL_NORMAL	"COND/MBOX CTL,MBOX CTL/NORMAL"
 ; 3153	PUR		"P1"
-; 3154	PUSH		"MEM/EA CALC,EA CALC/PUSH,VMA/LOAD,SPEC/STACK UPDATE"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+; 3154	PUSH		"MEM/EA CALC,EA CALC/PUSH,VMA/LOAD,SPEC/STACK UPDATE"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--R						
 
 ; 3155	.TOC	"CRAM Macros--R"
@@ -3462,7 +3524,8 @@
 ; 3207	RSTR VMA_ARX	"ADA/ARX,AD/A,VMA/LOAD,MEM/RESTORE VMA"
 ; 3208	RSTR VMA_MQ	"ADA/MQ,AD/A,VMA/LOAD,MEM/RESTORE VMA"
 ; 3209	RSTR VMA_SV.VMA	"SV.VMA,ADB/FM,AD/B,VMA/LOAD,MEM/RESTORE VMA"
-; 3210	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+; 3210	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--S						
 
 ; 3211	.TOC	"CRAM Macros--S"
@@ -3520,7 +3583,8 @@
 ; 3263	SEL DSTP	"AC-OP/AC+#,AC#/4"
 ; 3264	SEL DSTP2	"AC-OP/AC+#,AC#/5"
 ; 3265	SET ACC+CLR UCODE	"COND/EBOX STATE,#/005"
-; 3266	SET ACCOUNT EN	"COND/EBOX STATE,#/105"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-1
+; 3266	SET ACCOUNT EN	"COND/EBOX STATE,#/105"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--S						
 
 ; 3267	SET AROV	"COND/PCF_#,PC FLAGS/AROV"
@@ -3578,7 +3642,8 @@
 ; 3319	SKP AR18	"SKIP/AR18"
 ; 3320	SKP AR2		"ADB/AR*4,AD/B,SKIP/AD0"
 ; 3321	SKP AR6		"SCADB/AR6-11,SCADA/#,#/40,SCAD/AND,SKIP/SCAD#0"
-; 3322	SKP ARX LE BRX	"ADA EN/EN,ADB/BR,AD/A-B-1,SKIP/ADX0"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-2
+; 3322	SKP ARX LE BRX	"ADA EN/EN,ADB/BR,AD/A-B-1,SKIP/ADX0"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-2
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--S						
 
 ; 3323	SKP ARX LT BRX	"ADA EN/EN,ADB/BR,AD/A-B,SKIP/ADX0"
@@ -3636,7 +3701,8 @@
 ; 3375	SR_DST		"COND/SR_#,#/212"
 ; 3376	SR_DSTF		"COND/SR_#,#/214"
 ; 3377	SR_ED(+D)	"COND/SR_#,#/224"
-; 3378	SR_ED(PAT)	"COND/SR_#,#/0"		;PATTERN REF IS EXTENDED; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-3
+; 3378	SR_ED(PAT)	"COND/SR_#,#/0"		;PATTERN REF IS EXTENDED
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10-3
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--S						
 
 ; 3379	SR_ED(S)	"COND/SR_#,#/101"
@@ -3674,7 +3740,8 @@
 ; 3411	SWD		"R1"		;BUFFER FOR SOURCE BYTE WORD
 ; 3412	SWD_AR		"SWD,FM_AR"
 ; 3413	SWEEP CACHE	"MEM/REG FUNC,MREG FNC/LOAD CCA"
-; 3414	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+; 3414	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--T, U, V, W, X				
 
 ; 3415	.TOC	"CRAM Macros--T, U, V, W, X"
@@ -3732,7 +3799,8 @@
 ; 3467	VMA_AR+CBR	"CBR,ADB/FM,ADA/AR,AD/A+B,VMA/AD"
 ; 3468	VMA_AR+E0	"E0,ADB/FM,ADA/AR,AD/A+B,VMA/AD"
 ; 3469	VMA_AR+E0+1	"E0,ADB/FM,ADA/AR,AD/A+B+1,VMA/AD"
-; 3470	VMA_AR+E1	"E1,ADB/FM,ADA/AR,AD/A+B,VMA/AD"; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11-1
+; 3470	VMA_AR+E1	"E1,ADB/FM,ADA/AR,AD/A+B,VMA/AD"
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11-1
 ; MACRO.MIC[4,24]	11:59 29-May-86			CRAM Macros--T, U, V, W, X				
 
 ; 3471	VMA_AR+SBR	"SBR,ADB/FM,ADA/AR,AD/A+B,VMA/AD"
@@ -3769,7 +3837,8 @@
 ; 3502	WRITE (E)	"MEM/EA CALC,EA CALC/WRITE(E),VMA/LOAD"
 ; 3503	
 ; 3504	XR		"FMADR/XR"
-; 3505	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+; 3505	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; MACRO.MIC[4,24]	11:59 29-May-86			DRAM Macros						
 
 ; 3506	.TOC	"DRAM Macros"
@@ -3791,7 +3860,8 @@
 ; 3522	R-PF	"A/READ-PF"
 ; 3523	RW	"A/RD-WR"
 ; 3524	RPW	"A/RD-P-WR"			;Was A/RD-WR if RPW was off
-; 3525	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+; 3525	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; MACRO.MIC[4,24]	11:59 29-May-86			DRAM Macros						
 
 ; 3526	;"B FIELD" MACROS
@@ -3845,7 +3915,8 @@
 ; 3574	
 						; 3575	.BIN
 						; 3576		.UCODE
-						; 3577	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 3577	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; BASIC.MIC[4,24]	11:56 29-May-86			THE INSTRUCTION LOOP					
 
 						; 3578	.TOC	"THE INSTRUCTION LOOP"
@@ -3903,7 +3974,8 @@
 ; 3630	; VERIFIED AT THIS TIME TO PREVENT INCORRECTLY SETTING FLAGS OR
 ; 3631	; THE PROCESSOR STATE IF THE INSTRUCTION WILL BE ABORTED BY PAGE
 ; 3632	; FAILURE.  LOCATION 3 THEN DISPATCHES TO THE HANDLER FOR THE
-; 3633	; CURRENT INSTRUCTION.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+; 3633	; CURRENT INSTRUCTION.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; BASIC.MIC[4,24]	11:56 29-May-86			THE INSTRUCTION LOOP					
 
 ; 3634	;	A FIELD VALUES 4 TO 7 PERFORM READS FROM EA.  6 AND 7 ALSO TEST
@@ -3950,7 +4022,8 @@
 ; 3675	; VMA AC REF TO MAKE IT THROUGH THE NICOND LOGIC), STAC AND FINI ARE
 ; 3676	; USED WHEN THERE HAS BEEN AN INTERVENING CYCLE.)
 ; 3677	;
-; 3678	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+; 3678	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; BASIC.MIC[4,24]	11:56 29-May-86			NEXT INSTRUCTION DISPATCH				
 
 ; 3679	.TOC	"NEXT INSTRUCTION DISPATCH"
@@ -3999,7 +4072,8 @@
 ; 3722	;	Other offsets are never reached.
 ; 3723	;
 						; 3724	.BIN
-						; 3725	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 3725	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; BASIC.MIC[4,24]	11:56 29-May-86			NEXT INSTRUCTION DISPATCH				
 
 						; 3726	;NICOND (NXT INSTR) DISPATCH BLOCK
@@ -4057,7 +4131,8 @@ U 0156, 0152,3240,0203,0000,0020,1410,0000	; 3777	=1110	ARX_FM(VMA),TIME/3T,LOAD
 U 0157, 0364,0001,0000,0000,0100,3110,0420	; 3778		VMA_420+TRAP,J/TRAPX		;HERE IF TRAP BITS SET
 						; 3779	
 						; 3780	;HERE ON TRAPS, VMA SETUP WITH 420+TRAP CODE
-						; 3781	=11****; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
+						; 3781	=11****
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
 ; BASIC.MIC[4,24]	11:56 29-May-86			NEXT INSTRUCTION DISPATCH				
 
 U 0364, 0365,0001,0000,0000,0013,0026,0033	; 3782	TRAPX:	LOAD ARX,PT REF			;GET AND XCT TRAP INSTR
@@ -4087,7 +4162,8 @@ U 0041, 0620,0001,0007,0000,0000,1010,0164	; 3798		FM[EXPMSK]_AR,J/CHALT		;[230]
 						; 3806	;	Rotate subroutine.
 						; 3807	;
 U 0044, 0003,4001,4400,5302,0000,0003,0044	; 3808	ROTS:	AR_SHIFT,ARX_SHIFT,SC_#-SC,#/36.,RETURN3
-						; 3809	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 3809	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; BASIC.MIC[4,24]	11:56 29-May-86			EFFECTIVE ADDRESS COMPUTATION AND OPERAND FETCH		
 
 						; 3810	.TOC	"EFFECTIVE ADDRESS COMPUTATION AND OPERAND FETCH"
@@ -4126,7 +4202,8 @@ U 0361, 0144,3200,0003,0000,0022,7710,0000	; 3841	TAKINT:	ARX_MEM,TAKE INTRPT
 						; 3843	=11****
 						; 3844	INDR1:	AR_ARX,XR,EA MOD DISP,
 U 0370, 0160,2341,4002,0301,2020,0036,0024	; 3845			FE_#,#/24,TIME/3T,J/EFIW
-						; 3846	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 3846	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; BASIC.MIC[4,24]	11:56 29-May-86			WAIT FOR (E)						
 
 						; 3847	.TOC	"WAIT FOR (E)"
@@ -4172,7 +4249,8 @@ U 0006, 0000,3200,0043,0301,0022,0001,0002	; 3883			IR DISP,J/0		; instructions 
 						; 3887	
 						; 3888	7:	BR/AR,AR_MEM,TIME/3T,		;GET OPERAND
 U 0007, 0000,3200,0043,0000,0022,0001,0000	; 3889			IR DISP,J/0		; START EXECUTE
-						; 3890	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 3890	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; BASIC.MIC[4,24]	11:56 29-May-86			TERMINATION						
 
 						; 3891	.TOC	"TERMINATION"
@@ -4227,7 +4305,8 @@ U 0136, 0133,0001,0001,0000,0000,1010,0021	; 3937			MAJVER/MAJOR,MINVER/MINOR;[3
 						; 3940	;
 						; 3941	137:
 U 0137, 3646,4001,0040,0000,0000,0110,0442	; 3942	UVERS:	BR/AR,AR0-8_#,#/EDIT,J/GTAR08	;COPY VERSION TO AR
-						; 3943	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 3943	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; BASIC.MIC[4,24]	11:56 29-May-86			MOVE GROUP, EXCH, XMOVEI, XHLLI				
 
 						; 3944	.TOC	"MOVE GROUP, EXCH, XMOVEI, XHLLI"
@@ -4283,7 +4362,8 @@ U 0021, 0015,4001,0000,0400,3001,0010,0200	; 3993		CLR P,J/STAC			;RETURN 30-BIT
 						; 3994	317:					;[440] Near HLL
 						; 3995	XHLLI:	SKP -LOCAL AC ADDR,I FETCH,
 U 0317, 0020,3240,2000,0000,0237,5722,0000	; 3996			ARR_AC0.S,ARL_ARL.S,J/XMOVEI1
-						; 3997	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 3997	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; BASIC.MIC[4,24]	11:56 29-May-86			Physical MOVE Instructions--PMOVE, PMOVEM		
 
 						; 3998	.TOC	"Physical MOVE Instructions--PMOVE, PMOVEM"
@@ -4314,7 +4394,8 @@ U 0120, 1002,3242,2000,0000,0000,0010,0000	; 4022	=00	AR_BR,J/UUO			;Illegal to 
 U 0121, 0017,3703,0000,0000,0312,0026,0103	; 4023		VMA_AR,LOAD AR,PHYS REF,J/STBOTH;PMOVE OK. Do a physical load
 U 0122, 1002,3242,2000,0000,0000,0010,0000	; 4024		AR_BR,J/UUO			;Illegal to do a PMOVEM
 U 0123, 0016,3200,2000,0000,0036,0026,0103	; 4025		AR_AC0,STORE,PHYS REF,J/STMEM	;PMOVEM OK. Do the physical store
-						; 4026	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 4026	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; BASIC.MIC[4,24]	11:56 29-May-86			DMOVE, DMOVN, DMOVEM, DMOVNM				
 
 						; 4027	.TOC	"DMOVE, DMOVN, DMOVEM, DMOVNM"
@@ -4372,7 +4453,8 @@ U 0357, 0016,0001,4003,0000,0016,3610,0000	; 4074		    STORE,J/STMEM
 U 0372, 0357,3441,2003,0000,0002,0010,0000	; 4079	DMVM1:	MEM_AR,AR_0S,J/STLOW		;Set up to zero AC1 high bit
 						; 4080	;
 U 0431, 0141,3401,2000,0000,0217,1010,0000	; 4081	DBLST:	AC0_AR,AR_0S,I FETCH,J/STD1	;Store high word, ready low
-						; 4082	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						; 4082	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; BASIC.MIC[4,24]	11:56 29-May-86			HALFWORD GROUP						
 
 						; 4083	.TOC	"HALFWORD GROUP"
@@ -4418,7 +4500,8 @@ D 0534, 5501,0401				; 4122		R-PF,	AC,	J/HRLE		;HRLE
 D 0535, 1500,0401				; 4123		I-PF,	AC,	J/HRLE		;HRLEI
 D 0536, 3601,0401				; 4124		W,	M,	J/HRLE		;HRLEM
 D 0537, 7300,0401				; 4125		RPW,	S,	J/HRLE		;HRLES
-						; 4126	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+						; 4126	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; BASIC.MIC[4,24]	11:56 29-May-86			HALFWORD GROUP						
 
 						; 4127	;	DESTINATION RIGHT HALF
@@ -4464,7 +4547,8 @@ D 0576, 3601,0702				; 4166		W,	M,	J/HLRE		;HLREM
 D 0577, 7300,0702				; 4167		RPW,	S,	J/HLRE		;HLRES
 						; 4168	
 						; 4169		.UCODE
-						; 4170	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+						; 4170	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; BASIC.MIC[4,24]	11:56 29-May-86			HALFWORD GROUP						
 
 						; 4171	;FIRST, THE 16 OPS WHICH DO NOT AFFECT THE "OTHER" HALF.
@@ -4522,7 +4606,8 @@ U 0703, 0704,0001,0000,0000,0000,4510,0000	; 4221	HLLE:	SKP AR0
 						; 4223	SETZ:					;[421] ARL already 0 for SETZ
 U 0704, 0010,3441,2000,0000,0005,0633,0000	; 4224	HLLZ:	ARR_0S,ARL_ARL,EXIT
 						; 4225	705:					;Must follow HLLZ
-U 0705, 0010,2341,2000,0000,0005,0633,0000	; 4226	HLLO:	ARR_1S,ARL_ARL,EXIT; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+U 0705, 0010,2341,2000,0000,0005,0633,0000	; 4226	HLLO:	ARR_1S,ARL_ARL,EXIT
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; BASIC.MIC[4,24]	11:56 29-May-86			BOOLEAN GROUP						
 
 						; 4227	.TOC	"BOOLEAN GROUP"
@@ -4580,7 +4665,8 @@ D 0433, 7700,0111				; 4277		RPW,	B,	J/XOR		;XORB
 						; 4279	
 						; 4280	111:					;Must be near TLX
 U 0111, 0010,3100,2000,4000,0025,0033,0000	; 4281	XOR:	AR_AR*AC0,AD/XOR,EXIT
-						; 4282	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+						; 4282	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; BASIC.MIC[4,24]	11:56 29-May-86			BOOLEAN GROUP						
 
 						; 4283		.DCODE
@@ -4633,7 +4719,8 @@ D 0457, 7701,0511				; 4327		RPW,	B,	J/ORCA		;ORCAB
 						; 4330	=0****00****
 U 0511, 0010,2700,2000,0000,0025,0033,0000	; 4331	ORCA:	AR_AR*AC0,AD/ORCB,EXIT
 						; 4332	=
-						; 4333	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+						; 4333	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; BASIC.MIC[4,24]	11:56 29-May-86			BOOLEAN GROUP						
 
 						; 4334		.DCODE
@@ -4676,7 +4763,8 @@ D 0477, 0700,1007				; 4368		I,	B,	J/SETO		;SETOB
 						; 4371	=0****00****
 U 1007, 0010,2341,2000,0000,0005,0033,0000	; 4372	SETO:	AR_1S,EXIT
 						; 4373	=
-						; 4374	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 4374	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			TEST GROUP						
 
 						; 4375	.TOC	"TEST GROUP"
@@ -4734,7 +4822,8 @@ D 0654, 4201,0213				; 4426		R,	TCA,	J/TDX		;TDCA
 D 0655, 4200,0214				; 4427		R,	TCA,	J/TLXA		;TSCA
 D 0656, 4601,0507				; 4428		R,	TCN,	J/TDXX		;TDCN
 D 0657, 4600,0506				; 4429		R,	TCN,	J/TSXX		;TSCN
-						; 4430	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 4430	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			TEST GROUP						
 
 D 0660, 1501,0112				; 4431	660:	I-PF,	AC,	J/IOR		;TRO <==> ORI
@@ -4788,7 +4877,8 @@ U 0304, 0133,0001,0000,0000,0000,0010,0000	; 4478	TDN:	J/FINI				;NO MODIFICATIO
 U 0305, 0015,3000,2000,0000,0000,0010,0000	; 4479	305:	AR_AR*AC0,AD/ANDCA,TIME/2T,J/STAC;[441] ZEROS
 U 0306, 0015,3100,2000,4000,0000,0010,0000	; 4480	306:	AR_AR*AC0,AD/XOR,TIME/2T,J/STAC	;[441] COMP
 U 0307, 0015,3300,2000,0000,0000,0010,0000	; 4481	307:	AR_AR*AC0,AD/OR,TIME/2T,J/STAC	;[441] ONES
-						; 4482	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 4482	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			COMPARE -- CAI, CAM					
 
 						; 4483	.TOC	"COMPARE -- CAI, CAM"
@@ -4816,7 +4906,8 @@ D 0317, 4401,0215				; 4503		R,	SJCG,	J/CAIM		;CAMG
 						; 4505	
 						; 4506	215:					;[440] Near NOP and TDX
 U 0215, 0217,3100,0000,0000,0246,0010,0201	; 4507	CAIM:	GEN AR*AC0,COMP FETCH,J/NOP
-						; 4508	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 4508	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			ARITHMETIC SKIPS -- AOS, SOS, SKIP			
 
 						; 4509	.TOC	"ARITHMETIC SKIPS -- AOS, SOS, SKIP"
@@ -4868,7 +4959,8 @@ D 0377, 7401,0713				; 4551		RPW,	SJCG,	J/SOS		;SOSG
 U 0712, 0013,1701,2000,0000,0036,1310,0000	; 4555	SONS:	AR_AR-1,AD FLAGS,STORE,J/SLFEND	;[440] SOS only
 U 0713, 0312,1703,2000,0000,0036,1310,0000	; 4556	SOS:	AR_AR-1,AD FLAGS,STORE,J/SKIP	;Other SOSx
 						; 4557	=
-						; 4558	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 4558	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			CONDITIONAL JUMPS -- JUMP, AOJ, SOJ, AOBJ		
 
 						; 4559	.TOC	"CONDITIONAL JUMPS -- JUMP, AOJ, SOJ, AOBJ"
@@ -4926,7 +5018,8 @@ D 0253, 0200,1013				; 4610		I,	SJCL,	J/AOBJ		;AOBJN
 						; 4611		.UCODE
 						; 4612	=0****00****
 U 1013, 0216,4640,2000,0000,0266,0017,0502	; 4613	AOBJ:	AR_AC0+1,GEN CRY18,JUMP FETCH,J/STORAC
-						; 4614	=; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 4614	=
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			AC DECODE JUMPS -- JRST					
 
 						; 4615	.TOC	"AC DECODE JUMPS -- JRST"
@@ -4984,7 +5077,8 @@ U 0632, 0602,0001,0000,0000,0000,0024,0502	; 4661	632:	DISMISS,J/JRSTF			;JEN. D
 U 0116, 0456,0001,4000,0000,2000,0010,0000	; 4667	JRSNDX:	AR_ARX,J/RFLAGS			;JRSTF/JEN, no index. Flags in mem
 U 0117, 0456,3240,2002,0000,0020,0010,0000	; 4668		AR_XR				;Indexed. Flags in AC
 U 0456, 0335,3202,2000,0000,0000,0024,0420	; 4669	RFLAGS:	RSTR FLAGS_AR,AR_BR,J/ARJMP	;[436] Restore flags; avoid race
-						; 4670	;; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
+						; 4670	;
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			AC DECODE JUMPS -- JRST					
 
 						; 4671	=0
@@ -5037,7 +5131,8 @@ U 0474, 0475,4001,0000,0000,2000,0210,0000	; 4716	PRVSEC:	AR12-17_PREV SEC		;Loa
 						; 4718	;	[334] Subroutine to swap AR halves.  Used in a couple of places.
 						; 4719	;
 U 0475, 0001,0001,4000,0000,3000,0003,0000	; 4720	ARSWAP:	AR_AR SWAP,RETURN1		;[334] Rearrange things
-						; 4721	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 4721	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			HALT LOOP						
 
 						; 4722	.TOC	"HALT LOOP"
@@ -5063,7 +5158,8 @@ U 0655, 0554,4001,0000,0000,0000,7010,0000	; 4741		SKP INTRPT,TIME/2T,J/HALT1	;S
 						; 4742	=110
 U 0326, 1235,4001,0000,0401,0000,1510,0310	; 4743	UNHALT:	SET CONS XCT,CLR FE,J/UXCT	;XCT ONE FROM "SWITCHES"
 U 0327, 0000,5063,0000,0000,0040,5410,0000	; 4744		SKP AR EQ,J/START		;NOT AN INSTR.  START, OR CONT?
-						; 4745	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 4745	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			AC DECODE JUMPS -- JFCL					
 
 						; 4746	.TOC	"AC DECODE JUMPS -- JFCL"
@@ -5108,7 +5204,8 @@ U 0744, 1002,0001,0000,0000,0000,1610,0000	; 4784	MAP2:	SR_0,J/UUO			;NO MAPS IN
 U 0745, 0754,0001,0000,0000,0000,7010,0000	; 4785		SKP INTRPT			;DO NOT BUM THIS CODE OUT
 U 0754, 0216,0001,0000,0000,0217,0010,0000	; 4786	=0	I FETCH,J/STORAC		;MAP must do nothing interesting if
 U 0755, 0361,4001,0000,0000,0000,2110,0105	; 4787		SET ACCOUNT EN,J/TAKINT		; an interrupt is pending
-						; 4788	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 4788	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			STACK INSTRUCTIONS -- PUSHJ, PUSH, POP, POPJ		
 
 						; 4789	.TOC	"STACK INSTRUCTIONS -- PUSHJ, PUSH, POP, POPJ"
@@ -5144,7 +5241,8 @@ U 0223, 0222,0001,0003,0000,0002,1110,0040	; 4815		TRAP2,MEM_AR,J/JSTAC		;CAUSE 
 U 1024, 0216,4001,4003,0000,2217,0033,0000	; 4819			AR_ARX,B DISP,J/STSELF	;STORE AC IF B=0
 						; 4820		MEM_AR,TRAP2,			;PDL OVFLO, CAUSE TRAP
 U 1025, 0017,4001,4003,0000,2002,1110,0040	; 4821			AR_ARX,J/IFSTAC		;UPDATE AC BEFORE TRAPPING
-						; 4822	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						; 4822	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			STACK INSTRUCTIONS -- PUSHJ, PUSH, POP, POPJ		
 
 						; 4823	;POP, POPJ
@@ -5187,7 +5285,8 @@ U 1044, 0002,3200,0003,0000,0022,1103,0040	; 4856	POPTRP:	AR_MEM,TRAP2,RETURN [2
 						; 4860	;	POPTRP.
 						; 4861	;
 U 1045, 0002,3240,0003,0000,0022,0003,0000	; 4862	XFERW:	AR_MEM,ARX_MEM,TIME/3T,RETURN2	;Cross reference both macros [313]
-						; 4863	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+						; 4863	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			SUBROUTINE CALL/RETURN -- JSR, JSP, JSA, JRA		
 
 						; 4864	.TOC	"SUBROUTINE CALL/RETURN -- JSR, JSP, JSA, JRA"
@@ -5222,7 +5321,8 @@ U 1026, 0220,3202,4000,0000,3000,0610,0002	; 4892		ARR_ARL,ARL_BRL,J/JRA1		;[235
 						; 4893	
 U 1032, 1036,0001,0003,0000,0017,3610,0000	; 4894	JSA1:	FIN STORE,VMA_VMA+1,FETCH	;JUMP TO E+1
 U 1036, 0015,4031,2000,0000,2020,0022,0004	; 4895		ARR_PC+1,ARL_ARXL,J/STAC	;PC+1,,E GOES TO AC
-						; 4896	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+						; 4896	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			UUO'S							
 
 						; 4897	.TOC	"UUO'S"
@@ -5271,7 +5371,8 @@ D 0034, 2001,1005				; 4939		EA,	J/LUUO
 D 0035, 2001,1005				; 4940		EA,	J/LUUO
 D 0036, 2001,1005				; 4941		EA,	J/LUUO
 D 0037, 2001,1005				; 4942		EA,	J/LUUO
-						; 4943	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+						; 4943	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			UUO'S							
 
 						; 4944	;MONITOR UUO'S -- TRAP TO EXEC
@@ -5323,7 +5424,8 @@ D 0247, 2000,1002				; 4984	247:	EA,	J/UUO		;[430] Adjoins LSHC
 						;;4990		EA,	J/UUO
 						; 4991	.ENDIF/EXTEXP
 						; 4992		.UCODE
-						; 4993	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+						; 4993	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			UUO'S							
 
 						; 4994	;HERE FOR UNDEFINED OPS (UUO'S) AND ILLEGAL INSTRUCTIONS
@@ -5381,7 +5483,8 @@ U 1012, 0440,3202,0600,0000,0000,5010,0000	; 5043	L-MVS:	ARX_BRX,SKP PC SEC0,J/L
 U 1005, 0440,3202,0600,0000,0000,5010,0000	; 5046	LUUO:	ARX_BRX,SKP PC SEC0		;WHICH KIND OF UUO?
 						; 5047	=0***0
 						; 5048	LUUO1:	CLR P,SKP -LOCAL AC ADDR,	;[414] Extended. Generate clean  
-U 0440, 1134,4001,0000,0400,3001,5750,0200	; 5049		    CALL [UUOCOM]		; section number; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14-1
+U 0440, 1134,4001,0000,0400,3001,5750,0200	; 5049		    CALL [UUOCOM]		; section number
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14-1
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			UUO'S							
 
 						; 5050		BR/AR,AR_ARX ANDC ADMSK,	;COMPATiBLE.  ADDR TO BR
@@ -5400,7 +5503,8 @@ U 1074, 1046,3302,2004,0000,0116,3010,0040	; 5062			STORE,J/LUUO3		;THEN GET INS
 U 1075, 0144,0001,0000,0000,0000,7710,0000	; 5063		TAKE INTRPT			;ONE MOMENT, PLEASE
 						; 5064	LUUO3:	FIN STORE,VMA_VMA+1,LOAD ARX,
 U 1046, 0366,0001,0003,0000,0013,3610,0000	; 5065		    J/XCTW
-						; 5066	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+						; 5066	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			UUO'S							
 
 						; 5067	;HERE ON MUUO'S
@@ -5447,7 +5551,8 @@ U 0232, 3133,0001,0000,0000,0000,0024,0020	; 5107	MUUOF:	SET FLAGS_AR,J/GTEEB1		
 U 0233, 0232,4001,0000,0000,0000,0110,0400	; 5108		AR0-8_#,#/400,J/MUUOF		;PREV CTXT SUPERVISOR
 U 0236, 0232,4001,0000,0000,0000,0110,0004	; 5109		AR0-8_#,#/004,J/MUUOF		;  USER/CONCEALED
 U 0237, 0232,0001,0000,0000,0000,0110,0404	; 5110		AR0-8_#,#/404,J/MUUOF		;  USER/PUBLIC
-						; 5111	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
+						; 5111	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
 ; SKPJMP.MIC[4,24]	11:57 29-May-86			JSYS, ADJSP, XCT, PXCT					
 
 						; 5112	.TOC	"JSYS, ADJSP, XCT, PXCT"
@@ -5489,7 +5594,8 @@ U 1225, 0144,0001,0000,0000,0000,7710,0000	; 5147		TAKE INTRPT			;GET OUT OF LON
 						; 5148	=0
 U 1234, 1235,4001,0000,0000,0000,1510,0020	; 5149	PXCT:	SET PXCT			;SETUP PXCT CONTROLS FROM 9-12
 U 1235, 0152,3703,0200,0000,0000,1410,0000	; 5150	UXCT:	ARX_AR (AD),LOAD IR,#/0,J/XCTGO	;COPY INSTR TO ARX, IR
-						; 5151	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 5151	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; SHIFT.MIC[4,24]	16:52 3-Apr-86			Rotate and Logical Shift -- LSH, ROT			
 
 						; 5152	.TOC	"Rotate and Logical Shift -- LSH, ROT"
@@ -5538,7 +5644,8 @@ U 1325, 0140,4001,0000,0403,0002,1006,0000	; 5193		AC0_AR,NXT INSTR		;Count OK. 
 U 1334, 1334,4001,0000,2302,0020,5110,0734	; 5195	RTLLUP:	SC_#+SC,#/-36.,SKP SCAD0,J/RTLLUP;Keep normalizing until in range
 U 1335, 1156,3703,0210,2302,2000,0010,0044	; 5196		MQ_ARX,ARX_AR (AD),SC_#+SC,#/36.;Keep inst, restore data and count
 U 1156, 0015,4001,4300,0000,0000,0010,0000	; 5197	ROTDUN:	AR_SHIFT,ARX/MQ,J/STAC		;[417] Shift, snarf inst, and store
-						; 5198	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 5198	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; SHIFT.MIC[4,24]	16:52 3-Apr-86			Rotate and Logical Shift Combined (ROTC, LSHC)		
 
 						; 5199	.TOC	"Rotate and Logical Shift Combined (ROTC, LSHC)"
@@ -5586,7 +5693,8 @@ U 1570, 1570,3401,4200,5031,2020,5113,0044	; 5240		    #/36.,SKP SCAD0,J/CLEFT	;
 						; 5241		MQ_SHIFT,AR_ARX (AD),ARX/MQ,	;Count set. Shift left word and set
 U 1571, 1162,3713,2310,0000,0217,0010,0000	; 5242		    I FETCH			; for right half shift
 U 1162, 0226,0001,4300,0000,0000,0010,0000	; 5243	DSHIFT:	AR_SHIFT,ARX/MQ,J/DLOAD		;Shift right word, store, and exit
-						; 5244	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 5244	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; SHIFT.MIC[4,24]	16:52 3-Apr-86			Arithmetic Shifts (ASH, ASHC) and JFFO			
 
 						; 5245	.TOC	"Arithmetic Shifts (ASH, ASHC) and JFFO"
@@ -5644,7 +5752,8 @@ U 1643, 1642,0001,0000,0000,0000,1110,0420	; 5294		SET AROV,J/ASHL3		;BITS SHIFT
 U 1650, 0124,3401,4200,2302,2000,0010,0734	; 5297		    J/ASHL2			;SHIFT 36 PLACES, TRY AGAIN
 						; 5298		MQ_SHIFT,AR_BRX,CLR ARX,	;HIGH OUTPUT TO MQ,
 U 1651, 1203,3202,6010,2302,0000,0510,0777	; 5299		    SC_#+SC,#/-1		;COMPENSATE FOR EXTRA SHIFT
-U 1203, 1216,4001,0400,0000,0000,0010,0000	; 5300		ARX_SHIFT			;LOW OUTPUT TO ARX; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
+U 1203, 1216,4001,0400,0000,0000,0010,0000	; 5300		ARX_SHIFT			;LOW OUTPUT TO ARX
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
 ; SHIFT.MIC[4,24]	16:52 3-Apr-86			Arithmetic Shifts (ASH, ASHC) and JFFO			
 
 U 1216, 1222,3202,2320,0302,0000,0010,0043	; 5301		AR_BR,BRX/ARX,ARX/MQ,SC_#,#/35.	;SIGN TO AR, HIGH OUT TO ARX
@@ -5685,7 +5794,8 @@ U 1673, 1710,0001,0000,7030,0037,5210,0010	; 5335		    FETCH			; number at 2. Is
 						; 5336	=0
 U 1710, 0136,4622,6000,0000,0000,0010,0000	; 5337	LOWBIT:	AR_ARX+BRX+1,TIME/2T,J/STAC1	;No, so low bit is. Add 1 to bit #
 U 1711, 0136,0602,6000,0000,0000,0010,0000	; 5338		AR_ARX+BRX,TIME/2T,J/STAC1	;Yes. Add group+bit number in group
-						; 5339	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 5339	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			ADD, SUB						
 
 						; 5340	.TOC	"ADD, SUB"
@@ -5712,7 +5822,8 @@ D 0277, 7700,1115				; 5358		RPW,	B,	J/SUB		;SUBB
 						; 5361	=0****00****
 U 1115, 1226,3240,2040,0000,0020,0010,0000	; 5362	SUB:	AR_AC0,BR/AR
 U 1226, 0010,5102,2004,0000,0025,1333,0000	; 5363	=	AR_AR-BR,AD FLAGS,EXIT
-						; 5364	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 5364	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			MUL, IMUL						
 
 						; 5365	.TOC	"MUL, IMUL"
@@ -5770,7 +5881,8 @@ U 0714, 0716,3602,0000,0302,0020,5510,0043	; 5416		    SKP AD0			; and product
 U 0716, 0010,4001,0000,0302,0005,0033,0043	; 5417	=110	SC_#,#/35.,EXIT			;STORE DOUBLE RESULT
 U 0717, 0010,4001,0000,0000,0005,1133,0420	; 5418		SET AROV,EXIT			;[421] MUST HAVE SQUARED 400000,,0
 						; 5419	=
-						; 5420	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 5420	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			MULTIPLY SUBROUTINE					
 
 						; 5421	.TOC	"MULTIPLY SUBROUTINE"
@@ -5820,7 +5932,8 @@ U 0567, 0560,3701,7710,4001,0000,0030,0000	; 5462		AR_AR*.25 LONG,MUL,J/MULM	;11
 						; 5465	; WITH PARTIAL PRODUCT IN AR LONG
 						; 5466	
 U 1241, 0540,3441,0010,4001,0000,0030,0000	; 5467	MULREE:	AD/0S,MUL,J/MULP		;DIVE IN WITHOUT CLOBBERING AR
-						; 5468	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 5468	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			DIV, IDIV						
 
 						; 5469	.TOC	"DIV, IDIV"
@@ -5875,7 +5988,8 @@ U 1731, 1733,4061,0310,2031,0000,0710,0027	; 5514		    AR CTL/0,EXP TST/0,J/IDVL
 U 1732, 0374,3401,2420,0301,3020,0032,0020	; 5518		    #/16.,SIGNS DISP,J/DIVS1	; Set short divide count and go
 						; 5519	IDVLNG:	BRX/ARX,AR_MQ,ARL/AD,ARX_SHIFT,	;Dividend too big. Kill sign bit,
 U 1733, 0374,3721,2420,0000,0021,0032,0102	; 5520		    MQ_0.M,SIGNS DISP,J/DIVS1	; clear MQ, set AR (FE already 33.)
-						; 5521	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 5521	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			INTEGER DIVIDE SUBROUTINE				
 
 						; 5522	.TOC	"INTEGER DIVIDE SUBROUTINE"
@@ -5933,7 +6047,8 @@ U 0557, 0010,4001,0000,0000,0005,0033,0000	; 5569		EXIT				;All conditions met. 
 						; 5574	;	dividend half to see if the first DIVIDE step generated a zero
 						; 5575	;	result.  If it did not, we have a true overflow and we exit
 						; 5576	;	sideways; otherwise we return 17.  The latter portion is reused
-						; 5577	;	for a subsequent test of the remainder.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
+						; 5577	;	for a subsequent test of the remainder.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			INTEGER DIVIDE SUBROUTINE				
 
 						; 5578	;
@@ -5942,7 +6057,8 @@ U 1252, 1750,0301,0020,0000,3041,5627,0200	; 5580		    SKP AD NZ			; Did first s
 						; 5581	=0
 U 1750, 0017,0001,0000,0000,0000,0003,0000	; 5582	MAXCHK:	RETURN17			;Yes. Look more closely
 U 1751, 0217,0001,0000,0000,0217,1110,0424	; 5583		SET NO DIVIDE,I FETCH,J/NOP	;No. Must be a real overflow
-						; 5584	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 5584	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			BASIC DIVIDE LOOP					
 
 						; 5585	.TOC	"BASIC DIVIDE LOOP"
@@ -5993,7 +6109,8 @@ U 0764, 0003,3723,2010,0301,1000,0003,0040	; 5629		AR_MQ,MQ_AR,FE_#,#/32.,RETURN
 U 0765, 0005,3723,2010,0301,1000,0003,0040	; 5630		AR_MQ,MQ_AR,FE_#,#/32.,RETURN5
 U 0766, 0005,3723,2010,0301,1000,0003,0040	; 5631		AR_MQ,MQ_AR,FE_#,#/32.,RETURN5
 U 0767, 0003,3723,2010,0301,1000,0003,0040	; 5632		AR_MQ,MQ_AR,FE_#,#/32.,RETURN3
-						; 5633	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 5633	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			DOUBLE INTEGER ARITHMETIC -- DADD, DSUB, DMUL, DDIV	
 
 						; 5634	.TOC	"DOUBLE INTEGER ARITHMETIC -- DADD, DSUB, DMUL, DDIV"
@@ -6028,7 +6145,8 @@ U 0452, 0011,5102,2600,0000,0020,1327,0000	; 5661		AR_AR-BR LONG,AD FLAGS,J/ST2A
 						; 5663		MQ_SHIFT,AR_0S,ARX_0S,		;DMUL, USE AC1 AS INITIAL M'IER
 U 0454, 0530,3441,2210,0301,0000,0010,0756	; 5664			FE_#,#/-18.,J/DMULT	;SETUP STEP COUNT
 						; 5665	=
-						; 5666	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 5666	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			DOUBLE INTEGER ARITHMETIC -- DADD, DSUB, DMUL, DDIV	
 
 						; 5667	;HERE FOR DOUBLE WORD MULTIPLY
@@ -6061,7 +6179,8 @@ U 1326, 0470,3721,2004,0000,0000,1010,0000	; 5693		AC2_AR,AR_MQ			;,I FETCH WHEN
 						; 5694	=0*	ARX_SHIFT,AR_BR,I FETCH,	;LOW WORD AND SIGN READY
 U 0470, 2604,3202,2400,0000,0217,0050,0000	; 5695			CALL,J/SHIFT		; GET LOW WORD TO AR
 U 0472, 0133,4001,0005,0000,0000,1010,0000	; 5696	STRAC3:	AC3_AR,FINISH			;GANZ GETAN
-						; 5697	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 5697	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; ARITH.MIC[4,24]	16:07 19-Mar-86			DOUBLE INTEGER ARITHMETIC -- DADD, DSUB, DMUL, DDIV	
 
 						; 5698	;HERE FOR DOUBLE INTEGER DIVISION
@@ -6118,7 +6237,8 @@ U 1405, 0656,4001,4000,0000,0000,0005,0000	; 5748		AR_SHIFT,SR DISP		;GET LOW WO
 U 0656, 0011,3202,2505,0000,0000,1010,0000	; 5749	=1110	AC3_AR,AR_BR,ARX/ADX*2,J/ST2AC	;[430] GET QUO, SQUEEZE OUT HOLE
 						; 5750		AC3_AR,AR_-BR,ARX/ADX*2,AD LONG,;GET NEGATIVE QUOTIENT
 U 0657, 0011,5162,2505,0000,0020,1027,0000	; 5751		    J/ST2AC			;[430]
-						; 5752	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 5752	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING ADD & SUB -- FAD, FADR, FSB, FSBR	
 
 						; 5753	.TOC	"SINGLE FLOATING ADD & SUB -- FAD, FADR, FSB, FSBR"
@@ -6173,7 +6293,8 @@ U 1312, 1313,0001,4000,0000,3000,0010,0000	; 5800	FSBRI:	AR_AR SWAP			;Orient im
 						; 5802	FSBR:	FE_EXP,EXP_SIGN,SC/SCAD,ARX_0S,	;Grab exponent, test for subtract
 U 1313, 0643,3441,0200,0203,1001,0033,0200	; 5803		    B DISP			;[414]
 						; 5804	=
-						; 5805	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 5805	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING ADD & SUB -- FAD, FADR, FSB, FSBR	
 
 						; 5806	; FIND OPERAND WITH LARGER EXP, LEAVING IT IN BR,
@@ -6202,7 +6323,8 @@ U 1442, 1451,0001,4300,4001,0001,0010,0104	; 5828			MQ_0.M,FE_FE+1		;READY TO AD
 						; 5829	
 						; 5830	FAS5:	AR_(AR+2BR)*.25,ARX/ADX*.25,	;HERE FOR ADD OR SUB
 U 1451, 1420,0601,7704,0000,0060,0035,0000	; 5831			NORM,J/SNORM
-						; 5832	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 5832	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING MULTIPLY -- FMP, FMPR			
 
 						; 5833	.TOC	"SINGLE FLOATING MULTIPLY -- FMP, FMPR"
@@ -6248,7 +6370,8 @@ U 1464, 0572,3200,2010,0301,1020,0010,0762	; 5871	=	MQ_AR,AR_AC0,FE_#,#/-14.	;M'
 U 0572, 1236,0001,0000,2202,1001,0050,0200	; 5873			CALL.M,J/MULSUB		;[414] AND BEGIN MULTIPLY
 U 0576, 1420,3203,0000,2301,0040,0035,0600	; 5874	=11*	FE_#+SC,#/-200,NORM AR,J/SNORM
 						; 5875	=
-						; 5876	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 5876	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING DIVIDE -- FDV, FDVR			
 
 						; 5877	.TOC	"SINGLE FLOATING DIVIDE -- FDV, FDVR"
@@ -6301,7 +6424,8 @@ U 1367, 1420,3713,7700,2031,0040,0035,0002	; 5914			FE_FE+#,#/2,J/SNORM	;POS QUO
 						; 5924	=0
 U 1772, 1420,3703,7700,0000,0040,1635,0064	; 5925	FDVNEG:	SET SR1,AR_AR*.25 LONG,NORM,J/SNORM
 U 1773, 1772,3441,0200,0000,0000,0010,0000	; 5926		ARX_0S,J/FDVNEG			;REMAINDER WENT TO ZERO
-						; 5927	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 5927	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING DIVIDE -- FDV, FDVR			
 
 						; 5928	;HERE FOR FDVL
@@ -6339,7 +6463,8 @@ U 1773, 1772,3441,0200,0000,0000,0010,0000	; 5926		ARX_0S,J/FDVNEG			;REMAINDER 
 						;;5960		SR_1,SC_#+SC,#/1,J/DIV-		;YES, 27 STEPS WILL NORMALIZE QUO
 						;;5961		DISP/DIV,MQ/MQ*2,AR_2(AR-BR),ARX/ADX*2,J/DIVLP
 						;;5962		SR_1,SC_#+SC,#/1,J/DIV+
-						;;5963	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						;;5963	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE FLOATING DIVIDE -- FDV, FDVR			
 
 						;;5964	;WE COME HERE AFTER DOING THE DIVISION, EITHER 26 OR 27 STEPS
@@ -6381,7 +6506,8 @@ U 1775, 1774,5143,7700,0000,0020,0027,0000	; 5997		AR_-AR LONG,J/FDVCHK		;GET PO
 U 2010, 0002,5101,0004,2302,0040,5403,0177	; 6000			SC_#+SC,#/177,RETURN2	;AND CORRECT EXP
 						; 6001		GEN AR+2BR,SKP CRY0,		;SAME TEST, NEG DIVISOR
 U 2011, 0002,0601,0000,2302,0040,5403,0177	; 6002			SC_#+SC,#/177,RETURN2	;AND SAME EXP CORRECTION
-						; 6003	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 6003	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; FP.MIC[4,24]	15:33 8-Feb-86				UFA, DFN, FSC						
 
 						; 6004	.TOC	"UFA, DFN, FSC"
@@ -6434,7 +6560,8 @@ D 0132, 0100,1502				; 6014	132:	I,	FL-AC,	J/FSC		;Must adjoin 133 (IBP/ADJBP)
 						; 6051	FSC:	SC_EA,ARX+MQ_0.M,
 U 1502, 1471,3200,2000,0002,0021,0013,0142	; 6052			AR_AC0,ARL/AD
 U 1471, 1422,4001,0000,2201,1001,0010,0200	; 6053	=	FE_EXP+SC,EXP_SIGN,J/SNR2	;NORMALIZE SCALED RESULT
-						; 6054	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 6054	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; FP.MIC[4,24]	15:33 8-Feb-86				FIX, FIXR, FLTR						
 
 						; 6055	.TOC	"FIX, FIXR, FLTR"
@@ -6482,7 +6609,8 @@ U 2014, 1552,3701,6010,0000,0217,0510,0000	; 6096			I FETCH,J/FIX2		;AND PREFETC
 U 2015, 0216,3401,2000,0000,0217,0010,0000	; 6097		AR_0S,I FETCH,J/STORAC		;ALL SIGNIFICANCE LOST
 U 1552, 1622,3721,2400,0000,0000,0010,0000	; 6098	FIX2:	ARX_SHIFT,AR_MQ			;INTEGER IN AR, FRACTION IN ARX
 U 1622, 0015,0602,2004,0000,0020,0027,0000	; 6099		AR_AR+BR,AD LONG,J/STAC		;ROUND AND STORE
-						; 6100	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 6100	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE PRECISION FLOATING NORMALIZATION			
 
 						; 6101	.TOC	"SINGLE PRECISION FLOATING NORMALIZATION"
@@ -6525,7 +6653,8 @@ U 1426, 0024,3243,5500,5031,0000,0005,0003	; 6134			SR DISP,J/SROUND
 						;;6138		MQ_SHIFT,AR_ARX (ADX),CLR ARX,	;HIGH TO MQ, GET READY FOR LOW
 						;;6139			FE_FE-SC		; ADJUST EXPONENT
 						;;6140		ARX_SHIFT,AR_MQ,J/SNR2		;FRACTION REPOSITIONED. GO AGAIN
-						;;6141	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						;;6141	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE PRECISION FLOATING NORMALIZATION			
 
 						;;6142	;HERE IS THE FASTER VERSION OF LONG NORMALIZATION SHIFTS,
@@ -6554,7 +6683,8 @@ U 1446, 0024,0001,0000,0000,0000,0005,0000	; 6164		SR DISP,J/SROUND		;AD10 -> AR
 						; 6165		AR_AR*8 LONG,BR_AR LONG,	;TRY SHIFTING 3 MORE
 U 1447, 1444,3203,5560,5031,0040,0035,0003	; 6166			FE_FE-#,#/3,NORM,J/SN1
 						; 6167	.ENDIF/SNORM.OPT
-						; 6168	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+						; 6168	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE PRECISION FLOATING NORMALIZATION			
 
 						; 6169	;HERE WHEN AD ENTIRELY ZERO ON NORMALIZE ATTEMPT.  SKIP IF ARX
@@ -6591,7 +6721,8 @@ U 0025, 0031,2301,0260,0000,0000,0405,0000	; 6193			SR DISP,J/STRNC		; HANDLING 
 						;;6200		AR_AR+BR,ARX/ADX,BR_AR LONG,	;NEG, MUST DIDDLE
 						;;6201			NORM,J/SRND3		; NORM FORCES LONG ARITH
 						; 6202	.ENDIF/FPLONG
-						; 6203	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+						; 6203	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; FP.MIC[4,24]	15:33 8-Feb-86				SINGLE PRECISION FLOATING NORMALIZATION			
 
 						; 6204	;HERE TO PERFORM ROUNDING OR TRUNCATION OF SINGLE-PRECISION RESULTS,
@@ -6631,7 +6762,8 @@ U 1632, 0136,4001,0000,0000,0000,1610,0000	; 6237	STRAC1:	SR_0,J/STAC1			;PUT AW
 						;;6238	.IF/FPLONG
 						;;6239		AR_0S,SR_0,J/STAC1		;CLEAR LOW WORD IN AC1
 						; 6240	.ENDIF/FPLONG
-						; 6241	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+						; 6241	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; FP.MIC[4,24]	15:33 8-Feb-86				DOUBLE FLOATING ARITHMETIC -- DFAD, DFSB, DFMP, DFDV	
 
 						; 6242	.TOC	"DOUBLE FLOATING ARITHMETIC -- DFAD, DFSB, DFMP, DFDV"
@@ -6660,7 +6792,8 @@ U 0644, 2044,3713,0060,0301,0020,5610,0756	; 6263			FE_#,#/-18.,J/DFMP	;[241]BEG
 						; 6265		GEN AR*AC0,AD/XOR,SKP AD0,	;DFDV.  WILL QUO BE NEG?
 						; 6266			BR_AR LONG,		;SAVE D'SOR IN BR, BRX
 U 0646, 1520,3100,0060,3022,0020,5510,0000	; 6267			SC_FE-1,J/DFDV
-						; 6268	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+						; 6268	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; FP.MIC[4,24]	15:33 8-Feb-86				DOUBLE FLOATING ARITHMETIC -- DFAD, DFSB, DFMP, DFDV	
 
 						; 6269	;HERE FOR DFAD AND DFSB
@@ -6711,7 +6844,8 @@ U 2040, 2052,3242,2660,2001,0000,0010,0000	; 6312			FE_FE+SC,J/EXPD1	;ITS EXP TO
 U 2041, 0004,4001,0010,2302,2020,5103,0044	; 6314			SKP SCAD0,RETURN4
 						; 6315	EXPD1:	MQ_ARX,SC_#-SC,#/36.,		;AC EXP .GE. MEM
 U 2052, 0004,0001,0010,5302,2020,5103,0044	; 6316			SKP SCAD0,RETURN4	;SHIFT MEM OP
-						; 6317	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+						; 6317	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; FP.MIC[4,24]	15:33 8-Feb-86				DOUBLE FLOATING ARITHMETIC -- DFAD, DFSB, DFMP, DFDV	
 
 						; 6318	;DFMP
@@ -6742,7 +6876,8 @@ U 1463, 1462,4001,0000,4400,2001,0010,0200	; 6341		EXP_1,J/DFMP2			;OOPS, NEG, M
 U 1466, 1540,3701,0000,0302,0040,0035,0004	; 6343	DNTRY:	SC_#,#/4,GEN AR,NORM,J/DNORM	;NORMALIZE THE ANSWER
 						; 6344	=
 						; 6345	
-						; 6346	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
+						; 6346	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
 ; FP.MIC[4,24]	15:33 8-Feb-86				DOUBLE FLOATING ARITHMETIC -- DFAD, DFSB, DFMP, DFDV	
 
 						; 6347	
@@ -6768,7 +6903,8 @@ U 1527, 1540,3240,2301,0302,0040,0035,0004	; 6362			NORM,J/DNORM		;NORMALIZE AND
 U 0330, 1774,3200,2400,0301,1020,5550,0032	; 6367			CALL,J/FDVCHK		;GO CHECK DIVIDABILITY
 U 0332, 0762,4001,0000,0000,0000,4210,0000	; 6368	=10	SKP BR0,J/DDVSUB		;BEGIN DIVISION (RETURN ABOVE)
 U 0333, 0016,0001,0000,0000,0000,1110,0624	; 6369		SET FL NO DIV,J/IFNOP		;ABORT THE DIVISION
-						; 6370	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
+						; 6370	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
 ; FP.MIC[4,24]	15:33 8-Feb-86				DOUBLE PRECISION NORMALIZATION				
 
 						; 6371	.TOC	"DOUBLE PRECISION NORMALIZATION"
@@ -6817,7 +6953,8 @@ U 0735, 0141,3202,4600,0000,0217,1010,0000	; 6413			I FETCH,J/STD1
 						; 6414		ARX_ARX*BRX,AD/ANDCA,SR_0,	;CLEAR ROUNDING BIT
 U 0737, 2252,3002,0620,0000,0000,1610,0000	; 6415		    BRX/ARX			;[413] and force BRX non zero
 U 2252, 0431,5143,7700,0000,0020,0027,0000	; 6416	CDBLST:	AR_-AR LONG,J/DBLST		;[345] NEGATE RESULT AND STORE
-						; 6417	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 6417	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DOUBLE PRECISION ARITHMETIC			
 
 						; 6418	.TOC	"GFLT DOUBLE PRECISION ARITHMETIC"
@@ -6875,7 +7012,8 @@ U 2324, 2110,0001,0001,0000,0000,1010,0000	; 6469		AC1_AR, J/EF5A			;all set to 
 						; 6470	
 U 2326, 2330,3203,5000,0000,0000,0010,0000	; 6471	EF5:	AR_AR*8				;move exp difference into AR0-8.
 U 2330, 2332,3260,2007,2421,0020,0010,0176	; 6472		FE_AR0-8, [AR]_FM[E0]		;smaller mem op to T0,T1
-U 2332, 2104,4001,4007,0000,2000,1010,0166	; 6473		FM[T0]_AR, AR_ARX; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+U 2332, 2104,4001,4007,0000,2000,1010,0166	; 6473		FM[T0]_AR, AR_ARX
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DOUBLE PRECISION ARITHMETIC			
 
 U 2104, 2362,4001,0007,0000,0000,1050,0171	; 6474	=0	FM[T1]_AR, CALL [EF5B]
@@ -6933,7 +7071,8 @@ U 2466, 2474,3200,2061,0000,0020,0010,0000	; 6525		BR/AR, BRX/ARX, AR_AC1		;get 
 U 2474, 2476,3240,2400,0301,1020,0010,0000	; 6526	EF11:	ARX_AR, AR_AC0, FE_#, #/0	;smaller op in BR,BRX
 						; 6527		AR_AR+BR, ARX/ADX, SC_#, #/3,	;operation done, now normalize.
 U 2476, 1740,0602,2604,0302,0060,0035,0003	; 6528			NORM, J/ENORM
-						; 6529	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
+						; 6529	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DOUBLE PRECISION ARITHMETIC			
 
 U 2514, 2604,3713,2010,0000,0000,0510,0000	; 6530	EF12:	MQ_SHIFT, AR_ARX (AD), CLR ARX,J/SHIFT
@@ -6941,7 +7080,8 @@ U 2514, 2604,3713,2010,0000,0000,0510,0000	; 6530	EF12:	MQ_SHIFT, AR_ARX (AD), C
 						;;6532	EF12A:	AR_SHIFT, RETURN10
 						; 6533	.ENDIF/GFTCNV		;[273]
 						; 6534	.ENDIF/EXTEXP
-						; 6535	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 6535	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT MULTIPLY						
 
 						; 6536	.TOC	"GFLT MULTIPLY"
@@ -6990,7 +7130,8 @@ U 2576, 2603,3522,0014,0000,0000,0710,0003	; 6578		MQ_MQ*BR, AD/ANDCB		;clear th
 						; 6579		GEN AR, SC_#, #/3,		;generate NORM bits.
 U 2603, 1740,3701,0000,0302,0040,0035,0003	; 6580			NORM, J/ENORM		;conditions set for EE norm.
 						; 6581	.ENDIF/EXTEXP
-						; 6582	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 6582	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DIVIDE						
 
 						; 6583	.TOC	"GFLT DIVIDE"
@@ -7035,7 +7176,8 @@ U 2161, 2162,4001,0007,0000,0000,1010,0172	; 6619	EDVCH2:	FM[T2]_AR			;yes, save
 U 2162, 2250,3721,2000,0000,0020,5550,0000	; 6622	EDVCH3:	AR_MQ, SKP AD0, CALL [SGNEXT]	;now sign extend the op.
 U 2163, 2010,4001,0000,0000,0001,4210,0100	; 6623		SKP BR0, MQ_0.M, J/FDVCK1
 						; 6624	.ENDIF/EXTEXP
-						; 6625	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 6625	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT NORMALIZATION					
 
 						; 6626	.TOC	"GFLT NORMALIZATION"
@@ -7093,7 +7235,8 @@ U 1742, 2746,3701,7710,2031,0000,0012,0004	; 6677			FE_FE+#, #/4, J/ENHI
 						; 6678		AR_AR*.25 LONG, FE_FE+#,	;MSB in AR07.
 U 1743, 1745,3701,7700,2031,0000,0010,0002	; 6679			#/2, J/EROUND		;
 U 1744, 1745,0301,7700,4001,0020,0027,0000	; 6680		AR_AR*.5 LONG, FE_FE+1		;MSB in AR08.
-						; 6681	EROUND:	BR_AR LONG, AR+MQ_0.S,	 	;MSB in AR09, where we want it.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-1
+						; 6681	EROUND:	BR_AR LONG, AR+MQ_0.S,	 	;MSB in AR09, where we want it.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-1
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT NORMALIZATION					
 
 U 1745, 2751,0001,0060,0000,0000,0022,0130	; 6682			J/ERND1			;put result in BR!BRX.
@@ -7151,7 +7294,8 @@ U 3034, 3042,4001,0000,0000,0000,0110,0400	; 6733		AR0-8_#, #/400		;include AR00
 						; 6734		AR_AR*BR, AD/AND,	;zero AR1-11 to make room for exp.
 U 3042, 3046,3602,2004,0302,0000,0010,0043	; 6735			SC_#, #/35.
 						; 6736	
-						; 6737	; I am sure a few lines of code can be saved around here.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-2
+						; 6737	; I am sure a few lines of code can be saved around here.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4-2
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT NORMALIZATION					
 
 						; 6738	
@@ -7184,7 +7328,8 @@ U 0533, 2252,3002,0604,0000,0000,1610,0000	; 6764			SR_0,J/CDBLST	;negate result
 						; 6765	
 U 3227, 1740,3701,0000,0302,0040,0035,0003	; 6766	ENTRY:	SC_#, #/3, GEN AR, NORM, J/ENORM; go normalize again.
 						; 6767	.ENDIF/EXTEXP
-						; 6768	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 6768	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT TO INTEGER CONVERSION				
 
 						; 6769	.TOC	"GFLT TO INTEGER CONVERSION"
@@ -7242,7 +7387,8 @@ U 3227, 1740,3701,0000,0302,0040,0035,0003	; 6766	ENTRY:	SC_#, #/3, GEN AR, NORM
 						;;6821		AR_ARX, BR/AR, CLR ARX	;generate low 36 integer bits and
 						;;6822		AR_BR, ARX/MQ, MQ_SHIFT,;  put in MQ. High bits to ARX.
 						;;6823			SC_FE-#, #/36.,	;check the size of the exponent.
-						;;6824			SKP SCAD0	;if exp<36. then high result is sign.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
+						;;6824			SKP SCAD0	;if exp<36. then high result is sign.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT TO INTEGER CONVERSION				
 
 						;;6825	=0	GEN SC, SKP SCAD NE,	;is exponent gtr or geq to 36 ?
@@ -7281,7 +7427,8 @@ U 3227, 1740,3701,0000,0302,0040,0035,0003	; 6766	ENTRY:	SC_#, #/3, GEN AR, NORM
 						;;6858		[AR]_FM[T0], SKP AD0,	;get high result (Sign) back in AR.
 						;;6859			RET[4]		;and return to caller.
 						; 6860	.ENDIF/GFTCNV		;[273]
-						; 6861	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 6861	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT TO INTEGER CONVERSION				
 
 						; 6862	
@@ -7316,7 +7463,8 @@ U 2260, 3231,4001,4000,0000,0217,0010,0000	; 6890	=0	AR_SHIFT, I FETCH, J/OVTST2
 U 2261, 0217,4001,0000,0000,0217,1110,0420	; 6891		SET AROV, I FETCH, J/NOP	;sorry, we found some data bits.
 U 3231, 0217,4001,0000,0000,0000,1010,0000	; 6892	OVTST2:	AC0_AR, J/NOP			;finish the store.
 						; 6893	.ENDIF/EXTEXP
-						; 6894	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 6894	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DATA CONVERSION INSTRUCTIONS			
 
 						; 6895	.TOC	"GFLT DATA CONVERSION INSTRUCTIONS"
@@ -7348,7 +7496,8 @@ U 3111, 3264,3240,2007,0000,0020,0010,0165	; 6920	3111:	[AR]_FM[E1], J/L-FLTR	; 
 U 3112, 3273,3240,2007,0000,0020,0010,0165	; 6921	3112:	[AR]_FM[E1], J/L-DFLT	; -30-	GFLTR
 U 3113, 2304,3240,2007,0000,0020,0010,0165	; 6922	3113:	[AR]_FM[E1], J/L-DFSC	; -31-	GFSC
 						; 6923	
-						; 6924	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 6924	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DATA CONVERSION INSTRUCTIONS			
 
 U 3232, 3233,3703,0000,0000,0312,0010,0000	; 6925	L-GTSP:	VMA_AR, LOAD AR		;-21- GSNGL EDPFP TO SPFP
@@ -7405,7 +7554,8 @@ U 3260, 3261,0602,2000,0301,0020,0010,0775	; 6975		AR_AR+BR, FE_#, #/-3	;convert
 U 3261, 3262,0001,4007,0000,2000,1010,0172	; 6976		FM[T2]_AR, AR_ARX	;save exp for ENORM, frac to AR
 U 3262, 3263,0001,0000,0000,1001,0610,0240	; 6977		EXP_SIGN.C, ARX_0.M	;get rid of exp, clear low word
 						; 6978		GEN AR, SC_#, #/3, NORM,;normalize an extended exponent number
-U 3263, 1740,3701,0000,0302,0040,0035,0003	; 6979			J/ENORM; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+U 3263, 1740,3701,0000,0302,0040,0035,0003	; 6979			J/ENORM
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DATA CONVERSION INSTRUCTIONS			
 
 						; 6980	
@@ -7463,7 +7613,8 @@ U 3263, 1740,3701,0000,0302,0040,0035,0003	; 6979			J/ENORM; KL10 Microcode--C
 						;;7032			ARX_1,		;to result. Remember that the MSB of the
 						;;7033			SC_#, #/35.	;store routine expects this.
 						;;7034		AR_AR+BR LONG, AD FLAGS	;fraction is on ARX35.  Do the rounding and
-						;;7035	;=0	; replace SKP CRY0 with AD FLAGS. Eliminates extra word.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9-1
+						;;7035	;=0	; replace SKP CRY0 with AD FLAGS. Eliminates extra word.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9-1
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DATA CONVERSION INSTRUCTIONS			
 
 						;;7036		EXIT DBL		;  store the double result.
@@ -7490,7 +7641,8 @@ U 3267, 3270,4001,0000,0000,0000,0110,0200	; 7055		AR0-8_#, #/200		;ENORM expect
 U 3270, 3271,3202,2217,0000,2000,1010,0172	; 7057			ARX/AD, MQ_ARX	;sign to AR, high to ARX, low to MQ.
 U 3271, 3272,5441,2000,0000,0020,0016,0000	; 7058		AR_SIGN 		;
 U 3272, 1740,3703,0000,0000,0040,0035,0000	; 7059		GEN AR, NORM, J/ENORM	;restore high word and normalize.
-						; 7060	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						; 7060	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; EXTEXP.MIC[4,24]	15:33 8-Feb-86			GFLT DATA CONVERSION INSTRUCTIONS			
 
 						; 7061	
@@ -7536,7 +7688,8 @@ U 2314, 2250,3240,2000,0302,0020,5550,0003	; 7100			CALL [SGNEXT]	;and sign exte
 U 2315, 1740,3703,0000,0000,0040,0035,0000	; 7101		GEN AR, NORM, J/ENORM	;put the result back together.
 						; 7102	
 						; 7103	.ENDIF/EXTEXP
-						; 7104	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 7104	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; BLT.MIC[4,24]	16:34 23-May-86				BLT - Neatly Optimized					
 
 						; 7105	.TOC	"BLT - Neatly Optimized"
@@ -7594,7 +7747,8 @@ U 0650, 1045,3202,0600,0000,0111,0050,0402	; 7156		    CALL [XFERW]
 U 0651, 1701,1723,2000,0000,0020,1610,0307	; 7157		AR_MQ-1,SR_BLT(PXCT SRC),J/BLTPX;PXCT. Back up dest vma, set up SR
 U 0652, 2344,1122,0000,0000,0040,5610,0000	; 7158		GEN MQ-BR-1,SKP AD NZ		;Got word. Are we spraying memory?
 						; 7159	=
-U 2344, 3316,3723,0000,0000,0111,0010,0042	; 7160	=0	GEN MQ,STORE VMA(EA),J/SPRAY	;Yes. Start first store; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+U 2344, 3316,3723,0000,0000,0111,0010,0042	; 7160	=0	GEN MQ,STORE VMA(EA),J/SPRAY	;Yes. Start first store
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; BLT.MIC[4,24]	16:34 23-May-86				BLT - Neatly Optimized					
 
 U 2345, 2360,3723,0000,0000,0131,7610,0042	; 7161		GEN MQ,STORE VMA(EA),SKP AC REF	;No. Test for AC reference
@@ -7652,7 +7806,8 @@ U 2401, 0340,4001,0023,0000,0002,0005,0000	; 7206		MEM_AR,BRX/ARX,SR DISP,J/CLEA
 						; 7213	;	PXCT bits.  SR bit 0 is off in order to force AC context.
 						; 7214	;
 						; 7215	=0*
-						; 7216	BLTPX:	MQ_AR,VMA_BR,LOAD AR,ARX_BRX,	;Set up dest addr and count, do; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
+						; 7216	BLTPX:	MQ_AR,VMA_BR,LOAD AR,ARX_BRX,	;Set up dest addr and count, do
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
 ; BLT.MIC[4,24]	16:34 23-May-86				BLT - Neatly Optimized					
 
 U 1701, 1045,3202,0610,0000,1312,1650,0107	; 7217		    SR_BLT(PXCT DST),CALL [XFERW];first load, and shuffle SR
@@ -7678,7 +7833,8 @@ U 2411, 0347,3240,0003,0000,0022,0010,0000	; 7230		AR_MEM,J/BLTFIX			;Interrupt.
 						; 7237	=0
 U 2412, 3315,0602,6000,0000,0020,0050,0000	; 7238	BLTPGF:	AR_ARX+BRX,CALL [REPLIC]	;Set up both halves of AR
 U 2413, 3775,0600,2000,4000,0020,0011,0000	; 7239		AR_AR+FM[AC0],INH CRY18,J/PGFAC0;Update AC0, then fault or int
-						; 7240	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 7240	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; BLT.MIC[4,24]	16:34 23-May-86				XBLT--Also Neatly Modernized				
 
 						; 7241	.TOC	"XBLT--Also Neatly Modernized"
@@ -7736,7 +7892,8 @@ U 2443, 0356,3240,0003,0000,0022,0010,0000	; 7292		AR_MEM,J/XBLFIX			;Yes. Clean
 						; 7293	;
 						; 7294	;	Spray a word through memory.  Get it started.
 						; 7295	;
-U 3330, 3316,3723,0000,0000,0316,0010,0000	; 7296	XSPRAY:	VMA_MQ,STORE,J/SPRAY		;Start spray properly for XBLT; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
+U 3330, 3316,3723,0000,0000,0316,0010,0000	; 7296	XSPRAY:	VMA_MQ,STORE,J/SPRAY		;Start spray properly for XBLT
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
 ; BLT.MIC[4,24]	16:34 23-May-86				XBLT--Also Neatly Modernized				
 
 						; 7297	;
@@ -7775,7 +7932,8 @@ U 3334, 3335,0610,0204,0000,0020,0010,0000	; 7329		ARX_ARX+FM[AC2]			;Adjust des
 U 3335, 3336,4001,4001,0000,2000,1010,0000	; 7330		AC1_AR,AR_ARX			;Restore source
 U 3336, 3775,5162,2004,0000,0020,1010,0000	; 7331		AC2_AR,AR_-BR,J/PGFAC0		;Restore dest and count. Done
 						; 7332	;
-U 3337, 3333,0602,6000,0000,0020,0010,0000	; 7333	FORSUB:	AR_ARX+BRX,J/FORFRZ		;Subtract one and rejoin; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+U 3337, 3333,0602,6000,0000,0020,0010,0000	; 7333	FORSUB:	AR_ARX+BRX,J/FORFRZ		;Subtract one and rejoin
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  ILDB, LDB			
 
 						; 7334		.TOC	"Single Byte Instructions:  ILDB, LDB"
@@ -7833,7 +7991,8 @@ U 0417, 0434,4001,0003,0000,0002,7510,0000	; 7384		MEM_AR,SKP -VMA SEC0		;A TWG,
 U 0434, 1474,2341,0000,2411,0000,1176,0100	; 7386			EA MOD DISP,CALL [LDEA]	;No TWGs in section 0 (treat as OWL)
 U 0435, 0436,4001,0000,2411,0011,3610,0610	; 7387		FE_S,READ BP2			;Real TWG. Treat as global indirect
 U 0436, 0720,4001,0000,0000,0000,1150,0100	; 7388		SET FPD,CALL [LEAIND]
-						; 7389	=11111	FIN LOAD,SC_#-SC,#/-1,		;Wait for byte word. SC = 36-(P+S); KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+						; 7389	=11111	FIN LOAD,SC_#-SC,#/-1,		;Wait for byte word. SC = 36-(P+S)
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  ILDB, LDB			
 
 U 0437, 2454,3200,0003,5302,0237,4710,0777	; 7390			SKP SC0,I FETCH		; Does byte go off the top?
@@ -7891,14 +8050,16 @@ U 0073, 3341,0001,0000,0302,0000,0010,0033	; 7439		SC_#,#/27.,J/SIZE9L		;73 S=9,
 U 0074, 0014,3240,0003,0302,0237,0514,0044	; 7442		    CLR ARX,SC_#,#/36.,J/SHFLOD
 U 0075, 0502,3240,0003,0000,0237,0014,0000	; 7443		FIN LOAD,I FETCH,CLR FPD,J/HLRZ	;75 S=18, P=18. This is HLRZ, folks
 U 0076, 0200,3240,0003,0000,0237,0014,0000	; 7444		FIN LOAD,I FETCH,CLR FPD,J/HRRZ	;76 S=18, P=0. Same as HRRZ
-						; 7445	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
+						; 7445	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-2
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  ILDB, LDB			
 
 U 0077, 1457,3200,0003,0000,0022,0010,0000	; 7446		AR_MEM,J/ILLOWG			;77 Illegal. Force UUO
 						; 7447	;
 U 3340, 2455,3240,0003,0301,0237,0010,0010	; 7448	SIZE8L:	FIN LOAD,I FETCH,FE_#,#/8,J/OWGLOD;Fix up all size 8 bytes
 U 3341, 2455,3200,0003,0301,0237,0010,0011	; 7449	SIZE9L:	FIN LOAD,I FETCH,FE_#,#/9,J/OWGLOD;Do the same for size 9
-						; 7450	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 7450	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  DPB, IDPB			
 
 						; 7451		.TOC	"Single Byte Instructions:  DPB, IDPB"
@@ -7956,7 +8117,8 @@ U 3345, 3346,4001,4400,5002,0000,0010,0000	; 7501		AR_SHIFT,ARX_SHIFT,SC_FE-SC	;
 U 3346, 0016,0001,4000,0000,0016,1614,0000	; 7503			SR_0,J/STMEM		;Last shift; store and clear FPD
 						; 7504	;
 						; 7505	;	Deposit byte with an OWG.  Once again, P&S gets split into the
-						; 7506	;	ranges 45-57 octal (optimized for size 6) and 60-77 (optimized; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
+						; 7506	;	ranges 45-57 octal (optimized for size 6) and 60-77 (optimized
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  DPB, IDPB			
 
 						; 7507	;	for size 7).  In addition to setting SC to 36-P and FE to 36-S,
@@ -8009,7 +8171,8 @@ U 0277, 1457,3200,0003,0000,0036,0010,0000	; 7553		FIN LOAD,STORE,J/ILLOWG		;77 
 						; 7554	;
 U 3347, 3344,3240,0003,0301,0022,0010,0034	; 7555	SIZE8D:	AR_MEM,FE_#,#/28.,J/DEPOWG	;Fix FE for size 8 bytes
 U 3350, 3344,3200,0003,0301,0022,0010,0033	; 7556	SIZE9D:	AR_MEM,FE_#,#/27.,J/DEPOWG	;Same for size 9
-						; 7557	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 7557	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  IBP, ADJBP			
 
 						; 7558		.TOC	"Single Byte Instructions:  IBP, ADJBP"
@@ -8067,7 +8230,8 @@ U 2502, 0217,0001,0000,0000,0217,1110,0424	; 7606	=0	SET NO DIVIDE,I FETCH,J/NOP
 						; 7610	;	the word.  All adjustments are done relative to the first byte
 						; 7611	;	in the word, so that the resulting quotient is the actual
 						; 7612	;	number of words to add to the base address.  If the adjustment
-						; 7613	;	is negative, however, we must back up the quotient by one and; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
+						; 7613	;	is negative, however, we must back up the quotient by one and
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  IBP, ADJBP			
 
 						; 7614	;	offset the remainder by the capacity if it is non zero.
@@ -8125,7 +8289,8 @@ U 2006, 2004,2542,0600,0000,0000,4510,0000	; 7658		ARX_BRX COMP,SKP AR0,J/NEGADJ
 						; 7666	;	add the quotient to the right half of the byte pointer; for a
 						; 7667	;	TWG we fetch the second word and then add the quotient to bits
 						; 7668	;	6-35 if it's global, to bits 18-35 if it's local.
-						; 7669	;; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-2
+						; 7669	;
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-2
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  IBP, ADJBP			
 
 						; 7670	;	After this, we subtract the byte pointer S field from (36 - the
@@ -8170,7 +8335,8 @@ U 2027, 0147,0001,0000,0000,0012,3610,0000	; 7707	=111	VMA_VMA+1,LOAD AR,J/TWJUN
 						; 7709	=0
 U 2512, 0216,0001,0000,0000,0217,0010,0000	; 7710	OWLCPY:	I FETCH,J/STORAC		;Section 0, an OWL. Just load AC0
 U 2513, 2025,4001,0000,0000,0000,0034,0000	; 7711		BYTE DISP,TIME/2T,J/TWGCPY	;Not section 0. Test AR12 for TWG
-						; 7712	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 7712	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Single Byte Instructions:  IBP, ADJBP			
 
 						; 7713	;
@@ -8224,7 +8390,8 @@ U 3357, 2503,3202,6400,0000,0000,1610,0001	; 7756	OFSHFT:	AR_BRX,ARX_SHIFT,SR_1,
 						; 7761	;
 U 3360, 3361,0612,2004,0002,0020,1613,0000	; 7762	SNATCH:	SC_EA,AR_ARX+BR,SR_0		;Grab offset; adjust address
 U 3361, 0015,0001,0000,2000,3000,0110,0000	; 7763		P_FE+SC,J/STAC			;Add proper offset to P&S. Done!
-						; 7764	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 7764	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Subroutines for Single Byte Instructions		
 
 						; 7765	.TOC	"Subroutines for Single Byte Instructions"
@@ -8282,7 +8449,8 @@ U 1434, 2554,4003,0000,5130,0020,5210,0060	; 7816			SKP SCAD NE,J/OVER8
 						; 7817		GEN AR+1,GEN P-#,#/66,		;64:67. 66 becomes 62
 U 1435, 2552,4003,0000,5130,0020,5210,0066	; 7818			SKP SCAD NE,J/OVER7
 						; 7819		GEN AR+1,GEN P-#,#/73,		;70:73. 73 becomes 70
-U 1436, 2560,4003,0000,5130,0020,5210,0073	; 7820			SKP SCAD NE,J/OVER9; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
+U 1436, 2560,4003,0000,5130,0020,5210,0073	; 7820			SKP SCAD NE,J/OVER9
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Subroutines for Single Byte Instructions		
 
 U 1437, 1454,4003,0000,4102,0020,0007,0000	; 7821		GEN AR+1,SC_P+1,SH DISP		;74:77. Test low P&S bits
@@ -8307,7 +8475,8 @@ U 2555, 0004,4001,0000,4100,3016,0103,0000	; 7838		P_P+1,STORE,RETURN4		;Others 
 						; 7840	=0
 U 2560, 1455,4003,2000,0302,0000,0010,0070	; 7841	OVER9:	AR_AR+1,TIME/2T,SC_#,#/70,J/NXTOWG;73. Increment address first
 U 2561, 0004,4001,0000,4100,3016,0103,0000	; 7842		P_P+1,STORE,RETURN4		;Others just tick P&S
-						; 7843	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 7843	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Subroutines for Single Byte Instructions		
 
 						; 7844	;
@@ -8365,7 +8534,8 @@ U 1537, 0037,0610,0002,2002,1131,4503,0420	; 7876			SKP AR0			; (This forces odd
 U 1554, 0336,3703,0000,1000,0131,5110,0760	; 7896			SKP SCAD0,J/GUDSIZ	; word, test word underflow
 						; 7897		GEN AR+XR,INDEXED,BYTE RPW,	;Index, no indirect. Add index
 						; 7898			GEN FE-SC-1,SKP SCAD0,	; register, load byte, test word
-U 1555, 0336,0600,0012,1000,2151,5110,0760	; 7899			MQ/SH,J/GUDSIZ		; underflow, and force odd parity; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
+U 1555, 0336,0600,0012,1000,2151,5110,0760	; 7899			MQ/SH,J/GUDSIZ		; underflow, and force odd parity
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
 ; BYTE.MIC[4,24]	17:29 14-Mar-86			Subroutines for Single Byte Instructions		
 
 						; 7900		GEN AR,BYTE INDRCT,		;No index, indirect. Start read
@@ -8401,7 +8571,8 @@ U 1637, 0002,4001,0000,0000,0000,0003,0000	; 7926		RETURN2				;Local word. Let m
 U 1656, 0000,3711,0000,0000,1111,7003,0610	; 7930			SKP INTRPT,RETURN0	; loop, testing for interrupt
 						; 7931		GEN ARX+XR,GLOBAL,BYTE INDRCT,	;Indexing. Add in index and do
 U 1657, 0000,0610,0002,0000,1131,7003,0610	; 7932			SKP INTRPT,RETURN0	; similarly
-						; 7933	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 7933	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; BYTSUB.MIC[4,24]	14:19 22-May-86			BYTE GROUP -- Some Old Style Subroutines		
 
 						; 7934	.TOC	"BYTE GROUP -- Some Old Style Subroutines"
@@ -8453,7 +8624,8 @@ U 1043, 1716,2301,0002,0000,0020,0036,0000	; 7979		XR,EA MOD DISP,TIME/3T		;[427
 U 1716, 0001,3711,0000,0000,1111,0003,0620	; 7980	=1110	GEN ARX,GLOBAL,BYTE READ,RETURN1;No. Read global word
 						; 7981		GEN ARX+XR,GLOBAL,BYTE READ,	;Yes. Add index and do likewise
 U 1717, 0001,0610,0002,0000,1131,0003,0620	; 7982		    RETURN1
-						; 7983	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 7983	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; BYTSUB.MIC[4,24]	14:19 22-May-86			Load and Deposit Byte Subroutines			
 
 						; 7984	.TOC	"Load and Deposit Byte Subroutines"
@@ -8502,7 +8674,8 @@ U 3373, 0003,0001,4000,0000,0016,0003,0000	; 8023		AR_SHIFT,STORE,RETURN3		;[335
 						; 8027	
 U 3374, 3375,4001,0000,2400,2000,0022,0200	; 8028	GETSC:	AR0-8_SC			;PUT SC INTO AR
 U 3375, 2604,0001,0400,0302,1000,0010,0011	; 8029		ARX_AR,SC_#,#/9.,J/SHIFT	;HERE WITH DATA IN AR0-8
-						; 8030	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 8030	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; EIS.MIC[4,24]	10:37 27-May-86				EXTENDED INSTRUCTION SET DECODING			
 
 						; 8031	.TOC	"EXTENDED INSTRUCTION SET DECODING"
@@ -8560,7 +8733,8 @@ U 1051, 0144,3200,0003,0000,0022,7710,0000	; 8082		ARX_MEM,TAKE INTRPT		;Interru
 U 1052, 1734,2301,0002,0000,0020,0036,0000	; 8083		XR,EA MOD DISP,TIME/3T,J/EXTLA	;[427] Local word at end. Decode it
 U 1053, 1756,2341,0002,0000,0020,0036,0000	; 8084		XR,EA MOD DISP,TIME/3T		;[427] Global word. Is it indexed?
 						; 8085	=1110	GEN ARX,GLOBAL,EXT INDEX,ARX/MQ,;[414] No. Generate final address
-U 1756, 3177,3713,0300,0000,1004,0002,0400	; 8086		    J/BEXT2; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
+U 1756, 3177,3713,0300,0000,1004,0002,0400	; 8086		    J/BEXT2
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1-1
 ; EIS.MIC[4,24]	10:37 27-May-86				EXTENDED INSTRUCTION SET DECODING			
 
 						; 8087		GEN ARX+XR,GLOBAL,EXT INDEX,	;[414][427] Yes. Add index to
@@ -8586,7 +8760,8 @@ U 2107, 2000,4011,4007,0000,2320,1001,0165	; 8105			IR DISP,J/2000
 						; 8107	EXT3:	E1_AR,AR_ARX,VMA_ARX+1,		;ESTABLISH E1
 U 2642, 2000,4011,4007,0000,2320,1001,0165	; 8108			IR DISP,J/2000		;GO TO SPECIFIC HANDLER
 U 2643, 2642,2301,0000,0000,0000,0610,0002	; 8109		ARL_1S,J/EXT3			;NEGATIVE OFFSET
-						; 8110	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 8110	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; EIS.MIC[4,24]	10:37 27-May-86				EXTENDED INSTRUCTION SET DECODING			
 
 						; 8111	;	By using "IR DISP,J/2000" we can use the same DRAM for LUUOs as
@@ -8644,13 +8819,15 @@ U 3032, 0621,4001,0000,0000,0012,0010,0000	; 8157	3032:	LOAD AR,J/MVST			; flags
 						; 8163	;
 U 3401, 3402,3200,2005,7021,0020,0010,0000	; 8164	FLGTST:	AR_AC3,FE_FE AND AR0-8		;[347] Get dest length
 U 3402, 2660,4001,0000,6020,0020,5210,0000	; 8165		GEN FE OR AR0-8,SKP SCAD NZ	;[347] Are any high bits set?
-U 2660, 0020,4013,2000,0000,0020,0003,0000	; 8166	=0	AR_ARX+1 (AD),RETURN20		;[347] No. Start saving fill VMA; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
+U 2660, 0020,4013,2000,0000,0020,0003,0000	; 8166	=0	AR_ARX+1 (AD),RETURN20		;[347] No. Start saving fill VMA
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2-1
 ; EIS.MIC[4,24]	10:37 27-May-86				EXTENDED INSTRUCTION SET DECODING			
 
 U 2661, 1002,3242,2000,0000,0000,0010,0000	; 8167		AR_BR,J/UUO			;[347] Yes. Blow out of the water
 						; 8168	.ENDIF/OWGBP				;[265]
 						; 8169	;3042:	AR_BR,J/UUO		;[217] INDEXING ON ILL. EXTEND OP.
-						; 8170	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 8170	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; EIS.MIC[4,24]	10:37 27-May-86				ONE WORD GLOBAL BYTE POINTER SUBROUTINES FOR EXTEND	
 
 						; 8171	.TOC	"ONE WORD GLOBAL BYTE POINTER SUBROUTINES FOR EXTEND"
@@ -8708,7 +8885,8 @@ U 3414, 0001,3202,0010,0000,0000,0703,0003	; 8222		MQ_BR,RETURN1			;GET OUT
 						; 8223	
 						; 8224	; HERE TO GET P,S,BIT 12 = 1 AND A GOOD ADDRESS
 						; 8225	; SOME VERY TRICKY STUFF GOING ON HERE
-						; 8226	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
+						; 8226	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3-1
 ; EIS.MIC[4,24]	10:37 27-May-86				ONE WORD GLOBAL BYTE POINTER SUBROUTINES FOR EXTEND	
 
 U 3415, 3416,3260,2067,0000,0020,0010,0164	; 8227	STR2WD:	[AR]_FM[EXPMSK], BR/AR,BRX/ARX	;[310] P,S,JUNK TO BR, SAVE ARX
@@ -8717,7 +8895,8 @@ U 3417, 3420,5100,2007,0000,0020,0010,0175	; 8229		[AR]_[AR]-FM[ADMSK]		;BIT 12 
 						; 8230		AR_[MQ] AND FM[ADMSK],		;0,ADDRESS TO AR
 U 3420, 0002,3620,2047,4000,0020,0003,0175	; 8231			BR/AR,RETURN2		;BIT 12=1 TO BR
 						; 8232	.ENDIF/OWGBP				;[265]
-						; 8233	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 8233	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- STRING MOVE					
 
 						; 8234	.TOC	"EIS -- STRING MOVE"
@@ -8772,7 +8951,8 @@ U 2711, 2710,5102,2004,0000,0020,0010,0000	; 8281		AR_AR-BR,J/MVABT1		;DEST LEN 
 U 3433, 2712,2540,2007,0000,0237,4210,0170	; 8283	MVABT2:	AR_SLEN COMP,SKP BR0,I FETCH	;[437] GET UNDECREMENTED SLEN
 U 2712, 2713,0602,2000,0000,0020,0010,0000	; 8284	=0	AR_AR+BR			;SRC LONGER BY (DLEN)
 U 2713, 0015,3300,2000,0000,0020,1610,0000	; 8285	MVEND:	AR_AR*SFLGS,AD/OR,SR_0,J/STAC	;PUT BACK REMAINING LEN, don't skip
-						; 8286	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 8286	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- STRING MOVE					
 
 						; 8287	;HERE TO BEGIN RIGHT-JUSTIFIED MOVE
@@ -8830,7 +9010,8 @@ U 1073, 3532,3240,2000,0000,0220,0010,0000	; 8338	=11	AR_SFLGS,VMA_PC+1,J/SFET1	
 						; 8339	
 						; 8340	;NOTE -- IT AIN'T AS EASY AS IT LOOKS TO BUM A CYCLE OUT OF THIS
 						; 8341	; ROUTINE, BECAUSE AN INTERRUPT, IF ANY, HAS TO BE TAKEN AFTER THE
-						; 8342	; POINTER UPDATE AND BEFORE THE LENGTH UPDATE.  GOOD HUNTING!; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
+						; 8342	; POINTER UPDATE AND BEFORE THE LENGTH UPDATE.  GOOD HUNTING!
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5-1
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- STRING MOVE					
 
 						; 8343	=01*
@@ -8842,7 +9023,8 @@ U 2733, 0340,4001,0000,0000,0000,0005,0000	; 8348		SR DISP,J/CLEAN			;BREAK OUT 
 						; 8349	=1011
 U 2053, 0002,4001,0000,0000,0000,0003,0000	; 8350	MOVF3:	RETURN2				;YES, DONE
 U 2057, 0742,0001,0000,0000,0000,0010,0000	; 8351		J/MOVF1				;NO, DO ANOTHER
-						; 8352	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 8352	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- STRING COMPARE					
 
 						; 8353	.TOC	"EIS -- STRING COMPARE"
@@ -8900,7 +9082,8 @@ U 3442, 2754,3202,2660,0000,0000,4210,0000	; 8403			AR_BR,ARX_BRX,SKP BR0	;LENGT
 U 2754, 2116,3713,2405,0000,1020,1032,0000	; 8405			SIGNS DISP,J/CMPS6	;TEST SRC LEN
 U 2755, 2116,3713,2400,0000,1000,0010,0000	; 8406		ARX_AR,AR_ARX (AD)		;DEST LEN EXHAUSTED
 						; 8407	=1110
-U 2116, 3443,1701,6200,0000,0040,1010,0000	; 8408	CMPS6:	AC0_AR,AR_ARX-1,ARX_AR-1,J/CMPS7	;UPDATE SRC LEN IN AC0; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
+U 2116, 3443,1701,6200,0000,0040,1010,0000	; 8408	CMPS6:	AC0_AR,AR_ARX-1,ARX_AR-1,J/CMPS7	;UPDATE SRC LEN IN AC0
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6-1
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- STRING COMPARE					
 
 U 2117, 3443,1703,6200,0000,0040,0010,0000	; 8409		AR_ARX-1,ARX_AR-1		;SRC EXHAUSTED PREVIOUSLY
@@ -8912,7 +9095,8 @@ U 3443, 2742,7142,6060,0000,0040,5410,0000	; 8412			SKP BR EQ,AR/ADX,J/CMPS3	;CH
 						; 8415	CMPDST:	AR_DSTP,ARX_DSTP,		;GET DEST BYTE FOR COMPARE
 U 2760, 3515,3240,2206,0000,0040,0050,0144	; 8416			CALL,J/IDST		;UPDATE DEST POINTER
 U 2761, 2570,0001,0000,2002,0000,7010,0000	; 8417		SC_FE+SC,SKP INTRPT,J/LDB1	;GET DEST BYTE
-						; 8418	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 8418	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- DECIMAL TO BINARY CONVERSION			
 
 						; 8419	.TOC	"EIS -- DECIMAL TO BINARY CONVERSION"
@@ -8970,7 +9154,8 @@ U 3457, 0520,0602,5500,0000,0020,0027,0000	; 8468		AR_2(AR+BR) LONG,J/DBINLP	;AD
 						; 8471	
 U 3460, 3461,3300,2000,0000,0020,0010,0000	; 8472	DBABT:	AR_AR*SFLGS,AD/OR		;[230][221]FLAGS +LEN REMAINING
 						; 8473		AC0_AR,AR_BR LONG,SC_#,#/35.,	;PUT BACK UNUSED LENGTH
-U 3461, 3462,3242,2600,0302,0200,1010,0043	; 8474			VMA_PC+1,J/STOR34	;END WITH NO SKIP; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7-1
+U 3461, 3462,3242,2600,0302,0200,1010,0043	; 8474			VMA_PC+1,J/STOR34	;END WITH NO SKIP
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7-1
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- DECIMAL TO BINARY CONVERSION			
 
 						; 8475	
@@ -8985,7 +9170,8 @@ U 3462, 3463,5401,2005,0000,0037,1016,0000	; 8483	STOR34:	AC3_AR,AR_SIGN,FETCH		
 U 3463, 3464,4001,4000,0000,0000,1610,0000	; 8484		AR_SHIFT,SR_0			;GET LOW READY
 U 3464, 3465,4001,0000,0000,0000,0010,0144	; 8485		SEL AC4				;PRESEL NUMBER TO FIX HARDW GLITCH
 U 3465, 0133,0001,0006,0000,0000,1010,0144	; 8486	STAC4:	AC4_AR,FINISH
-						; 8487	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 8487	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- BINARY TO DECIMAL CONVERSION			
 
 						; 8488	.TOC	"EIS -- BINARY TO DECIMAL CONVERSION"
@@ -9043,7 +9229,8 @@ U 2346, 2347,4001,0000,3001,0000,0010,0000	; 8539		FE_FE-1				;10.**21 IS TOO SM
 U 2347, 2134,4001,4007,1002,2000,1010,0171	; 8540		SC_FE-SC-1,T1_AR,AR_ARX,J/BD7	;10.**21 IS BIG ENOUGH
 						; 8541	
 U 3472, 2342,1102,0004,0000,0020,0031,0000	; 8542	BD6:	GEN AR-BR-1,DISP/DIV,J/BD4	;COMPARE BINARY TO 10**N
-						; 8543	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 8543	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- BINARY TO DECIMAL CONVERSION			
 
 						; 8544	;HERE HAVING FOUND THE NUMBER OF DIGITS REQUIRED TO REPRESENT THE
@@ -9068,7 +9255,8 @@ U 3477, 1140,4001,0007,0000,0000,1010,0166	; 8562	BDF1:	T0_AR				;[344] Save fla
 U 1140, 3003,3200,0003,0000,0022,1650,0203	; 8563	=00	AR_MEM,SR_BDF,CALL,J/RET1	;GET FILLER, GO WAIT FOR PARITY
 U 1141, 2732,4001,4007,0000,2000,1050,0173	; 8564		FILL_AR,AR_ARX,CALL,J/MOVF2	;FILL AS REQUIRED
 U 1143, 2157,3200,2007,0000,0020,0010,0166	; 8565	=11	AR_T0,J/BD9			;GET FLAGS BACK
-						; 8566	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						; 8566	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- BINARY TO DECIMAL CONVERSION			
 
 						; 8567	;SETUP FOR LONG DIVISION OF BINARY BY 10**N
@@ -9098,7 +9286,8 @@ U 2543, 0760,3721,2000,2401,0001,1010,0102	; 8590			FE_SC,J/DDVLP		;RESUME WITH 
 						; 8591	=101	AC0_AR,AR_MQ,ARL/AD,MQ_0.M,
 U 2545, 0762,3723,2000,2401,0001,1010,0102	; 8592			FE_SC,J/DDVSUB		;RESUME WITH SUBTRACT STEP
 						; 8593	=
-						; 8594	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+						; 8594	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- BINARY TO DECIMAL CONVERSION			
 
 						; 8595	;HERE WITH QUOTIENT OF <INPUT INTEGER>/<10**N> IN AR LONG, WITH THE
@@ -9150,7 +9339,8 @@ U 2566, 2215,3242,2600,0000,0020,1632,0010	; 8640			SIGNS DISP		;CHECK BR0 FOR I
 						; 8641	=
 U 2215, 2217,0603,5500,0000,0020,0027,0000	; 8642	=1101	AR_AR*10 LONG			;DISCARD PREVIOUS DIGIT
 U 2217, 3502,0001,0000,7130,3000,0110,0037	; 8643		P_P AND #,#/37,J/BDD1		;CLEAR AR0, GO FOR NEXT
-						; 8644	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+						; 8644	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- SRCMOD SUBROUTINE TO GET MODIFIED SOURCE BYTE	
 
 						; 8645	.TOC	"EIS -- SRCMOD SUBROUTINE TO GET MODIFIED SOURCE BYTE"
@@ -9204,7 +9394,8 @@ U 3510, 3030,3240,0003,0302,0022,4310,0022	; 8691	TRNAR:	AR_MEM,SKP ARX0,SC_#,#/
 U 3030, 2221,3240,2400,0000,1040,0007,0000	; 8693			AR_SFLGS,J/TRNFNC
 						; 8694		ARX_AR SWAP,AR18-21 DISP,	;RH, MOVE THAT TO ARX LEFT
 U 3031, 2221,3200,2400,0000,3040,0007,0000	; 8695			AR_SFLGS,J/TRNFNC
-						; 8696	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+						; 8696	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- SRCMOD SUBROUTINE TO GET MODIFIED SOURCE BYTE	
 
 						; 8697	;HERE ON TRANSLATE OPERATION TO PERFORM FUNCTIONS REQUIRED BY
@@ -9243,7 +9434,8 @@ U 2277, 2600,4640,2007,0000,0020,0010,0170	; 8729		AR_SLEN+1,J/SRCMOD		;SLEN REF
 						; 8730						; COUNT DOWN FOR BYTE SKIPPED
 U 3512, 3513,0001,0000,6100,3000,0110,0000	; 8731	TRNSS1:	P_P OR SC
 U 3513, 0004,0001,4000,0000,2000,1003,0000	; 8732		SFLGS_AR,AR_ARX,RETURN4		;RETURN WITH SIG SET
-						; 8733	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+						; 8733	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- SRCMOD SUBROUTINE TO GET MODIFIED SOURCE BYTE	
 
 						; 8734	;SUBROUTINE TO GET BYTE FROM SOURCE STRING
@@ -9291,7 +9483,8 @@ U 1153, 1674,2301,0401,2411,1000,1036,0000	; 8774		SRCP_AR,ARX_AR,FE_S,EA MOD DI
 						; 8776	;SUBROUTINE TO LOAD P FROM 36-S
 						; 8777	
 U 3514, 0002,0001,0000,5312,3000,0103,0044	; 8778	RESETP:	P_#-S,#/36.,SC/SCAD,RETURN2	;START P BACK AT LEFT EDGE
-						; 8779	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+						; 8779	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- SRCMOD SUBROUTINE TO GET MODIFIED SOURCE BYTE	
 
 						; 8780	;SUBR TO STORE AR IN DEST STRING
@@ -9331,7 +9524,8 @@ U 3520, 1674,2301,0406,2411,1000,1036,0144	; 8813			EA MOD DISP,J/BFETCH
 						; 8814	
 						; 8815	IDST2B:	DSTP_AR,ARX_AR,FE_S,		;[352][300]STORE POINTER,
 U 3521, 1674,2301,0406,2411,1000,1036,0144	; 8816			EA MOD DISP,J/BFETCH	; GO GET THE WORD ADDRESSED
-						; 8817	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
+						; 8817	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8818	.TOC	"EIS -- EDIT FUNCTION"
@@ -9367,7 +9561,8 @@ U 2333, 3533,3243,0610,4002,2000,0010,0000	; 8847			SC_FE+1,J/EDSKPT	;(5XX) SKIP
 						; 8848		MQ_ARX,ARX_ARX*2,
 U 2335, 3533,3701,0510,4002,2000,0010,0000	; 8849			SC_FE+1,J/EDSKPT	;(6XX) SKIP IF NON-ZERO
 U 2337, 3075,3203,5000,4002,0000,0010,0000	; 8850		AR_AR*8,SC_FE+1,J/EDSKP		;(7XX) SKIP ALWAYS
-						; 8851	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
+						; 8851	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8852	;HERE TO DECODE OPERATE GROUP
@@ -9393,7 +9588,8 @@ U 3073, 3532,4001,0000,4100,3000,0110,0000	; 8871		P_P+1
 						; 8872	.ENDIF/EDIT				;Other things need this
 U 3532, 0216,4001,0000,0000,0017,3610,0000	; 8873	SFET1:	FETCH+1,J/STORAC
 						; 8874	.IF/EDIT
-						; 8875	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 18
+						; 8875	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 18
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8876	;HERE FOR SKPM & SKPN, WITH APPROPRIATE BIT IN ARX0
@@ -9426,7 +9622,8 @@ U 3103, 3076,4003,2000,5031,0020,5111,0004	; 8901			SKP SCAD0,J/EDNXT1
 U 3104, 3526,0001,0000,6000,3001,0010,0200	; 8903	EDNXT3:	P_FE OR SC,J/EDITLP		;SET NEW PBN, GO DO NEXT PATTERN
 U 3105, 3775,4001,0000,6000,3001,0010,0200	; 8904		P_FE OR SC,J/PGFAC0		;GO RESTORE THINGS AND TAKE
 						; 8905						; THE INTERUPT
-						; 8906	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19
+						; 8906	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8907	;HERE FOR FIELD SEPARATOR (CLEAR FLAGS IN AC 0-2)
@@ -9450,7 +9647,8 @@ U 1223, 3074,0001,0400,7131,1000,0010,0003	; 8920	EDSEND:	FE_P AND #,#/3,ARX_AR,
 U 1230, 2722,4640,0007,0000,0332,0010,0176	; 8925	EDMSG:	VMA_E0+1,LOAD AR,J/EDSFIL	;NO SIG, PUT FILLER
 U 1231, 3374,3401,2000,0102,0000,0050,0000	; 8926		SC_P,AR_0S,CALL,J/GETSC		;GET MESSAGE SELECT IN AR
 U 1233, 2727,4600,0007,4000,0332,0010,0176	; 8927	=11	VMA_AR+E0+1,LOAD AR,J/EDMPUT	;STORE MESSAGE
-						; 8928	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 20
+						; 8928	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 20
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8929	;HERE TO EXCHANGE MARK AND DESTINATION POINTERS
@@ -9491,7 +9689,8 @@ U 3121, 2715,0001,0006,0000,0000,1010,0144	; 8961		DSTP_AR
 U 2715, 3076,3721,2000,5031,0020,5110,0003	; 8964			AR_MQ,J/EDNXT1
 U 2717, 3546,0001,0000,0000,0000,0010,0145	; 8965		SEL DSTP2			;PRESELECT # TO FIX HARDWARE GLITCH
 U 3546, 2715,4001,0006,0000,0000,1010,0145	; 8966		DSTP2_AR,J/EDEX1		;PUT OLD MARK2 AS DSTP2
-						; 8967	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 21
+						; 8967	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 21
 ; EIS.MIC[4,24]	10:37 27-May-86				EIS -- EDIT FUNCTION					
 
 						; 8968	;HERE FOR SELECT
@@ -9542,7 +9741,8 @@ U 2745, 1160,0001,0000,0000,0000,1650,0224	; 9012		SR_ED(+D),CALL,J/PUTDST		;STO
 U 2747, 3553,3240,2000,0302,0020,0010,0040	; 9013	=111	AR_SFLGS,SC_#,#/40		;SET S FLAG AND RETURN
 						; 9014	.ENDIF/EDIT				;Other stuff needs this
 U 3553, 0003,0001,0000,6100,3000,0103,0000	; 9015	SETFLG:	P_P OR SC,RETURN3		;NO FLOAT CHR, SET S FLAG
-						; 9016	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
+						; 9016	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 1
 ; IO.MIC[4,24]	15:27 17-Mar-86				I/O INSTRUCTIONS					
 
 						; 9017	.TOC	"I/O INSTRUCTIONS"
@@ -9594,7 +9794,8 @@ D 0734, 0000,1704				; 9062		I,	J/SWEEP	;CONO CCA,
 D 0735, 0000,1704				; 9063		I,	J/SWEEP	;SWPIO (CONI CCA,)INVALIDATE ONE PAGE
 D 0736, 0000,1704				; 9064		I,	J/SWEEP	;SWPVO (CONSZ CCA,)VALIDATE ONE PAGE
 D 0737, 0000,1704				; 9065		I,	J/SWEEP	;SWPUO (CONSO CCA,)UNLOAD ONE PAGE
-						; 9066	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
+						; 9066	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 2
 ; IO.MIC[4,24]	15:27 17-Mar-86				I/O INSTRUCTIONS					
 
 						; 9067	;I/O CONT'D
@@ -9645,7 +9846,8 @@ D 0776, 0101,1202				; 9111		I,	CONSZ,	J/CONS
 D 0777, 0500,1202				; 9112		I,	CONSO,	J/CONS
 						; 9113	
 						; 9114		.UCODE
-						; 9115	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
+						; 9115	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 3
 ; IO.MIC[4,24]	15:27 17-Mar-86				EXTERNAL DEVICE I/O INSTRUCTIONS			
 
 						; 9116	.TOC	"EXTERNAL DEVICE I/O INSTRUCTIONS"
@@ -9687,7 +9889,8 @@ U 0125, 1206,3703,0000,0000,0312,1110,0100	; 9151	BLK3:	VMA_AR,LOAD AR,SET FPD,J
 U 0127, 1206,3703,0000,0000,0300,1110,0100	; 9152		VMA_AR,SET FPD,J/IO		;INPUT DO BEFORE MEM
 						; 9153	
 						; 9154	;;;NOTE NOTE NOTE SET FPD INHIBITED BY HARDWARE IF PI CYCLE (SCD5)
-						; 9155	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
+						; 9155	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 4
 ; IO.MIC[4,24]	15:27 17-Mar-86				EXTERNAL DEVICE I/O INSTRUCTIONS			
 
 						; 9156	;SUBROUTINES TO HANDLE EBUS
@@ -9741,7 +9944,8 @@ U 3003, 0001,4001,0000,0000,0000,0003,0000	; 9202	RET1:	RETURN1				;ONE-CYCLE NU
 						; 9204	=0
 U 3132, 1002,3242,2000,0000,0000,0010,0000	; 9205	GETEEB:	AR_BR,J/UUO			;IO ILLEGAL IN THIS MODE
 U 3133, 0001,0001,0000,0000,0000,2203,0400	; 9206	GTEEB1:	GET ECL EBUS,RETURN1
-						; 9207	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
+						; 9207	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 5
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- APR, CCA			
 
 						; 9208	.TOC	"INTERNAL DEVICE FUNCTIONS -- APR, CCA"
@@ -9797,7 +10001,8 @@ U 1507, 3564,0001,3000,0000,0060,2010,0510	; 9257		CONI APR(R)			;GET RIGHT HALF
 U 3564, 3565,4001,3400,0000,3060,2010,0512	; 9258	=	ARX_AR SWAP,CONI APR(L)		;NOW LH COND TO AR LEFT
 U 3565, 1207,0001,4000,0000,2000,0610,0000	; 9259		AR_ARX,ARL_ARL,J/RELEEB		;COMBINE HALVES
 U 3566, 1207,3703,0000,0000,0060,2010,0414	; 9260	APRCO7:		CONO APR,J/RELEEB	;[272]
-						; 9261	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
+						; 9261	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 6
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- PI				
 
 						; 9262	.TOC	"INTERNAL DEVICE FUNCTIONS -- PI"
@@ -9853,7 +10058,8 @@ U 3573, 0022,3701,0000,0000,0005,2233,0100	; 9310	PICOM2:	REL EBUS,GEN AR,B WRIT
 						; 9312	=0
 U 3134, 1002,3242,2000,0000,0000,0010,0000	; 9313	PICOM1:	AR_BR,J/UUO			;LOSE
 U 3135, 3126,0001,0000,0000,0000,2210,0200	; 9314		REQ EBUS,J/WGRANT		;OK, WAIT TO GET FULL EBUS
-						; 9315	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
+						; 9315	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 7
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- PAG			
 
 						; 9316	.TOC	"INTERNAL DEVICE FUNCTIONS -- PAG"
@@ -9907,7 +10113,8 @@ U 2220, 1045,3302,2004,0000,0007,0050,0502	; 9363			CALL,J/XFERW
 U 2222, 3601,4001,3040,0000,0060,2010,0567	; 9364		BR/AR,AR_EBUS REG		;LH TO BR.  READ UBR ADDRESS
 						; 9365		ARX_AR,AR_0S,SC_#,#/27.,	;READY TO MOVE INTO POSITION
 U 3601, 0003,3441,2400,0302,1000,0003,0033	; 9366			RETURN3
-						; 9367	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
+						; 9367	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 8
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- PAG			
 
 						; 9368	;CONI/O PAG,
@@ -9964,7 +10171,8 @@ U 3605, 3142,3441,2200,0000,0000,2210,0000	; 9417	CLRPT:	AR_0S,ARX_0S,REL ECL EB
 U 3142, 0475,4001,0000,0000,0002,0153,0010	; 9419			SC_FE,CALL [ARSWAP]	;[334]GET 1B23
 						; 9420		BR/AR,AR_0S,VMA/AD,		;[333][334] START CLEARING AT ZERO
 U 3143, 0004,3441,2040,0301,0300,0003,0077	; 9421			FE_#,#/63.,RETURN4	;SETUP LOOP COUNT
-						; 9422	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
+						; 9422	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 9
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- TIM & MTR			
 
 						; 9423	.TOC	"INTERNAL DEVICE FUNCTIONS -- TIM & MTR"
@@ -10018,7 +10226,8 @@ U 1616, 3132,3441,2400,0000,1000,7350,0000	; 9470			SKP IO LEGAL,J/GETEEB	;CHECK
 U 1617, 3613,3701,4000,0000,2060,2023,0404	; 9471		BLKO TIM(L),AR_ARX		;TURN OFF BY CLEARING LH ENABLES
 U 3613, 3614,3703,4000,0000,3060,2023,0405	; 9472	=	BLKO TIM(R),AR_AR SWAP		;SEND RH
 U 3614, 3611,3703,0000,0000,0060,2023,0404	; 9473		BLKO TIM(L),J/TIMBO1		;SEND LH, TURNING ON AGAIN
-						; 9474	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
+						; 9474	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 10
 ; IO.MIC[4,24]	15:27 17-Mar-86				INTERNAL DEVICE FUNCTIONS -- TIM & MTR			
 
 						; 9475	;HERE WHEN METER INCREMENT REQUEST DETECTED
@@ -10076,7 +10285,8 @@ U 3633, 2230,4001,0060,0000,0012,0026,0223	; 9525	RDUMTR:	BR_AR LONG,LOAD AR,UPT
 						; 9527	RDMTR2:	FIN XFER,VMA_VMA+1,LOAD ARX,	;NOW GET LOW WORD
 U 2230, 1045,3200,0003,0000,0033,3650,0000	; 9528			CALL,J/XFERW		;GO WAIT FOR IT
 U 2232, 0001,3701,0500,0000,0000,0003,0000	; 9529		ARX_ARX*2,RETURN1
-						; 9530	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
+						; 9530	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11
 ; IO.MIC[4,24]	15:27 17-Mar-86				PRIORITY INTERRUPT PROCESSING				
 
 						; 9531	.TOC	"PRIORITY INTERRUPT PROCESSING"
@@ -10134,14 +10344,16 @@ U 2405, 1045,4001,0000,0000,0012,0026,0113	; 9582	PILD:	LOAD AR,EPT REF,J/XFERW	
 U 2407, 1045,4001,0000,0000,0012,0010,0000	; 9583		LOAD AR,J/XFERW			; OR EXEC VIRTUAL ADDR SPACE
 U 2415, 1470,3610,0207,4000,0320,0010,0175	; 9584		VMA_ARX AND ADMSK,ARX/AD,J/PHYS2;FORCE AC'S FOR 0-17
 						; 9585	
-						; 9586	;HERE TO PERFORM INCREMENT FUNCTION; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11-1
+						; 9586	;HERE TO PERFORM INCREMENT FUNCTION
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 11-1
 ; IO.MIC[4,24]	15:27 17-Mar-86				PRIORITY INTERRUPT PROCESSING				
 
 						; 9587	
 U 2417, 3152,3240,0003,7310,0042,5210,0040	; 9588	PIINCR:	AR_MEM,SKP AR6			;GET WORD, INCR OR DECR?
 U 3152, 2423,4001,2000,0000,0036,0010,0000	; 9589	=0	AR_AR+1,STORE,J/PIDONE
 U 3153, 2423,1703,2000,0000,0036,0010,0000	; 9590		AR_AR-1,STORE,J/PIDONE
-						; 9591	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
+						; 9591	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 12
 ; IO.MIC[4,24]	15:27 17-Mar-86				PRIORITY INTERRUPT PROCESSING				
 
 						; 9592	;HERE FOR DATAO (EXAMINE) FUNCTION
@@ -10186,7 +10398,8 @@ U 1440, 0012,3401,2000,0000,0000,0003,0000	; 9630	=00	AR_0S,RETURN12			;NO, SEND
 U 1441, 2405,0001,0000,0000,0000,3650,0000	; 9631		VMA_VMA+1,CALL,J/PILD		;YES, GET RELOCATION WORD
 U 1443, 3650,0602,2004,0000,0020,0010,0000	; 9632	=11	AR_AR+BR			;RELOCATE TO PHYSICAL ADDR
 U 3650, 0002,3600,0207,4000,0020,0003,0175	; 9633		ARX_AR AND ADMSK,RETURN2	;STRIP TO 23 BITS
-						; 9634	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
+						; 9634	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 13
 ; IO.MIC[4,24]	15:27 17-Mar-86				PRIORITY INTERRUPT PROCESSING				
 
 						; 9635	;FORCE AC'S FOR 0-17
@@ -10209,7 +10422,8 @@ U 1533, 2423,0001,0000,0000,0016,0026,0103	; 9650		STORE,PHYS REF,J/PIDONE
 U 3651, 3652,4001,0400,0000,0000,0010,0000	; 9652	CHKAC:	ARX_SHIFT			;GET ADDRESS WITHOUT 32-35
 						; 9653		ARX_ARX AND ADMSK,		;FLUSH GARBAGE IN 0-3
 U 3652, 0002,3610,0207,0000,0020,5603,0175	; 9654			SKP AD NE,RETURN2	;AND MAKE THE TEST
-						; 9655	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
+						; 9655	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 14
 ; IO.MIC[4,24]	15:27 17-Mar-86				PRIORITY INTERRUPT PROCESSING				
 
 						; 9656	;HERE FOR BYTE TRANSFERS
@@ -10237,7 +10451,8 @@ U 3653, 3646,4001,0000,2030,2000,0110,0140	; 9675	PIBPA:	AR0-8_FE+#,#/140,J/GTAR
 U 0750, 2405,0001,0000,0000,0000,0050,0000	; 9678	PIIBP:	CALL,J/PILD			;GET POINTER FROM EPT
 U 0752, 2562,0001,0000,5110,3021,5150,0200	; 9679		P_P-S,SKP SCAD0,CALL.M,J/IBPS	;INCREMENT IT
 U 0756, 3370,0001,0400,0102,1000,0010,0000	; 9680	=11*	ARX_AR,SC_P,J/BYTEA		;NOW EVALUATE ITS ADDR
-						; 9681	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
+						; 9681	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9682	.TOC	"KL-MODE PAGE REFILL LOGIC"
@@ -10295,7 +10510,8 @@ U 3656, 2514,4001,0000,0000,0000,2204,0400	; 9730		GET ECL EBUS,PF DISP,J/PF2	;P
 U 2515, 3154,4001,0000,0301,0000,6410,0036	; 9734	=1101	FE_#,#/36,SKP RPW,J/PFPAR	;YES.  AR PARITY ERROR, CODE 36
 						; 9735						;CHECK FOR MIDDLE OF RPW CYCLE
 						;;9736	.IF/PAGCNT
-						;;9737	=1101	AR_SV.AR,J/ARPAR		;[327] AR parity error. Get back; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15-1
+						;;9737	=1101	AR_SV.AR,J/ARPAR		;[327] AR parity error. Get back
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 15-1
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9738	.ENDIF/PAGCNT				;[327] saved AR
@@ -10318,7 +10534,8 @@ U 3661, 3662,0001,0007,0000,0002,1010,0160	; 9754		SV.PAR_AR,MB WAIT		;[234]SAVE
 U 3662, 3663,4001,3000,0000,0060,2010,0567	; 9755		AR_EBUS REG			;READ MAP INFO
 U 3663, 3664,4001,0000,7102,0000,2210,0000	; 9756		REL ECL EBUS,SC_P AND SC	;GET USER BIT FROM MAP WORD
 U 3664, 2527,0001,0000,6000,3001,0010,0200	; 9757		P_FE OR SC,J/PF4		;STUFF IN PARITY ERROR CODE
-						; 9758	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
+						; 9758	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 16
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9759	;HERE WITH PAGE FAIL WORD IN AR
@@ -10352,7 +10569,8 @@ U 3673, 3674,3202,2000,2001,0020,2310,0010	; 9786			TIME/3T,FE_FE+SC,AR_BR	;GET 
 U 3674, 3675,4001,0000,7322,0000,0010,0401	; 9787		SC_# AND AR0-8,#/401		;GET USER & PAGED REF BITS
 U 3675, 3676,4001,0000,6000,2001,0010,0200	; 9788		AR0-8_FE OR SC			;COMBINE WITH WR REF BIT
 U 3676, 2556,4001,4047,0000,2000,1010,0152	; 9789		SV.PFW_AR,BR/AR,AR_ARX,J/PGRF1	;REJOIN MAIN PATH
-						; 9790	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
+						; 9790	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9791	;	HERE TO TRACE PAGE POINTERS FOR THIS ADDRESS
@@ -10410,7 +10628,8 @@ U 3161, 3160,4001,0000,0000,0000,1510,0000	; 9839		CLR SPECIAL CYCLE,J/LDIND
 						; 9843	;					;SHARED SEC = INDRCT PAG
 U 3705, 3706,4001,0000,0000,0012,0026,0103	; 9844	LDIND1:	LOAD AR,PHYS REF		;GET PAGE MAP ADDR
 U 3706, 2633,3200,0003,0000,0022,0010,0000	; 9845		AR_MEM,J/SECIMM
-						; 9846	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-1
+						; 9846	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-1
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9847	
@@ -10468,7 +10687,8 @@ U 3715, 2650,3240,0003,6031,0022,7010,0100	; 9894			SKP INTRPT		;[247] CHECK FOR
 						; 9899	;	SC CONTAINS 9.
 						; 9900	;
 						; 9901	=1000	FE_FE AND AR0-8,AR0-3 DISP,	;COMBINE PWKC, DISP ON TYPE
-U 2650, 2651,3200,0207,7021,1020,0007,0145	; 9902			ARX_SV.VMA,TIME/3T	;[346] GET BACK SAVED VMA; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-2
+U 2650, 2651,3200,0207,7021,1020,0007,0145	; 9902			ARX_SV.VMA,TIME/3T	;[346] GET BACK SAVED VMA
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-2
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 U 2651, 3735,3200,2007,0000,0020,0010,0150	; 9903	=1001	AR_SV.BR,J/PFT			;0=NO ACCESS (OR HERE ON INTRPT)
@@ -10526,7 +10746,8 @@ U 3724, 3202,4001,0040,7030,0022,5210,0010	; 9953			BR/AR,MB WAIT		;GET CST ENTR
 U 3202, 3206,3600,2007,7100,2040,5210,0140	; 9955			AR_AR AND CSMSK,J/NOTWR	;STRIP OLD AGE FROM CST
 						; 9956	;
 						; 9957	;	[303] Looks like it's writable.  Make one final check by looking
-						; 9958	;	at bit 18 of the CST entry, and abort if it's not set.; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-3
+						; 9958	;	at bit 18 of the CST entry, and abort if it's not set.
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 17-3
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 9959	;
@@ -10579,7 +10800,8 @@ U 3213, 3727,3240,4007,0000,2123,0013,0145	; 10005	WRHPT:	RSTR VMA_SV.VMA,AR_ARX
 U 3727, 3730,0001,0000,6100,3000,0110,0000	; 10006		P_P OR SC			;[333]COMBINE APMWC WITH PAGE #, K
 U 3730, 3731,0001,0000,0000,0020,2310,0010	; 10007		WR PT ENTRY			;UPDATE HARDWARE PAGE TABLE
 						; 10008	.ENDIF/NOCST
-						; 10009	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 18
+						; 10009	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 18
 ; IO.MIC[4,24]	15:27 17-Mar-86				KL-MODE PAGE REFILL LOGIC				
 
 						; 10010	;HERE WHEN MAP INFO WRITTEN INTO HARDWARE PAGE TABLE
@@ -10617,7 +10839,8 @@ U 3734, 0000,4001,0000,0000,0000,2103,0105	; 10037		SET ACCOUNT EN,RETURN0		;RET
 						; 10042	
 						; 10043	PFT:	BR/AR,VMA_SV.VMA,		;RESTORE BR & VMA
 U 3735, 0340,3200,0047,0000,0320,0005,0145	; 10044			SR DISP,J/CLEAN		;TAKE TRAP
-						; 10045	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19
+						; 10045	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19
 ; IO.MIC[4,24]	15:27 17-Mar-86				Page Fail Cleanup and Special Instruction Dispatch	
 
 						; 10046	.TOC	"Page Fail Cleanup and Special Instruction Dispatch"
@@ -10675,7 +10898,8 @@ U 0353, 3755,0001,0000,0000,0000,1610,0111	; 10096		SR_SRC,J/BACKD			;BACK DST, 
 						; 10098	;(14) HERE ON DST FILL FAILURE IN MOVRJ
 						; 10099	
 U 0354, 3776,3240,2005,0000,0020,1610,0004	; 10100		AR_DLEN,SR_#,#/4,J/STRPF4
-						; 10101	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19-1
+						; 10101	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 19-1
 ; IO.MIC[4,24]	15:27 17-Mar-86				Page Fail Cleanup and Special Instruction Dispatch	
 
 						; 10102	;(15) HERE ON PAGE FAILURE IN MAP INSTRUCTION.  RETURN PAGE FAIL WORD
@@ -10686,7 +10910,8 @@ U 0355, 0744,3200,2007,0000,0020,7310,0152	; 10104		AR_SV.PFW,SKP IO LEGAL,J/MAP
 						; 10107	
 U 0356, 2452,3240,0007,0000,0020,5510,0166	; 10108	XBLFIX:	GEN FM[T0],SKP AD0,J/XBLFRZ	;Test copy direction for backup
 						; 10109	=
-						; 10110	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 20
+						; 10110	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 20
 ; IO.MIC[4,24]	15:27 17-Mar-86				Page Fail Cleanup and Special Instruction Dispatch	
 
 						; 10111	;HERE ON ANY PAGE FAILURE OR PI REQUEST IN LONG INSTRUCTIONS
@@ -10714,7 +10939,8 @@ U 3743, 3744,3002,6004,0000,0016,3610,0000	; 10132			VMA_VMA+1,STORE		; STORE IT
 U 3744, 3745,3441,2000,0000,0012,3610,0000	; 10133		AR_0S,VMA_VMA+1,LOAD AR		;GET NEW PC ADDRESS FROM 503
 U 3745, 3746,4001,0000,0000,0000,0024,0020	; 10134		SET FLAGS_AR			;CLEAR ALL FLAGS
 U 3746, 0335,3200,0003,0000,0022,2110,0105	; 10135		AR_MEM,SET ACCOUNT EN,J/ARJMP	;NEW ADDRESS FOR PC
-						; 10136	; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 21
+						; 10136	
+; KL10 Microcode--Copyright (C) Digital Equipment Corp., 29 May 1986  V2A(442)		MICRO %37(277)		Page 21
 ; IO.MIC[4,24]	15:27 17-Mar-86				PAGE FAIL/INTERRUPT CLEANUP FOR SPECIAL INSTRUCTIONS	
 
 						; 10137	.TOC	"PAGE FAIL/INTERRUPT CLEANUP FOR SPECIAL INSTRUCTIONS"
