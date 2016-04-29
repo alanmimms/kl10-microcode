@@ -9,11 +9,11 @@ var _ = require('lodash');
 // 12-bit subwords of the CRAM and DRAM words, with the bits numbered
 // as PDP10s number them - MSB is bit #0.
 let WordBits = require('./wordbits.js');
-const XRAMWord = new WordBits(12, true);
+const XRAMWordBits = new WordBits(12, true);
 
 // The same, but for 24bit words we create to get a field that spans
 // two 12bit subwords.
-const XRAMDWord = new WordBits(24, true);
+const XRAMDWordBits = new WordBits(24, true);
 
 const defsString = `
 .SET/SNORM.OPT=1
@@ -58,17 +58,41 @@ ucode = ucode.filter(line => {
 var cramLines = ucode.filter(line => line.match(/^U/));
 var dramLines = ucode.filter(line => line.match(/^D/));
 
-console.log(`cram len=${cramLines.length}  dram len=${dramLines.length}`);
+//console.log(`cram len=${cramLines.length}  dram len=${dramLines.length}`);
 
 var cram = [];
 var dram = [];
+
+// These are indexed by microcode field. Each property here defines an
+// object whose properties are the field value names corresponding
+// values for that field.
+var cramDefs = {};
+var dramDefs = {};
+
+
+// A word of CRAM or DRAM. These are overloaded a bit with properties
+// for their address (a), their data (words), the field definitions
+// they have (defs), and each field defined for this particular type
+// of RAM (other names).
+class XRAMWord {
+
+  constructor(a, words, defs) {
+    this.a = a;
+    this.words = words;
+    this.defs = defs;
+  }
+
+  f(fieldName) {
+    return this[fieldName];
+  }
+}
 
 cramLines.forEach(l => {
   let m = l.match(/^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
   if (!m) {console.log("cram mismatch:", l); return}
   let a = parseInt(m[1], 8);
   let words = m.slice(2).map(w => parseInt(w, 8));
-  cram[a] = {a, words};
+  cram[a] = new XRAMWord(a, words, cramDefs);
 });
 
 //console.log("cram=", cram);
@@ -78,7 +102,7 @@ dramLines.forEach(l => {
   if (!m) {console.log("dram mismatch:", l); return}
   let a = parseInt(m[1], 8);
   let words = m.slice(2).map(w => parseInt(w, 8));
-  dram[a] = {a, words};
+  dram[a] = new XRAMWord(a, words, dramDefs);
 });
 
 //console.log("dram=", dram);
@@ -87,12 +111,6 @@ dramLines.forEach(l => {
 // Read DEFINE.MIC for all field definitions and the field values'
 // names.
 var fieldString = fs.readFileSync('define.mic').toString().split(/[\r\n\f]/);
-
-// These are indexed by microcode field. Each property here defines an
-// object whose properties are the field value names corresponding
-// values for that field.
-var cramDefs = {};
-var dramDefs = {};
 var fieldDefs = cramDefs;	// This points to one or the other as we go through define.mic
 
 var ramName = 'CRAM';
@@ -119,13 +137,13 @@ fieldString.forEach(f => {
 
     switch (dir) {
     case 'DCODE':
-      console.log(".DCODE");
+//      console.log(".DCODE");
       fieldDefs = dramDefs;
       ramName = 'DRAM';
       return;
 
     case 'UCODE':
-      console.log(".UCODE");
+//      console.log(".UCODE");
       fieldDefs = cramDefs;
       ramName = 'CRAM';
       return;
@@ -172,7 +190,7 @@ fieldString.forEach(f => {
   var m = f.match(/^([^.][^/=]*)\/=<(\d+)(?::(\d+))?>.*/);
 
   if (m) {
-    console.log(`${ramName}: ${m[1]}/=<${m[2]}${m[3]? ":" + m[3] : ''}>`);
+//    console.log(`${ramName}: ${m[1]}/=<${m[2]}${m[3]? ":" + m[3] : ''}>`);
     fn = m[1];
     fieldDefs[fn] = {s: +m[2]};
     if (m[3])
@@ -223,67 +241,10 @@ dram.forEach(
   )
 );
 
-// Define muxes.
-const muxes = 'ADA,ADB,AR,ARX,BR,BRX,MQ,FMADR,SCAD,SCADA,SCADA EN,SCADB'.split(/,/);
-
-// Define special purpose field <75:83> use cases. The special case
-// version of the field name will be selected/disassembled only when
-// its conditions apply.
-const special = `\
-AR0-8=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
-CLR=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
-ARL=COND/ARL IND, SPEC/ARL IND, MEM/ARL IND
-EXP TST=COND/REG CTL
-AR CTL=COND/REG CTL
-MQ CTL=COND/REG CTL
-PC FLAGS=COND/PCF_#
-FLAG CTL=SPEC/FLAG CTL
-SPEC INSTR=COND/SPEC INSTR
-FETCH=MEM/FETCH
-EA CALC=MEM/EA CALC
-SP MEM=SPEC/SP MEM CYCLE
-MREG FNC=MEM/REG FUNC
-MBOX CTL=COND/MBOX CTL
-MTR CTL=COND/MTR CTL
-EBUS CTL=COND/EBUS CTL
-DIAG FUNC=COND/DIAG FUNC
-ACB=FMADR/#B#
-AC#=FMADR/#B#,   FMADR/AC+#
-AC-OP=FMADR/#B#, FMADR/AC+#
-PXCT=CON/SR_#, CON/LOAD IR, MEM/A RD
-`;
-
-// NOTES:
-
-// READ DISPATCH uses J-FIELD | DRAM A to calculate next microaddress.
-// MODEL.B doesn't OR 0o40 (as is described in EBOX UD p. A-13), so
-// new microaddress on A READ dispatch is J-FIELD | DRAM A.
-
-// Object whose properties are FIELDS/VALUE strings which have as
-// value an array of the overloaded uses of the Special field they
-// enable.
-let enables = {};
-
-special.split(/\n/).filter(s => s.length > 0)
-// Each entry is overloaded=xxx, where xxx is a comma separated list
-// of FIELD/VALUE names that, when present in the microword, enable
-// the overloaded field.
-.forEach(s => {
-  const m = s.match(/([^=]+)=(.*)/);
-  if (m.length !== 3) {console.log(`spec mismatch on line '${s}'`); return;}
-  const ov = m[1];
-  const ena = m[2].split(/, */); // Array of FIELD/VALUE
-  if (!enables[ena]) enables[ena] = [];
-  enables[ena].push(ov);
-});
-
-//console.log('cram=', cram);
-
-
 // This can be used to extract a field's (specified by def) value from
 // either a cram or dram row.
 function getField(row, def) {
-  const bpsw = XRAMWord.bpw;
+  const bpsw = XRAMWordBits.bpw;
   const sw = Math.trunc(def.s / bpsw); // Word index of start bit
   const ew = Math.trunc(def.e / bpsw); // Word index of end bit
   const n = def.e - def.s + 1;	       // Number of bits wide
@@ -291,11 +252,11 @@ function getField(row, def) {
   if (sw === ew) {		// Simplest case: s and e are in same word
     const sb = def.s % bpsw;	// Start bit # within word
     const eb = def.e % bpsw;	// End bit # within word
-    return XRAMWord.getMiddleBits(row.words[sw], eb, n);
+    return XRAMWordBits.getMiddleBits(row.words[sw], eb, n);
   } else {
     const w24 = (row.words[sw] << bpsw) | row.words[ew];
     const eb = bpsw + def.e % bpsw;	// End bit # within dword
-    return XRAMDWord.getMiddleBits(w24, eb, n);
+    return XRAMDWordBits.getMiddleBits(w24, eb, n);
   }
 }
 
@@ -313,3 +274,11 @@ if (0) {
 		       `${getField(cram[0o142], d).toString(8)}`)
     );
 }
+
+module.exports.cram = cram;
+module.exports.cramDefs = cramDefs;
+
+module.exports.dram = dram;
+module.exports.dramDefs = dramDefs;
+
+module.exports.getField = getField;
