@@ -1,5 +1,5 @@
-'use strict';
 // Components of KL10-PV CPU's EBOX.
+'use strict';
 
 const _ = require('lodash');
 
@@ -23,7 +23,7 @@ const AlwaysTrue = () => true;
 let ebox = {};
 
 
-class NamedElement {
+class NamedElement = (superclass) => class extends superclass {
 
   constructor(name) {
     this.name = name;
@@ -37,7 +37,7 @@ class NamedElement {
 }
 
 
-let HasValueMixin = (superclass) => class extends superclass {
+class Value extends NamedElement(Object) {
 
   constructor(value) {
     this.value = value;
@@ -54,11 +54,11 @@ let HasValueMixin = (superclass) => class extends superclass {
 
 
 // Constant value so we can just call get() on constants.
-class Constant extends HasValueMixin(Object) {
+class Constant extends Value {
 }
 
 
-class Reg extends HasValueMixin(NamedElement) {
+class Reg extends Value {
 
   constructor(name) {
     super(name);
@@ -89,7 +89,7 @@ class Reg extends HasValueMixin(NamedElement) {
 }
 
 
-class Mux extends HasValueMixin(NamedElement) {
+class Mux extends Value {
 
   setControl(c) {
     this.control = c;
@@ -121,7 +121,7 @@ class RAM extends NamedElement {
 }
 
 
-class ALU extends HasValueMixin(NamedElement) {
+class ALU extends Value {
 }
 
 
@@ -158,6 +158,7 @@ let FM = new RAM('FM', 8 * 16);
 
 // Macro instruction we're working on at the moment.
 let IR = new Reg('IR');
+let IRAC = new Reg('IRAC');	// Saved AC field <9:12>
 
 let ARLL = new Reg('ARLL');
 let ARLR = new Reg('ARLR');
@@ -177,12 +178,10 @@ let VMA = new VMA_Logic('VMA Logic');
 let PC = new Reg('PC');
 let VMA_PREV = new Reg('VMA PREV');
 
-let ARMLL = new Mux('ARMLL');
-let ARMLR = new Mux('ARMLR');
+let ARML = new Mux('ARML');
 let ARMR = new Mux('ARMR');
 
-let ARM0LL = new Mux('ARM0LL');
-let ARM0LR = new Mux('ARM0LR');
+let ARM0L = new Mux('ARM0L');
 let ARM0R = new Mux('ARM0R');
 
 let ARXM = new Mux('ARXM');
@@ -287,7 +286,7 @@ ARM0.setInputs({
     return 0;			// TODO Remove this default
   });
 
-ARM.setInputs({
+ARML.setInputs({
   0: ARM0,
   1: CACHE_TO_EBOX,
   2: EBUS_TO_EBOX,
@@ -347,13 +346,13 @@ function step() {
   CR = cram[nextuPC];
   uPC = nextuPC;
 
-  // Walk through every register and calculate its new value based on
-  // current conditions. This flows data through muxes and connections
-  // plumbed to each register's input recursively. When this is all
-  // done we can then store the new value in each. We have to do it
-  // this way because some register values depend on others and we
-  // want them all to change like hardware would - on a clock edge,
-  // based on their input values at that instant.
+  // Walk through every register and calculate its new value. This
+  // flows data through muxes and connections plumbed to each
+  // register's input recursively. When it's all done we can store the
+  // new value in each. We have to do it this way because some
+  // register values depend on others and we want them all to change
+  // like hardware would - on a clock edge, based on their input
+  // values at that instant.
   ebox.reg.forEach(r => r.nextValue = r.input.get());
 
   // Now update them.
