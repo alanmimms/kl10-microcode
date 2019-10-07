@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const _ = require('lodash');
+const stampit = require('@stamp/it');
 
 // This WordBits instance allows us to extract bitfields from the
 // 12-bit subwords of the CRAM and DRAM words, with the bits numbered
@@ -15,7 +16,9 @@ const XRAMWordBits = new WordBits(12, true);
 // two 12bit subwords.
 const XRAMDWordBits = new WordBits(24, true);
 
-const defsString = `
+const defs = {};
+
+`.SET/TRUE=1            ; Define TRUE for ifStack
 .SET/SNORM.OPT=1
 .SET/XADDR=1
 .SET/EPT540=1
@@ -32,18 +35,15 @@ const defsString = `
 .SET/IPA20=1		;IPA20-L
 .SET/GFTCNV=0		;DO NOT DO GFLOAT CONVERSION INSTRUCTIONS [273]
 			;SAVES 75 WORDS. MONITOR WILL TAKE CARE OF THEM.
-`;
-
-var defs = {TRUE: 1};		// Define TRUE for ifStack
-
-defsString.split(/\n/).forEach(d => {
-  if (d.match(/^\s+;.*/)) return;
-  let f = d.split(/[/=]|\s+/);
-  if (f[0] !== '.SET') return;
-  defs[f[1]] = +f[2].trim();
+`.split(/\n/)
+  .forEach(d => {
+    const m = d.match(/\.SET\/([^=]+)=(\d+)/)
+    if (!m) return;
+    const [_, def, val] = m;
+    defs[def] = +val;
 });
 
-//console.log('Defs=', defs);
+console.log('Defs=', defs);
 
 var ucode = fs.readFileSync('klx.mcr')
   .toString()
