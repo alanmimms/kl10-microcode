@@ -2,6 +2,7 @@
 'use strict';
 
 const _ = require('lodash');
+const stampit = require('@stamp/it')
 
 let microcode = require('./microcode.js');
 let cram = microcode.cram;
@@ -9,6 +10,15 @@ let dram = microcode.dram;
 let cramDefs = microcode.cramDefs;
 let dramDefs = microcode.dramDefs;
 let getField = microcode.getField;
+
+
+// Canonical register stamp we compose with other register specific
+// behaviors.
+const Reg = stampit({
+  init(name, {args}) {
+    this.name = name;
+  },
+});
 
 
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
@@ -23,18 +33,18 @@ const AlwaysTrue = () => true;
 let ebox = {};
 
 
-class NamedElement = (superclass) => class extends superclass {
+// class NamedElement = (superclass) => class extends superclass {
 
-  constructor(name) {
-    this.name = name;
+//   constructor(name) {
+//     this.name = name;
 
-    // Add this instance to an array in 'ebox' property whose name is
-    // our class name.
-    this.isa = this.constructor.name.toLowerCase();
-    if (!ebox[this.isa]) ebox[this.isa] = [];
-    ebox[this.isa].push(this);
-  }
-}
+//     // Add this instance to an array in 'ebox' property whose name is
+//     // our class name.
+//     this.isa = this.constructor.name.toLowerCase();
+//     if (!ebox[this.isa]) ebox[this.isa] = [];
+//     ebox[this.isa].push(this);
+//   }
+// }
 
 
 class Value extends NamedElement(Object) {
@@ -58,7 +68,7 @@ class Constant extends Value {
 }
 
 
-class Reg extends Value {
+class OldReg extends Value {
 
   constructor(name) {
     super(name);
