@@ -2,13 +2,13 @@
 
 // Read and digest the microcode from the klx.mcr listing file.
 
-var fs = require('fs');
-var _ = require('lodash');
+const fs = require('fs');
+const _ = require('lodash');
 
 // This WordBits instance allows us to extract bitfields from the
 // 12-bit subwords of the CRAM and DRAM words, with the bits numbered
 // as PDP10s number them - MSB is bit #0.
-let WordBits = require('./wordbits.js');
+const WordBits = require('./wordbits.js');
 const XRAMWordBits = new WordBits(12, true);
 
 // The same, but for 24bit words we create to get a field that spans
