@@ -21,6 +21,51 @@ const Reg = stampit({
 });
 
 
+const CPUState = stampit({
+  props: {
+    craloc: 0,
+    ustack: [],
+
+    cram: [],
+    dram: [],
+
+    pc: 0,
+    ir: 0,
+    irac: 0,
+
+    vma: 0,
+    vmaheld: 0,
+    prevsect: 0,
+    adrbreak: 0,
+
+    ad: 0,
+    ar: 0,
+    br: 0,
+    sh: 0,
+    arx: 0,
+    adx: 0,
+    brx: 0,
+    mq: 0,
+
+    fe: 0,
+    sc: 0,
+
+    curblk: 0,
+    prevblk: 0,
+
+    fm: [
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ],
+  },
+
+  init() {
+  },
+
+});
+
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
 const mask = _.range(36).map(n => Math.pow(2, 35 - n));
 
