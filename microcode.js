@@ -43,7 +43,7 @@ const defs = {};
     defs[def] = +val;
 });
 
-console.log('Defs=', defs);
+// console.log('Defs=', defs);
 
 var ucode = fs.readFileSync('klx.mcr')
   .toString()
@@ -261,7 +261,7 @@ function getField(row, def) {
 }
 
 
-if (0) {
+if (1) {
   console.log("cram[0142]=", cram[0o142].words.map(w => _.padStart(w.toString(8), 4, '0')));
 
   [
