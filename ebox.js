@@ -30,6 +30,7 @@ const CPUState = stampit({
     dram: [],
 
     pc: 0,
+    flags: 0,
     ir: 0,
     irac: 0,
 
