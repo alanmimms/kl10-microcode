@@ -158,7 +158,6 @@ function readAndHandleDirectives(cramDefs, dramDefs) {
   // Delete unused fields in CRAM
   delete cramDefs.U0;
   delete cramDefs.U21;
-  delete cramDefs.U23;
   delete cramDefs.U42;
   delete cramDefs.U45;
   delete cramDefs.U48;
@@ -205,6 +204,8 @@ function cram_${octal4(ma)} {
 /*
  uW = ${octal4(mw, cramDefs.bpw)}
  J = ${octal4(getField(mw, cramDefs, 'J'))};
+ SPEC = ${octal4(getField(mw, cramDefs, 'SPEC'))}
+ # = ${octal4(getField(mw, cramDefs, '#'))}
 */`;
     return header + code  + trailer;
   }).join(`\
