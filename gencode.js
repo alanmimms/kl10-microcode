@@ -7,34 +7,23 @@
 
 const fs = require('fs');
 const _ = require('lodash');
+const util = require('util');
 const stampit = require('@stamp/it');
-const WordBits = require('./wordbits.js');
 
 
-// This WordBits instance allows us to extract bitfields from the
-// 12-bit subwords of the CRAM and DRAM words, with the bits numbered
-// as PDP10s number them - MSB is bit #0.
-const CRAMWordBits = new WordBits(12, true);
+const cramDefs = {bpw: 84};
+const dramDefs = {bpw: 12};
 
-// The same, but for 24bit words we create to get a field that spans
-// two 12bit subwords.
-const DRAMWordBits = new WordBits(24, true);
 
-// A word of CRAM or DRAM. These are overloaded a bit with properties
-// for their address (a), their data (words), the field definitions
-// they have (defs), and each field defined for this particular type
-// of RAM (other names).
-class XRAMWord {
-
-  constructor(a, words, defs) {
-    this.a = a;
-    this.words = words;
-    this.defs = defs;
-  }
-
-  f(fieldName) {
-    return this[fieldName];
-  }
+// Extract from BigInt word `w` a PDP10 bit-numbering field starting
+// at bit `s` and going through bit `e` (inclusive) in a word of
+// `wordSize` bits.
+function extract(w, s, e, wordSize) {
+  // E.g., extract s=1, e=3 with wordSize=10
+  // 0123456789
+  // xFFFxxxxxx
+  return (BigInt.asUintN(wordSize, w) >> BigInt(wordSize - e - 1)) &
+    ((1n << BigInt(e - s + 1)) - 1n);
 }
 
 
@@ -180,7 +169,6 @@ function readAndHandleDirectives(cramDefs, dramDefs) {
 
 function parse(lines, re) {
   const ram = [];
-  const defs = {};
 
   // This has to be a forEach() loop because the RAM is declared in
   // random address order so map() is not applicable.
@@ -188,39 +176,44 @@ function parse(lines, re) {
     const m = line.match(re);
     if (!m) return;
     const a = parseInt(m[1], 8);
-    const words = m.slice(2).map(w => parseInt(w, 8));
-    ram[a] = new XRAMWord(a, words, defs);
+    ram[a] = BigInt('0o' + m.slice(2).join(''));
   });
 
-  return [ram, defs];
+  return ram;
 }
 
 
-function makeFieldsSymbolic(row, defs, fn) {
-  let valSyms = _.invert(defs[fn]);
-  let fVal = getField(row, defs[fn]);
-  if (valSyms[fVal]) fVal = valSyms[fVal];
-  row[fn] = fVal;
+// Extract named `field` (as specified in `defs`) from microword `mw`
+// and return it as a simple integer (not a BigInt).
+function getField(mw, defs, field) {
+  const def = defs[field];
+  return Number(extract(mw, def.s, def.e, defs.bpw));
 }
 
 
-// This can be used to extract a field's (specified by def) value from
-// either a cram or dram row.
-function getField(row, def) {
-  const bpsw = CRAMWordBits.bpw;
-  const sw = Math.trunc(def.s / bpsw); // Word index of start bit
-  const ew = Math.trunc(def.e / bpsw); // Word index of end bit
-  const n = def.e - def.s + 1;	       // Number of bits wide
+function generateAll(cram, cramDefs, dram, dramDefs) {
+  const allCode = _.range(0o4000).map(ma => {
+    const mw = cram[ma];
+    const header = `\
+function cram_${_.padStart(ma.toString(8), 4, '0')} {
+`;
+    const trailer = `
+}
+`;
 
-  if (sw === ew) {		// Simplest case: s and e are in same word
-    const sb = def.s % bpsw;	// Start bit # within word
-    const eb = def.e % bpsw;	// End bit # within word
-    return CRAMWordBits.getMiddleBits(row.words[sw], eb, n);
-  } else {
-    const w24 = (row.words[sw] << bpsw) | row.words[ew];
-    const eb = bpsw + def.e % bpsw;	// End bit # within dword
-    return DRAMWordBits.getMiddleBits(w24, eb, n);
-  }
+    const oneMore = 1n << BigInt(cramDefs.bpw);
+    const code = `\
+/*
+ uW = ${(mw | oneMore).toString(8).slice(1).match(/(.{4})/g).join(' ')}
+ J = ${getField(mw, cramDefs, 'J').toString(8)};
+*/`;
+    return header + code  + trailer;
+  }).join(`\
+
+
+`);
+  
+  fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
 }
 
 
@@ -231,45 +224,15 @@ function main() {
     fs.readFileSync('klx.mcr').toString().split(/[\n\r\f]+/),
     line => !line.match(/^\s+END\s*$/));
 
-  // The xram arrays are the XRAMWord representation of the microcode.
+  // The xram arrays are the BigInt representation of the microcode.
   //
   // The xramDefs objects are indexed by microcode field. Each property
   // there defines an object whose properties are the field value names
   // corresponding values for that field.
-  const [cram, cramDefs] = parse(ucodeListing,
-                                 /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
-  // Fill each CRAM word's entry with fieldName: values for every field.
-  cram.forEach(
-    row => Object.getOwnPropertyNames(cramDefs).forEach(
-      fn => makeFieldsSymbolic(row, cramDefs, fn)
-    )
-  );
-
-  // Same for DRAM
-  const [dram, dramDefs] = parse(ucodeListing,
-                                 /^D\s+(\d+), (\d+),(\d+).*/);
-  dram.forEach(
-    row => Object.getOwnPropertyNames(dramDefs).forEach(
-      fn => makeFieldsSymbolic(row, dramDefs, fn)
-    )
-  );
-
+  const cram = parse(ucodeListing, /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
+  const dram = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/);
   readAndHandleDirectives(cramDefs, dramDefs);
-
-
-  if (1) {
-    console.log("cram[0142]=", cram[0o142].words.map(w => _.padStart(w.toString(8), 4, '0')));
-
-    [
-      {s:  0, e:  8},
-      {s: 15, e: 23},
-      {s:  9, e: 20}
-    ]
-      .forEach(
-        d => console.log(`getField(0142, ${d.s}/${d.e}) = ` +
-                         `${getField(cram[0o142], d).toString(8)}`)
-      );
-  }
+  generateAll(cram, cramDefs, dram, dramDefs);
 }
 
 
