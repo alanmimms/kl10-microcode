@@ -195,17 +195,16 @@ function generateAll(cram, cramDefs, dram, dramDefs) {
   const allCode = _.range(0o4000).map(ma => {
     const mw = cram[ma];
     const header = `\
-function cram_${_.padStart(ma.toString(8), 4, '0')} {
+function cram_${octal4(ma)} {
 `;
     const trailer = `
 }
 `;
 
-    const oneMore = 1n << BigInt(cramDefs.bpw);
     const code = `\
 /*
- uW = ${(mw | oneMore).toString(8).slice(1).match(/(.{4})/g).join(' ')}
- J = ${getField(mw, cramDefs, 'J').toString(8)};
+ uW = ${octal4(mw, cramDefs.bpw)}
+ J = ${octal4(getField(mw, cramDefs, 'J'))};
 */`;
     return header + code  + trailer;
   }).join(`\
@@ -233,6 +232,22 @@ function main() {
   const dram = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/);
   readAndHandleDirectives(cramDefs, dramDefs);
   generateAll(cram, cramDefs, dram, dramDefs);
+}
+
+
+// For a BigInt parameter `n`, return its value decoded as groups of
+// four octal digits with leading zeroes. For Number `n`, just return
+// leading zero octal digits for the specified bits-per-word size
+// `bpw`.
+function octal4(n, bpw = 12) {
+
+  if (typeof n === 'bigint') {
+    const oneMore = 1n << BigInt(bpw);
+    return (n | oneMore).toString(8).slice(1).match(/(.{4})/g).join(' ');
+  } else {
+    const oneMore = 1 << bpw;
+    return (n | oneMore).toString(8).slice(1);
+  }
 }
 
 
