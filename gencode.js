@@ -13,6 +13,23 @@ const stampit = require('@stamp/it');
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
+var cram;
+var dram;
+
+function readMicroAssemblyListing() {
+  // Read our microcode assembly listing so we can suck out its brainz.
+  const ucodeListing = _.takeWhile(
+    fs.readFileSync('klx.mcr').toString().split(/[\n\r\f]+/),
+    line => !line.match(/^\s+END\s*$/));
+
+  // The xram arrays are the BigInt representation of the microcode.
+  //
+  // The xramDefs objects are indexed by microcode field. Each property
+  // there defines an object whose properties are the field value names
+  // corresponding values for that field.
+  cram = parse(ucodeListing, /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
+  dram = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/);
+}
 
 
 // Extract from BigInt word `w` a PDP10 bit-numbering field starting
@@ -27,37 +44,8 @@ function extract(w, s, e, wordSize) {
 }
 
 
-const conditionals = {};
-
-`\
-.SET/TRUE=1            ; Define TRUE for ifStack
-.SET/SNORM.OPT=1
-.SET/XADDR=1
-.SET/EPT540=1
-.SET/LONG.PC=1
-.SET/MODEL.B=1
-.SET/KLPAGE=1
-.SET/FPLONG=0
-.SET/BLT.PXCT=1
-.SET/SMP=0		;No SMP (DOES RPW instead of RW FOR DPB, IDPB)
-.SET/EXTEXP=1
-.SET/MULTI=1		;DOES NOT CACHE PAGE TABLE DATA
-.SET/NOCST=1		;DOES NOT DO AGE UPDATES, ETC. WITH CST = 0
-.SET/OWGBP=1		;ONE WORD GLOBAL BYTE POINTERS
-.SET/IPA20=1		;IPA20-L
-.SET/GFTCNV=0		;DO NOT DO GFLOAT CONVERSION INSTRUCTIONS [273]
-			;SAVES 75 WORDS. MONITOR WILL TAKE CARE OF THEM.
-`.split(/\n/)
-  .forEach(d => {
-    const m = d.match(/\.SET\/([^=]+)=(\d+)/)
-    if (!m) return;
-    const [_, def, val] = m;
-    conditionals[def] = +val;
-  });
-
-
 // Read DEFINE.MIC for all field definitions and the names of field values.
-function readAndHandleDirectives(cramDefs, dramDefs) {
+function readAndHandleDirectives() {
   // These point to one or the other as we go through define.mic.
   let fieldDefs = cramDefs;
   let ramName = 'CRAM';
@@ -65,6 +53,36 @@ function readAndHandleDirectives(cramDefs, dramDefs) {
   const ifStack = ['TRUE'];
   let fn = null;
   let widest = 0;
+
+  const conditionals = `\
+    .SET/TRUE=1                 ; Define TRUE for ifStack
+    .SET/SNORM.OPT=1
+    .SET/XADDR=1
+    .SET/EPT540=1
+    .SET/LONG.PC=1
+    .SET/MODEL.B=1
+    .SET/KLPAGE=1
+    .SET/FPLONG=0
+    .SET/BLT.PXCT=1
+    .SET/SMP=0                  ;No SMP (DOES RPW instead of RW FOR DPB, IDPB)
+    .SET/EXTEXP=1
+    .SET/MULTI=1		;DOES NOT CACHE PAGE TABLE DATA
+    .SET/NOCST=1		;DOES NOT DO AGE UPDATES, ETC. WITH CST = 0
+    .SET/OWGBP=1		;ONE WORD GLOBAL BYTE POINTERS
+    .SET/IPA20=1		;IPA20-L
+    .SET/GFTCNV=0		;DO NOT DO GFLOAT CONVERSION INSTRUCTIONS [273]
+                                ;SAVES 75 WORDS. MONITOR WILL TAKE CARE OF THEM.
+`.split(/\n/)
+    .reduce((cur, d) => {
+      const m = d.match(/^\s*\.SET\/([^=]+)=(\d+)/)
+
+      if (m) {
+        const [ , def, val] = m;
+        cur[def] = +val;
+      }
+
+      return cur;
+    }, {});
 
   fs.readFileSync('define.mic')
     .toString()
@@ -190,7 +208,7 @@ function getField(mw, defs, field) {
 }
 
 
-function handleSPEC(mw, cramDefs) {
+function handleSPEC(mw) {
   const SPEC = getField(mw, cramDefs, 'SPEC');
   const code = [
     `// SPEC = ${octal4(SPEC)}`,
@@ -215,15 +233,14 @@ function handleSPEC(mw, cramDefs) {
 }
 
 
-function generateAll(cram, cramDefs, dram, dramDefs) {
+function generateAll() {
   const allCode = [
     `'use strict;'`,
-    `const EBOX = require './ebox.js';`,
   ].concat(_.range(0o4000).map(ma => {
     const mw = cram[ma];
 
     const headerCode = [
-      `  EBOX.computeCPUState(cram, cramDefs, dram, dramDefs);`,
+      `  cpu.computeCPUState();`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
@@ -232,7 +249,7 @@ function generateAll(cram, cramDefs, dram, dramDefs) {
     const stores = {};              // Used by store() and storing process.
     const storesConstsCode = [];
 
-    const specCode = handleSPEC(mw, cramDefs);
+    const specCode = handleSPEC(mw);
 
     const tailCall = [];
 
@@ -296,21 +313,9 @@ ${[].concat(
 
 
 function main() {
-
-  // Read our microcode assembly listing so we can suck out its brainz.
-  const ucodeListing = _.takeWhile(
-    fs.readFileSync('klx.mcr').toString().split(/[\n\r\f]+/),
-    line => !line.match(/^\s+END\s*$/));
-
-  // The xram arrays are the BigInt representation of the microcode.
-  //
-  // The xramDefs objects are indexed by microcode field. Each property
-  // there defines an object whose properties are the field value names
-  // corresponding values for that field.
-  const cram = parse(ucodeListing, /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
-  const dram = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/);
-  readAndHandleDirectives(cramDefs, dramDefs);
-  generateAll(cram, cramDefs, dram, dramDefs);
+  readMicroAssemblyListing();
+  readAndHandleDirectives();
+  generateAll();
 }
 
 
