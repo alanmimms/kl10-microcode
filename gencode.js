@@ -190,24 +190,61 @@ function getField(mw, defs, field) {
 }
 
 
+function handleSPEC(mw, cramDefs) {
+  const SPEC = getField(mw, cramDefs, 'SPEC');
+  const code = [
+    `// SPEC = ${octal4(SPEC)}`,
+  ];
+
+  switch (SPEC) {
+  case 0o15:                    // LOAD PC
+    code.push(`cpu.PC = cpu.AR & 0o37777777;`);
+    break;
+
+  case 0o24:                    // FLAG CTL
+    const func = getField(mw, cramDefs, '#');
+
+    if (func === 0o20) {
+      code.push(`cpu.flags = cpu.AR >>> (36 - 13);`);
+    }
+
+    break;
+  }
+
+  return code;
+}
+
+
 function generateAll(cram, cramDefs, dram, dramDefs) {
   const allCode = _.range(0o4000).map(ma => {
     const mw = cram[ma];
     const header = `\
-function cram_${octal4(ma)} {
+function cram_${octal4(ma)}(cpu) {
 `;
-    const trailer = `
+    const tailCall = [];
+    let code = [
+      `\
+  /*
+   uW = ${octal4(mw, cramDefs.bpw)}
+   J = ${octal4(getField(mw, cramDefs, 'J'))};
+   # = ${octal4(getField(mw, cramDefs, '#'))}
+  */`,
+    ];
+
+    code = code.concat(handleSPEC(mw, cramDefs));
+
+    if (1) {                    // Constant next CRAM address
+      // XXX This is temporary to show the concept, but it is also wrong.
+      const nextuPC = getField(mw, cramDefs, 'J');
+
+      tailCall.push(`cram_${octal4(nextuPC)}(cpu);`);
+    } else {                    // Compute next CRAM address
+      tailCall.push(`// XXX calculated tailCall not yet implemented!`);
+    }
+
+    return header + code.concat(tailCall).join('\n  ') + `
 }
 `;
-
-    const code = `\
-/*
- uW = ${octal4(mw, cramDefs.bpw)}
- J = ${octal4(getField(mw, cramDefs, 'J'))};
- SPEC = ${octal4(getField(mw, cramDefs, 'SPEC'))}
- # = ${octal4(getField(mw, cramDefs, '#'))}
-*/`;
-    return header + code  + trailer;
   }).join(`\
 
 

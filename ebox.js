@@ -23,38 +23,38 @@ const Reg = stampit({
 
 const CPUState = stampit({
   props: {
-    craloc: 0,
-    ustack: [],
+    CRALOC: 0,
+    USTACK: [],
 
-    cram: [],
-    dram: [],
+    CRAM: [],
+    DRAM: [],
 
-    pc: 0,
-    flags: 0,
-    ir: 0,
-    irac: 0,
+    PC: 0,
+    FLAGS: 0,
+    IR: 0,
+    IRAC: 0,
 
-    vma: 0,
-    vmaheld: 0,
-    prevsect: 0,
-    adrbreak: 0,
+    VMA: 0,
+    VMAHELD: 0,
+    PREVSECT: 0,
+    ADRBREAK: 0,
 
-    ad: 0,
-    ar: 0,
-    br: 0,
-    sh: 0,
-    arx: 0,
-    adx: 0,
-    brx: 0,
-    mq: 0,
+    AD: 0,
+    AR: 0,
+    BR: 0,
+    SH: 0,
+    ARX: 0,
+    ADX: 0,
+    BRX: 0,
+    MQ: 0,
 
-    fe: 0,
-    sc: 0,
+    FE: 0,
+    SC: 0,
 
-    curblk: 0,
-    prevblk: 0,
+    CURBLK: 0,
+    PREVBLK: 0,
 
-    fm: _.range(4).map(x => Array(16).fill(0)),
+    FM: _.range(4).map(x => Array(16).fill(0)),
   },
 
   init() {
@@ -71,7 +71,7 @@ const AlwaysTrue = () => true;
 
 // Object containing all of our components so we can iterate to set
 // them up for each cycle.
-let ebox = {};
+const ebox = {};
 
 
 // class NamedElement = (superclass) => class extends superclass {
@@ -197,83 +197,83 @@ class EBUS_Interface extends NamedElement {
 
 
 // Note DRAM addressing is complicated. See EBOX UD p. 1-7.
-let DRAM = new RAM('DRAM', 512);
-let DR;
+const DRAM = new RAM('DRAM', 512);
+const DR;
 
 // Note CRAM addressing is complicated.
-let CRAM = new RAM('CRAM', 2048);
-let CR;
+const CRAM = new RAM('CRAM', 2048);
+const CR;
 
 // Fast memory is our 8 blocks of 16 ACs each.
-let FM = new RAM('FM', 8 * 16);
+const FM = new RAM('FM', 8 * 16);
 
 // Macro instruction we're working on at the moment.
-let IR = new Reg('IR');
-let IRAC = new Reg('IRAC');	// Saved AC field <9:12>
+const IR = new Reg('IR');
+const IRAC = new Reg('IRAC');	// Saved AC field <9:12>
 
-let ARLL = new Reg('ARLL');
-let ARLR = new Reg('ARLR');
-let ARR = new Reg('ARR');
-let ARX = new Reg('ARX');
-let BR = new Reg('BR');
-let BRX = new Reg('BRX');
-let MQ = new Reg('MQ');
-let FE = new Reg('FE');
-let SC = new Reg('SC');
-let SH_MUX = new Mux('SH MUX');
-let SH = new Shifter('SH', SC);
+const ARLL = new Reg('ARLL');
+const ARLR = new Reg('ARLR');
+const ARR = new Reg('ARR');
+const ARX = new Reg('ARX');
+const BR = new Reg('BR');
+const BRX = new Reg('BRX');
+const MQ = new Reg('MQ');
+const FE = new Reg('FE');
+const SC = new Reg('SC');
+const SH_MUX = new Mux('SH MUX');
+const SH = new Shifter('SH', SC);
 
-let ADR_BREAK = new Reg('ADR BREAK');
-let VMA = new VMA_Logic('VMA Logic');
+const ADR_BREAK = new Reg('ADR BREAK');
+const VMA = new VMA_Logic('VMA Logic');
 
-let PC = new Reg('PC');
-let VMA_PREV = new Reg('VMA PREV');
+const PC = new Reg('PC');
+const VMA_PREV = new Reg('VMA PREV');
 
-let ARML = new Mux('ARML');
-let ARMR = new Mux('ARMR');
+const ARML = new Mux('ARML');
+const ARMR = new Mux('ARMR');
 
-let ARM0L = new Mux('ARM0L');
-let ARM0R = new Mux('ARM0R');
+const ARM0L = new Mux('ARM0L');
+const ARM0R = new Mux('ARM0R');
 
-let ARXM = new Mux('ARXM');
-let ADA = new Mux('ADA');
-let ADB = new Mux('ADB');
-let ADXA = new Mux('ADXA');
-let ADXB = new Mux('ADXB');
+const ARXM = new Mux('ARXM');
+const ADA = new Mux('ADA');
+const ADB = new Mux('ADB');
+const ADXA = new Mux('ADXA');
+const ADXB = new Mux('ADXB');
 
-let ARMMhi = new Mux('ARMMhi');
-let ARMMlo = new Mux('ARMMlo');
-let ARMM = new Concatenation(ARMMhi, ARMMlo);
+const ARMMhi = new Mux('ARMMhi');
+const ARMMlo = new Mux('ARMMlo');
+const ARMM = new Concatenation(ARMMhi, ARMMlo);
 
-let MQM = new Mux('MQM');
+const MQM = new Mux('MQM');
 
-let VMA_ALU = new VMA_ALU_Logic('VMA ALU');
-let VMA_AD = new Mux('VMA AD');
-let VMA_PREV_OR_PC = new Mux('VMA HELD OR PC', [VMA_PREV, PC]);
-let SCD_TRAP = new Mux('SCD TRAP');
+const VMA_ALU = new VMA_ALU_Logic('VMA ALU');
+const VMA_AD = new Mux('VMA AD');
+const VMA_PREV_OR_PC = new Mux('VMA HELD OR PC', [VMA_PREV, PC]);
+const SCD_TRAP = new Mux('SCD TRAP');
 
-let SCM = new Mux('SCM');
-let SCAD_A = new Mux('SCAD A');
-let SCAD_B = new Mux('SCAD B');
-let SCAD = new SCAD_Logic('SCAD', [SCAD_A, SCAD_B]);
+const SCM = new Mux('SCM');
+const SCAD_A = new Mux('SCAD A');
+const SCAD_B = new Mux('SCAD B');
+const SCAD = new SCAD_Logic('SCAD', [SCAD_A, SCAD_B]);
 
-let CURRENT_BLOCK = new Reg('CURRENT BLOCK');
-let PREVIOUS_BLOCK = new Reg('PREVIOUS BLOCK');
-let FMPREV = new Mux('FM PREV');
-let FMADR = new Mux('FMADR');
-let FMBLK = new Mux('FMBLK');
+const CURRENT_BLOCK = new Reg('CURRENT BLOCK');
+const PREVIOUS_BLOCK = new Reg('PREVIOUS BLOCK');
+const FMPREV = new Mux('FM PREV');
+const FMADR = new Mux('FMADR');
+const FMBLK = new Mux('FMBLK');
 
-let AD = new ALU('AD', [ADA, ADB]);
-let ADX = new ALU('ADX', [ADXA, ADXB]);
+const AD = new ALU('AD', [ADA, ADB]);
+const ADX = new ALU('ADX', [ADXA, ADXB]);
 
-let EBOX_TO_CACHE = new EBUS_Interface('EBOX -> CACHE');
-let CACHE_TO_EBOX = new EBUS_Interface('CACHE -> EBOX');
+const EBOX_TO_CACHE = new EBUS_Interface('EBOX -> CACHE');
+const CACHE_TO_EBOX = new EBUS_Interface('CACHE -> EBOX');
 
-let EBOX_TO_EBUS = new EBUS_Interface('EBOX -> EBUS');
-let EBUS_TO_EBOX = new EBUS_Interface('EBUS -> EBOX');
+const EBOX_TO_EBUS = new EBUS_Interface('EBOX -> EBUS');
+const EBUS_TO_EBOX = new EBUS_Interface('EBUS -> EBOX');
 
-let EBOX_TO_MBUS = new EBUS_Interface('EBOX -> MBUS');
-let MBUS_TO_EBOX = new EBUS_Interface('MBUS -> EBOX');
+const EBOX_TO_MBUS = new EBUS_Interface('EBOX -> MBUS');
+const MBUS_TO_EBOX = new EBUS_Interface('MBUS -> EBOX');
 
 
 const UNDEFINED = new Constant(0);
