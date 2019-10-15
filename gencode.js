@@ -216,22 +216,25 @@ function handleSPEC(mw, cramDefs) {
 
 
 function generateAll(cram, cramDefs, dram, dramDefs) {
-  const allCode = _.range(0o4000).map(ma => {
+  const allCode = [
+    `'use strict;'`,
+    `const EBOX = require './ebox.js';`,
+  ].concat(_.range(0o4000).map(ma => {
     const mw = cram[ma];
-    const header = `\
-function cram_${octal4(ma)}(cpu) {
-`;
-    const tailCall = [];
-    let code = [
-      `\
-  /*
-   uW = ${octal4(mw, cramDefs.bpw)}
-   J = ${octal4(getField(mw, cramDefs, 'J'))};
-   # = ${octal4(getField(mw, cramDefs, '#'))}
-  */`,
+
+    const headerCode = [
+      `  EBOX.computeCPUState(cram, cramDefs, dram, dramDefs);`,
+      `// uW = ${octal4(mw, cramDefs.bpw)}`,
+      `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
+      `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
     ];
 
-    code = code.concat(handleSPEC(mw, cramDefs));
+    const stores = {};              // Used by store() and storing process.
+    const storesConstsCode = [];
+
+    const specCode = handleSPEC(mw, cramDefs);
+
+    const tailCall = [];
 
     if (1) {                    // Constant next CRAM address
       // XXX This is temporary to show the concept, but it is also wrong.
@@ -242,13 +245,51 @@ function cram_${octal4(ma)}(cpu) {
       tailCall.push(`// XXX calculated tailCall not yet implemented!`);
     }
 
-    return header + code.concat(tailCall).join('\n  ') + `
+    // VMA
+    switch (getField(mw, cramDefs, 'VMA')) {
+    case 0:                     // VMA (noop)
+      break;
+    case 1:                     // PC or LOAD (;MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD)
+      store('VMA', 'cpu.PC');
+      break;
+    case 2:                     // PC+1
+      store('VMA', 'cpu.PC+1');
+      break;
+    case 3:                     // AD (ENTIRE VMA, INCLUDING SECTION)
+      store('VMA', 'cpu.AD');
+      break;
+    }
+
+    // Store back the changes we made this cycle into CPU state.
+    const storeBackCode = Object.keys(stores)
+          .map(dest => `cpu.${dest} = ${dest}`);
+    
+    return `\
+function cram_${octal4(ma)}(cpu) {
+${[].concat(
+  headerCode,
+  storesConstsCode,
+  specCode,
+  storeBackCode,
+  tailCall)
+  .join('\n  ')}
 }
 `;
-  }).join(`\
 
-
-`);
+    // When a `cram_xxxx` function needs to modify a CPU state
+    // register, call this with its name. This will note that we need
+    // to store back the value of the modification and it will declare
+    // a const for `dest` to hold the result until it is stored back
+    // at the end of the function. This allows many references to a
+    // CPU state register that all receive the same value (start of
+    // this cycle) and the value will then be updated at the end of
+    // the cycle with the value held in the const.
+    function store(dest, value) {
+      if (stores[dest]) console.log(`CODING ERROR: multiple stores to ${dest}`);
+      stores[dest] = value;
+      storesConstsCode.push(`const ${dest} = ${value};`);
+    }
+  })).join(`\n\n`);
   
   fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
 }
