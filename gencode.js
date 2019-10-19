@@ -8,7 +8,7 @@
 const fs = require('fs');
 const _ = require('lodash');
 const util = require('util');
-const stampit = require('@stamp/it')
+const StampIt = require('@stamp/it')
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
@@ -323,16 +323,35 @@ ${[].concat(
 }
 
 
-// Canonical register stamp we compose with other register specific
-// behaviors.
-const Reg = stampit({
-  init(name, {args}) {
-    this.name = name;
-  },
+// Canonical register and mux stamps we compose with other device
+// specific behaviors.
+const HasSubField = StampIt({
+  name: 'HasSubField',
+  s: 0,
+  e: 0,
+  
 });
+const Reg = StampIt({name: 'Reg'});
+const Mux = StampIt({name: 'Mux'});
 
 
-const CPUState = stampit({
+// class Value extends NamedElement(Object) {
+
+//   constructor(value) {
+//     this.value = value;
+//   }
+
+//   get() {
+//     return this.value;
+//   }
+
+//   getSubField(pos, end) {
+//     return Math.trunc(this.get() / mask[pos]) % mask[end];
+//   }
+// }
+
+
+const CPUState = StampIt({
   props: {
     CRALOC: 0,
     USTACK: [],
