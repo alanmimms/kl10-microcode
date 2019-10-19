@@ -2,6 +2,15 @@
 # yarn lockfile v1
 
 
+"@stamp/arg-over-prop@^1.0.4":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@stamp/arg-over-prop/-/arg-over-prop-1.0.4.tgz#dd2dbf67beb9880d43f7d52c30232c97b968f462"
+  integrity sha512-+rrLW7GxSpp7hy96ta0ivVnFsdPmUUqkD6X5ZDrHg8M2YXpXfiTdlGqmA3PMEA181Dqa683qhkY/u0GUmGLsRQ==
+  dependencies:
+    "@stamp/compose" "^1.0.2"
+    "@stamp/core" "^1.0.1"
+    "@stamp/is" "^1.0.0"
+
 "@stamp/compose@^1.0.2":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@stamp/compose/-/compose-1.0.2.tgz#030ecf70e8f3dca042a2b34a15d6dc28fb07f9c6"

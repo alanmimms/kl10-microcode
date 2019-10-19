@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@stamp/arg-over-prop": "^1.0.4",
     "@stamp/it": "^1.1.0",
     "lodash": "^4.7.0"
   }
