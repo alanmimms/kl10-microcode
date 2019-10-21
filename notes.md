@@ -15,3 +15,28 @@
 * Invoked for each cycle EBox drives changes on E/M interface
 * Provides reply stimulus on E/M interface back to EBox
 
+
+# Stamps
+
+* EBOXUnit
+  * get()
+
+* BitField
+  * s: 0
+  * e: 0
+
+* CRAMField(EBOXUnit, BitField)
+
+* Mux(EBOXUnit)
+  * control: CRAMField
+  * inputs: [ EBOXUnit ... ]
+  * Subfields indexed by name
+
+* Register(EBOXUnit, HasSubField)
+  * update()
+  * value
+  * Subfields indexed by name
+
+* LogicUnit(EBOXUnit, HasSubField)
+  * Subfields indexed by name
+    * Includes carry out, value
