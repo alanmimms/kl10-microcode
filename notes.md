@@ -19,24 +19,40 @@
 # Stamps
 
 * EBOXUnit
-  * get()
+  * get() // Undefined: must be overridden
+  * bitWidth: integer
 
-* BitField
+* BitField(EBOXUnit)
+  * get()
   * s: 0
   * e: 0
 
-* CRAMField(EBOXUnit, BitField)
+* BitCombiner(EBOXUnit)
+  * inputs: { EBOXUnit ... }
+  * get()
+
+* BitSplitter(EBOXUnit)
+  * input: EBOXUnit
+  * bitFields: { BitField ... }
+  * get(field)
+
+* RAM(EBOXUnit)
+  * splitter: BitSplitter
+  * get(addr, field)
+  * put(addr, value) // For loading
 
 * Mux(EBOXUnit)
-  * control: CRAMField
-  * inputs: [ EBOXUnit ... ]
-  * Subfields indexed by name
+  * splitter: BitSplitter
+  * combiner: BitCombiner
+  * get(field)
 
 * Register(EBOXUnit, HasSubField)
-  * update()
-  * value
-  * Subfields indexed by name
+  * splitter: BitSplitter
+  * combiner: BitCombiner
+  * get(field)
+  * latch()
 
 * LogicUnit(EBOXUnit, HasSubField)
-  * Subfields indexed by name
-    * Includes carry out, value
+  * splitter: BitSplitter
+  * inputs: { EBOXUnit ... }
+  * get(field)
