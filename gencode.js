@@ -8,7 +8,9 @@
 const fs = require('fs');
 const _ = require('lodash');
 const util = require('util');
-const StampIt = require('@stamp/it')
+const StampIt = require('@stamp/it');
+
+const EBOXModel = require('./ebox-model.js');
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
@@ -321,18 +323,6 @@ ${[].concat(
   
   fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
 }
-
-
-// Canonical register and mux stamps we compose with other device
-// specific behaviors.
-const HasSubField = StampIt({
-  name: 'HasSubField',
-  s: 0,
-  e: 0,
-  
-});
-const Reg = StampIt({name: 'Reg'});
-const Mux = StampIt({name: 'Mux'});
 
 
 // class Value extends NamedElement(Object) {
