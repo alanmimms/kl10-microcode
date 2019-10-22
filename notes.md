@@ -46,13 +46,13 @@
   * combiner: BitCombiner
   * get(field)
 
-* Register(EBOXUnit, HasSubField)
-  * splitter: BitSplitter
-  * combiner: BitCombiner
-  * get(field)
-  * latch()
+* Register(EBOXUnit)
+  * update()
+  * inputs: [ EBOXUnit ... ]
+  * value
+  * Subfields indexed by name
 
-* LogicUnit(EBOXUnit, HasSubField)
-  * splitter: BitSplitter
-  * inputs: { EBOXUnit ... }
-  * get(field)
+* LogicUnit(EBOXUnit)
+  * inputs: [ EBOXUnit ... ]
+  * Subfields indexed by name
+    * Includes carry out, value
