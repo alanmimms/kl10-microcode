@@ -962,13 +962,33 @@ const SCAD = LogicUnit({name: 'SCAD', bitWidth: 10, function: CR.SCAD});
 // XXX no implementation yet.
 const AD = LogicUnit.compose({name: 'AD', bitWidth: 38, function: CR.AD});
 
-// XXX this is unfinished. See p. 153-154. CR.SH is two bits to select
-// from [ARcatenatedWithARX, AR, ARX (SHIFT 36?), AR_SWAPPED (SHIFT
-// 50?)] selected by CR.SH. SC can specify up to 35 shift. Any number
-// < 0 or > 35 selects ARX as output. Need to determine how AR18 is
-// combined with AR28-35 to make a signed shift count (probably from
-// schematics). Need to understand precisely what AR_SWAPPED is.
-const SH = LogicUnit.compose({name: 'SH', bitWidth: 36, function: CR.SH});
+const SH = LogicUnit.compose({
+  name: 'SH',
+  bitWidth: 36,
+  function: CR.SH,
+}).methods({
+
+  get() {
+    const count = SC.get();
+
+    switch (this.function.get()) {
+    default:
+    case 0:
+      const src0 = (AR << 36n) | ARX;
+      return (count < 0 || count > 35) ? ARX.get() : src0 << count;
+
+    case 1:
+      return AR.get();
+
+    case 2:
+      return ARX.get();
+
+    case 3:
+      const src3 = AR.get();
+      return (src3 >> 18) | (src3 << 18);
+    }
+  },
+});
 
 
 ////////////////////////////////////////////////////////////////
