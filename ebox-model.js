@@ -11,6 +11,11 @@ function defineBitFields(s) {
   });
 }
 
+// Array containing the bit mask indexed by PDP-10 numbered bit number.
+const maskForBit = (n, width = 36) => Math.pow(2, width - 1 - n);
+
+const shiftForBit = (n, width = 36) => width - 1 - n;
+
 
 ////////////////////////////////////////////////////////////////
 // Stamps
@@ -41,6 +46,37 @@ const BitField = StampIt(EBOXUnit, {
   get() { return undefined; }
 });
 module.exports.BitField = BitField;
+
+
+// Combine a set of inputs into a wider bitfield.
+const BitCombiner = StampIt(EBOXUnit, {
+  name: 'BitCombiner',
+}).props({
+  inputs: [],
+}).methods({
+
+  get() {
+    return this.inputs.reduce((cur, input) =>
+                              cur = (cur << input.bitWidth) | input.get(),
+                              bigInt0);
+  },
+});
+module.exports.BitCombiner = BitCombiner;
+
+
+// Split a wide value into separate bitfields.
+const BitSplitter = StampIt(EBOXUnit, {
+  name: 'BitSplitter',
+}).props({
+  inputs: [],
+  bitFields: { },
+}).methods({
+
+  get(field) {
+    return this.bitFields[field].extractFrom(this.value);
+  },
+});
+module.exports.BitSplitter = BitSplitter;
 
 
 // Use this for inputs that are always zero.
