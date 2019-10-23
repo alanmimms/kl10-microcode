@@ -941,9 +941,9 @@ const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, input: AR});
 ////////////////////////////////////////////////////////////////
 // Logic units.
 const BRx2 = ShiftMult({name: 'BRx2', input: BR, multiplier: 2});
-const ARx4 = LogicUnit({name: 'ARx2', input: AR, multiplier: 4});
+const ARx4 = ShiftMult({name: 'ARx2', input: AR, multiplier: 4});
 const BRXx2 = ShiftMult({name: 'BRXx2', input: BRX, multiplier: 2});
-const ARXx4 = LogicUnit({name: 'ARXx2', input: ARX, multiplier: 4});
+const ARXx4 = ShiftMult({name: 'ARXx4', input: ARX, multiplier: 4});
 const MQdiv4 = ShiftDiv({name: 'MQdiv4', input: MQ, divisor: 4});
 
 
@@ -999,6 +999,96 @@ const ADXB = Mux.compose({
   inputs: [zeroUnit, BRXx2, BRX, ARXx4],
 });
 
+// XXX needs implementation
+const ADX = LogicUnit.compose({
+  name: 'ADX',
+  bitWidth: 36,
+  control: CR.AD,
+  inputs: [ADXA, ADXB],
+});
+
+const ARSIGN_SMEAR = LogicUnit.compose({
+  name: 'ARSIGN_SMEAR',
+  bitWidth: 9,
+  inputs: [AR],
+}).methods({
+  get() {
+    return +!!(AR.get() & maskForBit(0, 9));
+  },
+});
+
+const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, input: SCAD});
+const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, input: SCAD});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, input: PC});
+
+const VMA_PREV_SECT_13_17 = BitField({
+  name: 'VMA_PREV_SECT_13_17',
+  s: 13,
+  e: 17,
+  input: VMA_PREV_SECT
+});
+
+const ARMML = Mux.compose({
+  name: 'ARMML',
+  bitWidth: 9,
+  control: CR.ARMM,
+  inputs: [CR['#'], ARSIGN_SMEAR, SCAD_EXP, SCAD_POS],
+});
+
+const ARMMR = Mux.compose({
+  name: 'ARMMR',
+  bitWidth: 17 - 13 + 1,
+  inputs: [PC_13_17, VMA_PREV_SECT_13_17],
+
+  control: BitCombiner.compose({
+    name: 'ARMMRcontrol',
+    inputs: [CR.VMAX],
+  }).methods({
+    get() {
+      return +!!(CR.VMAX & CR.VMAX['PREV SEC']);
+    },
+  }),
+});
+
+
+const ARMM = BitCombiner({name: 'ARMM', inputs: [ARMML, ARMMR]});
+
+const ADx2 = ShiftMult({name: 'ADx2', input: AD, multiplier: 2});
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', input: AD, divisor: 4});
+
+// XXX temporary. This needs to be implemented.
+const SERIAL_NUMBER = zeroUnit;
+
+// XXX very temporary. Needs implementation.
+const EBUS = zeroUnit;
+
+// XXX very temporary. Needs implementation.
+const CACHE = zeroUnit;
+
+const ARMR = Mux.compose({
+  name: 'ARMR',
+  bitWidth: 18,
+  control: CR.AR,
+  inputs: [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
+});
+
+const ARML = Mux.compose({
+  name: 'ARML',
+  bitWidth: 18,
+  control: CR.AR,
+  inputs: [ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
+});
+
+const ADXx2 = ShiftMult({name: 'ADXx2', input: ADX, multiplier: 2});
+const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', input: ADX, divisor: 4});
+
+const ARXM = Mux.compose({
+  name: 'ARXM',
+  bitWidth: 36,
+  control: CR.ARXM,
+  inputs: [zeroUnit, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
+});
+
 const SCM = Mux({
   name: 'SCM',
   bitWidth: 10,
@@ -1037,7 +1127,7 @@ const MQM = Mux.compose({
   control: CR.MQM,
   inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, MQdiv4, SH, AD, onesUnit],
 });
-
+MQ.input = MQM;
 
 // Export every EBOXUnit
 Object.assign(module.exports, EBOXUnitItems);
