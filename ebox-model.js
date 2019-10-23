@@ -6,9 +6,8 @@ const StampIt = require('@stamp/it');
 const EBOXUnit = StampIt({
   // Must override in derived stamps
   name: 'EBOXUnit',
-}).props({
-  // Should set in derived stamps
-  bitWidth: 0,
+}).init(function({bitWidth}) {
+  this.bitWidth = bitWidth;
 }).methods({
   // Must override in derived stamps
   get() { return undefined; }
@@ -21,9 +20,11 @@ module.exports.EBOXUnit = EBOXUnit;
 // rightmost bit in field. So number of bits is `e-s+1`.
 const BitField = StampIt(EBOXUnit, {
   name: 'BitField',
-}).props({
-  s: 0,
-  e: 0,
+}).init(function({s, e}) {
+  this.s = s;
+  this.e = e;
+}).methods({
+  get() { return undefined; }
 });
 module.exports.BitField = BitField;
 
@@ -37,3 +38,56 @@ const zeroUnit = StampIt(EBOXUnit, {
 });
 module.exports.bigInt0 = bigInt0;
 module.exports.zeroUnit = zeroUnit;
+
+
+// Take a group of inputs and concatenate them into a single wide
+// field.
+const BitCombiner = StampIt(EBOXUnit, {
+  name: 'BitCombiner',
+}).methods({
+  get() { }
+});
+module.exports.BitCombiner = BitCombiner;
+
+
+// Take a wide input and split it into multiple subfields.
+const BitSplitter = StampIt(EBOXUnit, {
+  name: 'BitSplitter',
+}).methods({
+  get() { }
+});
+module.exports.BitSplitter = BitSplitter;
+
+
+// Given a selector input and a series of selectable inputs, produce
+// the value of the selected input on the output.
+const Mux = StampIt(EBOXUnit, {
+  name: 'Mux',
+}).methods({
+  get() { }
+});
+module.exports.Mux = Mux;
+
+
+// Latch input for later retrieval.
+const Reg = StampIt(EBOXUnit, {
+  name: 'Reg',
+}).methods({
+  get() { }
+});
+module.exports.Reg = Reg;
+
+
+// Given a function selector and a set of inputs, compute a set of
+// results.
+const LogicUnit = StampIt(EBOXUnit, {
+  name: 'LogicUnit',
+}).init(function({splitter, inputs}) {
+  this.splitter = splitter;
+  this.inputs = inputs;
+}).methods({
+  get() { }
+});
+module.exports.LogicUnit = LogicUnit;
+
+
