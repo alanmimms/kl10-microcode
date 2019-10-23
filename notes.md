@@ -46,13 +46,20 @@
   * combiner: BitCombiner
   * get(field)
 
-* Reg(EBOXUnit, HasSubField)
-  * splitter: BitSplitter
-  * combiner: BitCombiner
+* Reg(EBOXUnit)
+  * input: input
   * get(field)
   * latch()
 
-* LogicUnit(EBOXUnit, HasSubField)
+* LogicUnit(EBOXUnit)
   * splitter: BitSplitter
   * inputs: { EBOXUnit ... }
   * get(field)
+
+
+## IDEAS
+* Make BitSplitter decorate its `input` stamp with proxies to itself
+  to retrieve each field it contains. This could allows DR.J
+  references to automagically know to get the field using DRsplitter.
+  Copying the values from DRAM.get(addr, 'J') into DR.J could happen
+  in DR.latch().
