@@ -5,10 +5,10 @@ const StampIt = require('@stamp/it');
 
 // Parse a sequence of microcode field definitions (see define.mic for
 // examples) and return BitField stamps for each of the fields.
-function defineBitFields(s) {
+function defineBitFields(s, input) {
   return s.split(/\n/).reduce((cur, line) => {
     const [, name, s, e] = line.match(/([^\/]+)\/=<(\d+):(\d+)>.*/) || [];
-    if (name) cur.push(BitField({name, s, e}));
+    if (name) cur.push(BitField({name, s, e, input}));
     return cur;
   }, []);
 }
@@ -44,11 +44,18 @@ module.exports.EBOXUnit = EBOXUnit;
 // rightmost bit in field. So number of bits is `e-s+1`.
 const BitField = StampIt(EBOXUnit, {
   name: 'BitField',
-}).init(function({s, e}) {
+}).init(function({s, e, input}) {
   this.s = s;
   this.e = e;
+  this.input = input;
+  this.shift = shiftForBit(e, input.bitWidth);
+  this.nBits = e - s + 1;
+  this.mask = (1n << BigInt(this.nBits)) - 1n;
 }).methods({
-  get() { return undefined; }
+
+  get() {
+    return (BigInt.asUintN(this.nBits + 1, this.input.get()) >> this.shift) & this.mask;
+  },
 });
 module.exports.BitField = BitField;
 
@@ -81,17 +88,6 @@ const BitCombiner = StampIt(EBOXUnit, {
   get() { }
 });
 module.exports.BitCombiner = BitCombiner;
-
-
-// Take a wide input and split it into multiple subfields.
-const BitSplitter = StampIt(EBOXUnit, {
-  name: 'BitSplitter',
-}).init(function({input}) {
-  this.input = input;
-}).methods({
-  get() { }
-});
-module.exports.BitSplitter = BitSplitter;
 
 
 // Given an address, retrieve the stored word. Can also store new
@@ -184,11 +180,11 @@ module.exports.ShiftDiv = ShiftDiv;
 const CRAM = RAM({name: 'CRAM', nWords: 2048});
 const CR = Reg({name: 'CR', input: CRAM});
 
-const CRsplitter = BitSplitter({
+const CRsplitter = BitField({
   name: 'CRsplitter',
   input: CR,
 
-  bitFields: defineBitFields(`
+  bitFields: defineBitFields(CR, `
 J/=<1:11>+      	;SYMBOLS WILL BE DEFINED BY TAGS (CRA1&CRA2)
 AD/=<12:17>             ; (DP03, EXCEPT CARRY IN, ON CTL1)
 ADA/=<18:20>		; (DP03)
@@ -256,7 +252,7 @@ DIAG FUNC/=<75:83>	;ENABLED BY COND/DIAG FUNC (CTL3)
 const DRAM = RAM({name: 'DRAM', nWords: 512});
 const DR = Reg({name: 'DR', input: DRAM});
 
-const DRsplitter = BitSplitter({
+const DRsplitter = BitField({
   name: 'DRsplitter',
   input: DR,
 
@@ -336,26 +332,54 @@ const AR = BitCombiner({name: 'AR', inputs: [ARL, ARR]});
 
 
 ////////////////////////////////////////////////////////////////
-// Logic units
+// BitField splitters used by various muxes and logic elements.
+const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, input: AR});
+const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, input: AR});
+const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, input: AR});
+const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, input: AR});
+// XXX needs AR18 to determine direction of shift
+const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, input: AR});
+
+
+////////////////////////////////////////////////////////////////
+// Logic units.
 const BRx2 = ShiftMult({name: 'BRx2', input: BR, multiplier: 2});
 const ARx4 = LogicUnit({name: 'ARx2', input: AR, multiplier: 4});
 const BRXx2 = ShiftMult({name: 'BRXx2', input: BRX, multiplier: 2});
 const ARXx4 = LogicUnit({name: 'ARXx2', input: ARX, multiplier: 4});
 const MQdiv4 = ShiftDiv({name: 'MQdiv4', input: MQ, divisor: 4});
-const SCAD = LogicUnit({name: 'SCAD', bitWidth: 10, function: SCADfunction});
-const AD = LogicUnit.compose({name: 'AD', function: CR.AD, bitWidth: 38});
+
+
+// SCAD CONTROL
+// 0    A
+// 1    A-B-1
+// 2    A+B
+// 3    A-1
+// 4    A+1
+// 5    A-B
+// 6    A|B
+// 7    A&B
+// XXX no implementation yet.
+const SCAD = LogicUnit({name: 'SCAD', bitWidth: 10, function: CR.SCAD});
+
+// XXX no implementation yet.
+const AD = LogicUnit.compose({name: 'AD', bitWidth: 38, function: CR.AD});
+
+// XXX this is unfinished. See p. 153-154. CR.SH is two bits to select
+// from [ARcatenatedWithARX, AR, ARX (SHIFT 36?), AR_SWAPPED (SHIFT
+// 50?)] selected by CR.SH. SC can specify up to 35 shift. Any number
+// < 0 or > 35 selects ARX as output. Need to determine how AR18 is
+// combined with AR28-35 to make a signed shift count (probably from
+// schematics). Need to understand precisely what AR_SWAPPED is.
 const SH = LogicUnit.compose({name: 'SH', bitWidth: 36, function: CR.SH});
+
 
 ////////////////////////////////////////////////////////////////
 // Muxes
-const ADA = Mux.compose({name: 'ADA', control: CR.ADA, inputs: [
-  zeroUnit, zeroUnit, zeroUnit, zeroUnit, AR, ARX, MQ, PC]}).methods({
-
-  get() {
-    const control = this.control.get();
-    return control ? this.inputs[control & 3] : 0n;
-  },
-});
+const ADA = Mux.compose({
+  name: 'ADA',
+  control: CR.ADA,
+  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, AR, ARX, MQ, PC]});
 
 const ADB = Mux.compose({
   name: 'ADB',
@@ -383,14 +407,14 @@ const SCM = Mux({
   bitWidth: 10,
   control: SCMcontrol,
   // XXX This input #3 is shown as "AR18,28-35" in p. 137
-  inputs: [SC, FE, SCAD, SCM3combiner],
+  inputs: [SC, FE, SCAD, AR_SHIFT],
 });
 
 const SCADA = Mux({
   name: 'SCADA',
   bitWidth: 10,
   control: CR.SCADA,
-  inputs: [zero, zero, zero, zero, FE, AR_POS, AR_EXP, CR['#']],
+  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, FE, AR_POS, AR_EXP, CR['#']],
 });
 
 const SCADB = Mux({
