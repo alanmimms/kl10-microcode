@@ -1,14 +1,16 @@
 'use strict';
+const util = require('util');
 const StampIt = require('@stamp/it');
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
 // examples) and return BitField stamps for each of the fields.
 function defineBitFields(s) {
-  return s.split(/\n/).map(line => {
-    const [, name, s, e] = line.match(/([^\/]+)\/=<(\d+):(\d+)>.*/);
-    return BitField({name, s, e});
-  });
+  return s.split(/\n/).reduce((cur, line) => {
+    const [, name, s, e] = line.match(/([^\/]+)\/=<(\d+):(\d+)>.*/) || [];
+    if (name) cur.push(BitField({name, s, e}));
+    return cur;
+  }, []);
 }
 
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
@@ -22,11 +24,14 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 
 // Base Stamp for EBOX functional units. This is an abstract Stamp
 // defining protocol but all should be completely overridden.
+const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
 const EBOXUnit = StampIt({
   // Must override in derived stamps
   name: 'EBOXUnit',
-}).init(function({bitWidth}) {
+}).init(function({name, bitWidth}) {
+  this.name = name;
   this.bitWidth = bitWidth;
+  EBOXUnitItems[this.name] = this;
 }).methods({
   // Must override in derived stamps
   get() { return undefined; }
@@ -46,37 +51,6 @@ const BitField = StampIt(EBOXUnit, {
   get() { return undefined; }
 });
 module.exports.BitField = BitField;
-
-
-// Combine a set of inputs into a wider bitfield.
-const BitCombiner = StampIt(EBOXUnit, {
-  name: 'BitCombiner',
-}).props({
-  inputs: [],
-}).methods({
-
-  get() {
-    return this.inputs.reduce((cur, input) =>
-                              cur = (cur << input.bitWidth) | input.get(),
-                              bigInt0);
-  },
-});
-module.exports.BitCombiner = BitCombiner;
-
-
-// Split a wide value into separate bitfields.
-const BitSplitter = StampIt(EBOXUnit, {
-  name: 'BitSplitter',
-}).props({
-  inputs: [],
-  bitFields: { },
-}).methods({
-
-  get(field) {
-    return this.bitFields[field].extractFrom(this.value);
-  },
-});
-module.exports.BitSplitter = BitSplitter;
 
 
 // Use this for inputs that are always zero.
@@ -297,7 +271,7 @@ const BRX = Reg({name: 'BRX', bitWidth: 36});
 const FE = Reg({name: 'FE', bitWidth: 10});
 const SC = Reg({name: 'SC', bitWidth: 10});
 
-const VMA = Reg({name: 'VMA', bitWidth: 35 - 13 + 1}).methods({
+const VMA = Reg.compose({name: 'VMA', bitWidth: 35 - 13 + 1}).methods({
   load() {
   },
 
@@ -311,7 +285,7 @@ const VMA = Reg({name: 'VMA', bitWidth: 35 - 13 + 1}).methods({
   },
 });
 
-const MQ = Reg({name: 'MQ', bitWidth: 36}).methods({
+const MQ = Reg.compose({name: 'MQ', bitWidth: 36}).methods({
   load() {
   },
 
@@ -346,7 +320,7 @@ const ARXx4 = LogicUnit({name: 'ARXx2', input: ARX, multiplier: 4});
 
 ////////////////////////////////////////////////////////////////
 // Muxes
-const ADA = Mux({name: 'ADA', control: CR.ADA, inputs: [
+const ADA = Mux.compose({name: 'ADA', control: CR.ADA, inputs: [
   zeroUnit, zeroUnit, zeroUnit, zeroUnit, AR, ARX, MQ, PC]}).methods({
 
   get() {
@@ -355,7 +329,10 @@ const ADA = Mux({name: 'ADA', control: CR.ADA, inputs: [
   },
 });
 
-const ADB = Mux({name: 'ADB', control: CR.ADB, inputs: [FM, BRx2, BR, ARx4]});
-const ADXA = Mux({name: 'ADXA', control: CR.ADA, inputs: [
+const ADB = Mux.compose({name: 'ADB', control: CR.ADB, inputs: [FM, BRx2, BR, ARx4]});
+const ADXA = Mux.compose({name: 'ADXA', control: CR.ADA, inputs: [
   zeroUnit, zeroUnit, zeroUnit, zeroUnit, ARX, ARX, ARX, ARX]});
-const ADXB = Mux({name: 'ADXB', control: CR.ADB, inputs: [zeroUnit, BRXx2, BRX, ARXx4]});
+const ADXB = Mux.compose({name: 'ADXB', control: CR.ADB, inputs: [zeroUnit, BRXx2, BRX, ARXx4]});
+
+// Export every EBOXUnit
+Object.assign(module.exports, EBOXUnitItems);
