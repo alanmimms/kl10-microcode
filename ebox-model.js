@@ -63,6 +63,13 @@ const zeroUnit = StampIt(EBOXUnit, {
 module.exports.bigInt0 = bigInt0;
 module.exports.zeroUnit = zeroUnit;
 
+const onesUnit = StampIt(EBOXUnit, {
+  name: 'ones',
+}).methods({
+  get() { return (1n << 36n) - 1n; }
+});
+module.exports.onesUnit = onesUnit;
+
 
 // Take a group of inputs and concatenate them into a single wide
 // field.
@@ -159,6 +166,18 @@ const ShiftMult = StampIt(EBOXUnit, {
 module.exports.ShiftMult = ShiftMult;
 
 
+// Given a function selector and a set of inputs, compute a set of
+// results.
+const ShiftDiv = StampIt(EBOXUnit, {
+  name: 'ShiftDiv',
+}).init(function({input, divisor = 2}) {
+  this.input = input;
+}).methods({
+  get() {return this.input.get() / this.divisor }
+});
+module.exports.ShiftDiv = ShiftDiv;
+
+
 ////////////////////////////////////////////////////////////////
 // RAMs
 // Wire up an EBOX block diagram.
@@ -213,7 +232,6 @@ PXCT/=<75:77>		;(MCL4) Loaded by CON/SR_#, CON/LOAD IR, and MEM/A RD
 ACB/=<77:79>		;AC block number. Used with FMADR/#B#
 AC#/=<80:83>		;AC number used with ACB or AC-OP (below)
 AC-OP/=<75:79>		;CONTROLS AC #.  AD functions < 40 all work
-;CALL/=<75:75>		;ENABLED BY ARL IND (CTL2)--Model A only
 AR0-8/=<76:76>		;ENABLED BY ARL IND (CTL2)
 CLR/=<77:80>		;ENABLED BY ARL IND (CTL2)
 ARL/=<81:83>		;ENABLED BY ARL IND (CTL2)
@@ -268,8 +286,15 @@ const ARR = Reg({name: 'ARR', bitWidth: 18});
 const ARX = Reg({name: 'ARX', bitWidth: 36});
 const BR = Reg({name: 'BR', bitWidth: 36});
 const BRX = Reg({name: 'BRX', bitWidth: 36});
-const FE = Reg({name: 'FE', bitWidth: 10});
 const SC = Reg({name: 'SC', bitWidth: 10});
+
+const FE = Reg.compose({name: 'FE', bitWidth: 10}).methods({
+  load() {
+  },
+
+  shrt() {
+  },
+});
 
 const VMA = Reg.compose({name: 'VMA', bitWidth: 35 - 13 + 1}).methods({
   load() {
@@ -316,7 +341,10 @@ const BRx2 = ShiftMult({name: 'BRx2', input: BR, multiplier: 2});
 const ARx4 = LogicUnit({name: 'ARx2', input: AR, multiplier: 4});
 const BRXx2 = ShiftMult({name: 'BRXx2', input: BRX, multiplier: 2});
 const ARXx4 = LogicUnit({name: 'ARXx2', input: ARX, multiplier: 4});
-
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', input: MQ, divisor: 4});
+const SCAD = LogicUnit({name: 'SCAD', bitWidth: 10, function: SCADfunction});
+const AD = LogicUnit.compose({name: 'AD', function: CR.AD, bitWidth: 38});
+const SH = LogicUnit.compose({name: 'SH', bitWidth: 36, function: CR.SH});
 
 ////////////////////////////////////////////////////////////////
 // Muxes
@@ -329,10 +357,59 @@ const ADA = Mux.compose({name: 'ADA', control: CR.ADA, inputs: [
   },
 });
 
-const ADB = Mux.compose({name: 'ADB', control: CR.ADB, inputs: [FM, BRx2, BR, ARx4]});
-const ADXA = Mux.compose({name: 'ADXA', control: CR.ADA, inputs: [
-  zeroUnit, zeroUnit, zeroUnit, zeroUnit, ARX, ARX, ARX, ARX]});
-const ADXB = Mux.compose({name: 'ADXB', control: CR.ADB, inputs: [zeroUnit, BRXx2, BRX, ARXx4]});
+const ADB = Mux.compose({
+  name: 'ADB',
+  bitWidth: 36,
+  control: CR.ADB,
+  inputs: [FM, BRx2, BR, ARx4],
+});
+
+const ADXA = Mux.compose({
+  name: 'ADXA',
+  bitWidth: 36,
+  control: CR.ADA,
+  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, ARX, ARX, ARX, ARX],
+});
+
+const ADXB = Mux.compose({
+  name: 'ADXB',
+  bitWidth: 36,
+  control: CR.ADB,
+  inputs: [zeroUnit, BRXx2, BRX, ARXx4],
+});
+
+const SCM = Mux({
+  name: 'SCM',
+  bitWidth: 10,
+  control: SCMcontrol,
+  // XXX This input #3 is shown as "AR18,28-35" in p. 137
+  inputs: [SC, FE, SCAD, SCM3combiner],
+});
+
+const SCADA = Mux({
+  name: 'SCADA',
+  bitWidth: 10,
+  control: CR.SCADA,
+  inputs: [zero, zero, zero, zero, FE, AR_POS, AR_EXP, CR['#']],
+});
+
+const SCADB = Mux({
+  name: 'SCADB',
+  bitWidth: 10,
+  control: CR.SCADB,
+  // XXX This input #3 is shown as "0,#" in p. 137
+  inputs: [FE, AR_SIZE, AR_00_08, CR['#']],
+});
+
+SCAD.inputs = [SCADA, SCADB];
+
+const MQM = Mux.compose({
+  name: 'MQM',
+  bitWidth: 36,
+  control: CR.MQM,
+  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, MQdiv4, SH, AD, onesUnit],
+});
+
 
 // Export every EBOXUnit
 Object.assign(module.exports, EBOXUnitItems);
