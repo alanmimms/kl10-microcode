@@ -23,18 +23,14 @@
   * bitWidth: integer
 
 * BitField(EBOXUnit)
-  * get()
+  * input: EBOXUnit
   * s: 0
   * e: 0
+  * get()
 
 * BitCombiner(EBOXUnit)
   * inputs: { EBOXUnit ... }
   * get()
-
-* BitSplitter(EBOXUnit)
-  * input: EBOXUnit
-  * bitFields: { BitField ... }
-  * get(field)
 
 * RAM(EBOXUnit)
   * splitter: BitSplitter
