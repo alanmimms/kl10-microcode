@@ -63,3 +63,7 @@
   references to automagically know to get the field using DRsplitter.
   Copying the values from DRAM.get(addr, 'J') into DR.J could happen
   in DR.latch().
+* Add a EBOXForwardRef Stamp to allow automatically resolved forward
+  references to EBOXUnits. Make this a more generally applicable
+  Stamp?
+
