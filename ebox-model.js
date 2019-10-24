@@ -1149,5 +1149,24 @@ const MQM = Mux.compose({
 });
 MQ.input = MQM;
 
+
+const VMA_HELD_OR_PC = Mux.compose({
+  name: 'VMA HELD OR PC',
+  bitWidth: 35 - 13 + 1,
+  inputs: [PC, VMA_HELD],
+
+  control: BitCombiner.compose({
+    name: 'SEL VMA HELD',
+    inputs: [CR.COND],
+  }).methods({
+    get() {
+      return +(CR.COND === CR.COND['VMA HELD']);
+    },
+  }),
+
+});
+
+
+
 // Export every EBOXUnit
 Object.assign(module.exports, EBOXUnitItems);
