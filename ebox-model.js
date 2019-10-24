@@ -880,6 +880,9 @@ const ARX = Reg({name: 'ARX', bitWidth: 36});
 const BR = Reg({name: 'BR', bitWidth: 36});
 const BRX = Reg({name: 'BRX', bitWidth: 36});
 const SC = Reg({name: 'SC', bitWidth: 10});
+const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, input: AR});
+const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13, input: AR_00_12});
+const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, input: null /* XXX */});
 
 const FE = Reg.compose({name: 'FE', bitWidth: 10}).methods({
   load() {
@@ -1150,9 +1153,12 @@ const MQM = Mux.compose({
 MQ.input = MQM;
 
 
+const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', inputs: [SCD_FLAGS, PC]});
+const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', inputs: [VMA_FLAGS, VMA_HELD]});
+
 const VMA_HELD_OR_PC = Mux.compose({
   name: 'VMA HELD OR PC',
-  bitWidth: 35 - 13 + 1,
+  bitWidth: 36,
   inputs: [PC, VMA_HELD],
 
   control: BitCombiner.compose({
