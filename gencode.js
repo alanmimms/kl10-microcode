@@ -221,6 +221,32 @@ function getField(mw, defs, field) {
 }
 
 
+function handleSPEC(mw) {
+  const SPEC = getField(mw, cramDefs, 'SPEC');
+  const code = [
+    `// SPEC = ${octal4(SPEC)}`,
+  ];
+
+  switch (SPEC) {
+  case 0o15:                    // LOAD PC
+    code.push(`cpu.PC = cpu.AR & 0o37777777;`);
+    break;
+
+  case 0o24:                    // FLAG CTL
+    const func = getField(mw, cramDefs, '#');
+
+    if (func === 0o20) {
+      code.push(`cpu.flags = cpu.AR >>> (36 - 13);`);
+    }
+
+    break;
+  }
+
+  return code;
+}
+
+
+
 function generateAll() {
   const allCode = [
     `'use strict;'`,
@@ -228,7 +254,7 @@ function generateAll() {
     const mw = cram[ma];
 
     const headerCode = [
-      `  cpu.computeCPUState();`,
+      `  cpu.computeCPUState(0o${octal4(ma)});`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
@@ -236,6 +262,7 @@ function generateAll() {
 
     const stores = {};              // Used by store() and storing process.
     const storesConstsCode = [];
+    const specCode = handleSPEC(mw);
 
     const tailCall = [];
 
