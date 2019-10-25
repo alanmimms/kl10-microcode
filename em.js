@@ -64,7 +64,8 @@ function main()
   CRAM.addr = 0;
   DRAM.addr = 0;
 
-
+  // Launch the microcode by calling the first microinstruction
+  // function.
   EBOX.ops[0](cpu);
 }
 

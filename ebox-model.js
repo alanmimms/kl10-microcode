@@ -951,6 +951,7 @@ const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, input: AR});
 // XXX needs AR18 to determine direction of shift
 const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, input: AR});
 const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, input: AR});
+const AR_12_36 = BitField({name: 'AR_12_35', s: 12, e: 35, input: AR});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
