@@ -276,7 +276,7 @@ module.exports.ops = [
     const mw = cram[ma];
 
     const headerCode = [
-      `  cpu.computeCPUState(0o${octal4(ma)});`,
+      `  computeCPUState(0o${octal4(ma)});`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
@@ -302,20 +302,16 @@ module.exports.ops = [
     case 0:                     // VMA (noop)
       break;
     case 1:                     // PC or LOAD (;MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD)
-      store('VMA', 'cpu.PC');
+      store('VMA', 'PC');
       break;
     case 2:                     // PC+1
-      store('VMA', 'cpu.PC+1');
+      store('VMA', 'PC+1');
       break;
     case 3:                     // AD (ENTIRE VMA, INCLUDING SECTION)
-      store('VMA', 'cpu.AD');
+      store('VMA', 'AD');
       break;
     }
 
-    // Store back the changes we made this cycle into CPU state.
-    const storeBackCode = Object.keys(stores)
-          .map(dest => `cpu.${dest} = ${dest}`);
-    
     return `\
 function cram_${octal4(ma)}(cpu) {
 ${[].concat(

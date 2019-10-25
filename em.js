@@ -42,3 +42,31 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 }
 
 
+function main()
+{
+  const {CRAM, DRAM, CR, DR} = EBOX;
+
+  // Load CRAM from our Microcode
+  _.range(0, UCODE.CRAM.nWords).forEach((mw, addr) => {
+    CRAM.addr = addr;
+    CR.value = mw;
+    CRAM.latch();
+  });
+
+  // Load DRAM from our Microcode
+  _.range(0, UCODE.DRAM.nWords).forEach((dw, addr) => {
+    DRAM.addr = addr;
+    DR.value = dw;
+    DRAM.latch();
+  });
+
+  // Reset
+  CRAM.addr = 0;
+  DRAM.addr = 0;
+
+
+  EBOX.ops[0](cpu);
+}
+
+
+main();
