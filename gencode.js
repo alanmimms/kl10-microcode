@@ -233,14 +233,14 @@ function handleSPEC(mw) {
 
   switch (SPEC) {
   case 0o15:                    // LOAD PC
-    code.push(`cpu.PC = cpu.AR & 0o37777777;`);
+    code.push(`PC.input = AR_12_35;`);
     break;
 
   case 0o24:                    // FLAG CTL
     const func = getField(mw, cramDefs, '#');
 
     if (func === 0o20) {
-      code.push(`cpu.flags = cpu.AR >>> (36 - 13);`);
+      code.push(`SCD_FLAGS.input = AR_00_12;`);
     }
 
     break;
@@ -318,7 +318,6 @@ ${[].concat(
   headerCode,
   storesConstsCode,
   specCode,
-  storeBackCode,
   tailCall)
   .join('\n  ')}
 },
