@@ -254,8 +254,6 @@ function handleSPEC(mw) {
 function generateAll() {
   const moduleHeader = `\
 'use strict';
-
-module.exports.ops = [
 `;
 
   const cramArray = `module.exports.cram = [
@@ -269,6 +267,10 @@ module.exports.ops = [
         dram.map(mw => `BigInt(0o${_.padStart(mw.toString(8), 24/3, '0')})`).join(',\n')
   + `
 ];`;
+
+  const functionsHeader = `
+module.exports.ops = [
+`;
 
   const allFunctions = _.range(EBOX.CRAM.nWords).map(ma => {
     const mw = cram[ma];
@@ -341,7 +343,7 @@ ${[].concat(
     }
   }).join(`\n\n`);
 
-  const moduleTrailer = `
+  const functionsTrailer = `
 ];
 `;
 
@@ -349,8 +351,9 @@ ${[].concat(
     moduleHeader,
     cramArray,
     dramArray,
+    functionsHeader,
     allFunctions,
-    moduleTrailer,
+    functionsTrailer,
   ].join('\n\n');
   
   fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
