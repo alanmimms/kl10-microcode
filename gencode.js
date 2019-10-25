@@ -197,19 +197,22 @@ function readAndHandleDirectives() {
 }
 
 
+// Parse a line of microassmebly listing, extracting address and code.
+// This works for CRAM or DRAM with the only different controlled by
+// the `re` parameter.
 function parse(lines, re) {
-  const ram = [];
-
-  // This has to be a forEach() loop because the RAM is declared in
-  // random address order so map() is not applicable.
-  lines.forEach(line => {
+  // This has to be a reduce() instead of a map because the
+  // microassembly listing builds microcode words in essentially
+  // random address order.
+  const bytes = lines.map((bytes, line) => {
     const m = line.match(re);
-    if (!m) return;
+    if (!m) return bytes;
     const a = parseInt(m[1], 8);
-    ram[a] = BigInt('0o' + m.slice(2).join(''));
-  });
+    bytes[a] = BigInt('0o' + m.slice(2).join(''));
+    return bytes;
+  }, []);
 
-  return ram;
+  return bytes;
 }
 
 
