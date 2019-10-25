@@ -125,6 +125,7 @@ const RAM = StampIt(EBOXUnit, {
   name: 'RAM',
 }).init(function({nWords, input, addr = 0, elementValue = 0n}) {
   this.data = new Array(nWords).map(x => elementValue);
+  this.nWords = nWords,
   this.input = input;
   this.addr = addr;
 }).methods({

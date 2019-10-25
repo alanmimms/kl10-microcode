@@ -10,7 +10,7 @@ const _ = require('lodash');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
-const EBOXModel = require('./ebox-model.js');
+const EBOX = require('./ebox-model.js');
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
@@ -204,15 +204,16 @@ function parse(lines, re) {
   // This has to be a reduce() instead of a map because the
   // microassembly listing builds microcode words in essentially
   // random address order.
-  const bytes = lines.map((bytes, line) => {
+  return lines.reduce((bytes, line) => {
     const m = line.match(re);
-    if (!m) return bytes;
-    const a = parseInt(m[1], 8);
-    bytes[a] = BigInt('0o' + m.slice(2).join(''));
+
+    if (m) {
+      const a = parseInt(m[1], 8);
+      bytes[a] = BigInt('0o' + m.slice(2).join(''));
+    }
+
     return bytes;
   }, []);
-
-  return bytes;
 }
 
 
@@ -251,9 +252,13 @@ function handleSPEC(mw) {
 
 
 function generateAll() {
-  const allCode = [
-    `'use strict;'`,
-  ].concat(_.range(0o4000).map(ma => {
+  const moduleHeader = `\
+'use strict';
+
+module.exports.ops = [
+`;
+
+  const allFunctions = _.range(EBOX.CRAM.nWords).map(ma => {
     const mw = cram[ma];
 
     const headerCode = [
@@ -306,7 +311,7 @@ ${[].concat(
   storeBackCode,
   tailCall)
   .join('\n  ')}
-}
+},
 `;
 
     // When a `cram_xxxx` function needs to modify a CPU state
@@ -322,7 +327,17 @@ ${[].concat(
       stores[dest] = value;
       storesConstsCode.push(`const ${dest} = ${value};`);
     }
-  })).join(`\n\n`);
+  }).join(`\n\n`);
+
+  const moduleTrailer = `
+];
+`;
+
+  const allCode = [
+    moduleHeader,
+    allFunctions,
+    moduleTrailer,
+  ].join('\n\n');
   
   fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
 }
