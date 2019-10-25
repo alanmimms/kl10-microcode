@@ -47,6 +47,13 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 
 // Base Stamp for EBOX functional units. This is an abstract Stamp
 // defining protocol but all should be completely overridden.
+//
+// The convention is that each EBOXUnit has a `get()` method
+// (sometimes with parameters) that retrieves the unit's value based
+// on its current inputs and configuration. If the unit is a RAM or a
+// Reg there is also a `latch()` method that stores a value at the
+// EBOXUnit's current address, however that is conveyed inside the
+// machine.
 const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
 const EBOXUnit = StampIt({
   // Must override in derived stamps
@@ -55,9 +62,6 @@ const EBOXUnit = StampIt({
   this.name = name;
   this.bitWidth = bitWidth;
   EBOXUnitItems[this.name] = this;
-}).methods({
-  // Must override in derived stamps
-  get() { return undefined; }
 });
 module.exports.EBOXUnit = EBOXUnit;
 
@@ -115,18 +119,21 @@ module.exports.BitCombiner = BitCombiner;
 
 // Given an address, retrieve the stored word. Can also store new
 // words for diagnostic purposes. This is meant for CRAM and DRAM, not
-// FM. Elements are BigInt by default.
+// FM. Elements are BigInt by default. The `input` is the EBOXUnit
+// that provides a value for calls to `latch()`.
 const RAM = StampIt(EBOXUnit, {
   name: 'RAM',
-}).init(function({nWords, elementValue = 0n}) {
+}).init(function({nWords, input, addr = 0, elementValue = 0n}) {
   this.data = new Array(nWords).map(x => elementValue);
+  this.input = input;
+  this.addr = addr;
 }).methods({
-  get(addr) {
-    return this.data[addr];
+  get() {
+    return this.data[this.addr];
   },
 
-  put(addr, value) {
-    this.data[addr] = value;
+  latch(value) {
+    this.data[this.addr] = this.input.get();
   },
 });
 module.exports.RAM = RAM;
@@ -200,7 +207,11 @@ module.exports.ShiftDiv = ShiftDiv;
 ////////////////////////////////////////////////////////////////
 // RAMs
 // Wire up an EBOX block diagram.
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84});
+
+// Used to provide a uWord to CRAM to load it
+const CRAM_IN = Reg({name: 'CRAM_IN', bitWidth: 84});
+
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: CRAM_IN.bitWidth, input: CRAM_IN});
 const CR = Reg({name: 'CR', input: CRAM, bitWidth: CRAM.bitWidth});
 
 defineBitFields(CR, `
@@ -810,7 +821,8 @@ DIAG FUNC/=<75:83>	;ENABLED BY COND/DIAG FUNC (CTL3)
 `);
 
 
-const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24});
+const DRAM_IN = Reg({name: 'DRAM_IN', bitWidth: 24});
+const DRAM = RAM({name: 'DRAM', input: DRAM_IN, nWords: 512, bitWidth: 24});
 const DR = Reg({name: 'DR', input: DRAM});
 
 defineBitFields(DR, `
@@ -864,7 +876,8 @@ J/=<14:23>		;EXECUTOR
 `);
 
 
-const FM = RAM({name: 'FM', nWords: 8*16});
+// This needs its `input` set before a `latch()` call.
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
 ////////////////////////////////////////////////////////////////
 // Registers
@@ -1171,6 +1184,25 @@ const VMA_HELD_OR_PC = Mux.compose({
 
 });
 
+
+function computeCPUState(newCA) {
+  // First, get values from all of the LogicUnit instances based on
+  // their inputs from the previous cycle.
+  const SCADv = SCAD.get();
+  const ADv = AD.get();
+  const ADXv = ADX.get();
+  const SHv = SH.get();
+  const ARSIGN_SMEARv = ARSIGN_SMEAR.get();
+
+  // Fetch new microinstruction
+  CRAM.addr = newCA;
+  CRAM.get();
+  CR.latch();
+  // XXX add a CRAM addr history ringlog here
+
+  // Update everything based on new CR (microinstruction).
+
+}
 
 
 // Export every EBOXUnit
