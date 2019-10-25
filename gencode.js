@@ -258,6 +258,18 @@ function generateAll() {
 module.exports.ops = [
 `;
 
+  const cramArray = `module.exports.cram = [
+` +
+        cram.map(mw => `BigInt(0o${_.padStart(mw.toString(8), 84/3, '0')})`).join(',\n')
+  + `
+];`;
+
+  const dramArray = `module.exports.dram = [
+` +
+        dram.map(mw => `BigInt(0o${_.padStart(mw.toString(8), 24/3, '0')})`).join(',\n')
+  + `
+];`;
+
   const allFunctions = _.range(EBOX.CRAM.nWords).map(ma => {
     const mw = cram[ma];
 
@@ -335,6 +347,8 @@ ${[].concat(
 
   const allCode = [
     moduleHeader,
+    cramArray,
+    dramArray,
     allFunctions,
     moduleTrailer,
   ].join('\n\n');
