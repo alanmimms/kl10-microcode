@@ -1000,8 +1000,21 @@ const SCAD = LogicUnit
         },
       });
 
-// XXX no implementation yet.
-const AD = LogicUnit({name: 'AD', bitWidth: 38, func: CR.AD});
+
+const AD = LogicUnit.init({name: 'AD', bitWidth: 38, func: CR.AD})
+      .methods({
+
+        get() {
+          const func = this.func.get();
+          console.log(`${this.name} needs a 'get()' implementation`);
+
+          switch (func) {
+          default:
+          case 0:
+            break;
+          }
+        },
+      });
 
 const SH = LogicUnit.init({
   name: 'SH',
@@ -1011,8 +1024,9 @@ const SH = LogicUnit.init({
 
   get() {
     const count = SC.get();
+    const func = this.func.get();
 
-    switch (this.func.get()) {
+    switch (func) {
     default:
     case 0:
       const src0 = (AR << 36n) | ARX;
