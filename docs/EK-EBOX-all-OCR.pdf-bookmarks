@@ -1,0 +1,3 @@
+uri: file:///home/alan/kl10-microcode/EK-EBOX-all-OCR.pdf
+attributes:
+  metadata::evince::bookmarks: [(141, 'ALU functions'), (149, 'AR selection'), (150, 'ARX selection'), (154, 'MQ selection'), (168, 'Microstack'), (205, 'EBox module utilization'), (221, 'Crobar init'), (250, 'CRAM addressing'), (281, 'DRAM word format'), (98, 'VMA/page fault'), (65, 'EBox functional'), (88, 'XCTGO'), (20, 'EBox RAM&amp;controls'), (21, 'EBox block diagram'), (139, 'PC load/inhibit'), (137, 'VMA inputs'), (136, 'Addr+Data paths'), (148, 'ADA,ADXA selection'), (140, 'Data+Addr uFields')]
