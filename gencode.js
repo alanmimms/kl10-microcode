@@ -251,7 +251,27 @@ function handleSPEC(mw) {
 
 
 
-function generateAll() {
+function generateModel() {
+  const moduleHeader = `\
+'use strict';
+`;
+
+  const allCode = [
+    moduleHeader,
+    dumpDefs('cram', cramDefs),
+    dumpDefs('dram', dramDefs),
+  ].join('\n\n');
+  
+  fs.writeFileSync(`fields-model.js`, allCode, {mode: 0o664});
+
+
+  function dumpDefs(typeName, defs) {
+    return `module.exports.${typeName}Fields = ${util.inspect(defs)};`;
+  }
+}
+
+
+function generateMicrocode() {
   const moduleHeader = `\
 'use strict';
 `;
@@ -358,7 +378,8 @@ ${[].concat(
 function main() {
   readMicroAssemblyListing();
   readAndHandleDirectives();
-  generateAll();
+  generateModel();
+  generateMicrocode();
 }
 
 
