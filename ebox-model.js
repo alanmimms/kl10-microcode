@@ -97,7 +97,7 @@ const EBOXUnit = StampIt({
   },
 
   joinHalves(lh, rh) {
-    return (BigInt.asUintN(18, lh) << 18n | BigInt.asUintN(18, rh);
+    return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh);
   }
 });
 
