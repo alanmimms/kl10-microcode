@@ -309,8 +309,31 @@ const VMA = Reg
       .props({name: 'VMA', bitWidth: 35 - 13 + 1})
       .methods({
 
-        load() {
+        latch() {
+          // XXX this needs to implement the load/inc/dec/hold. It is
+          // probably going to have to take the Addr+Data Paths VMA
+          // architecture completely into account. The good news is
+          // that the logic to do some of this is part of SCD TRAP
+          // MIX.
+          //
+          // From inspecting schematics (VMA starts on p. 354), VMA
+          // only holds the full PC including section. Flags come from
+          // elsewhere.
+          //
+          // It is pretty clear I need a completely new data path
+          // diagram for VMA based on M8542 which replaces M8523 which
+          // is outdated for KL10-PV model B but is shown on p. 137.
 
+          // Note the data path diagram shows these values inverted
+          // because in schematics they are active low. These are
+          // right.
+          // VMA/=<52:53>D,0	;ALSO CONTROLLED BY SPECIAL FUNCTIONS
+          // 	VMA=0		;BY DEFAULT
+          // 	PC=1		;MAY BE OVERRIDDEN BY MCL LOGIC	TO LOAD FROM AD
+          // 	LOAD=1		; IF WE KNOW IT WILL BE OVERRIDDEN, USE THIS
+          // 	PC+1=2
+          // 	AD=3		;ENTIRE VMA, INCLUDING SECTION
+          //
           // COND/=<60:65>D,0
           //     VMA_#=30
           //     VMA_#+TRAP=31
@@ -320,10 +343,6 @@ const VMA = Reg
           //     VMA DEC=35	;VMA_VMA-1
           //     VMA INC=36	;VMA_VMA+1
 
-// XXX unfinished. This is probably going to have to take the
-// Addr+Data Paths VMA architecture completely into account. The good
-// news is that the logic to do some of this is part of SCD TRAP MIX.
-
           switch (CR.COND) {
           case CR['VMA_#']:
           case CR['VMA_#+TRAP']:
@@ -332,8 +351,9 @@ const VMA = Reg
           case CR['VMA_#+PI*2']:
             break;
 
-//VMA DEC=35	;VMA_VMA-1
-//VMA INC=36	;VMA_VMA+1
+          case CR['VMA DEC']:
+          case CR['VMA INC']:
+            break;
           }
 
           // VMA
@@ -351,17 +371,6 @@ const VMA = Reg
             this.value = AD.value;
             break;
           }
-        },
-
-        inc() {
-          this.value = BigInt.asUintN(this.bitWidth, this.value + 1n);
-        },
-
-        dec() {
-          this.value = BigInt.asUintN(this.bitWidth, this.value - 1n);
-        },
-
-        hold() {
         },
       });
 
