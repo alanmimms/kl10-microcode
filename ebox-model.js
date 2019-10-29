@@ -87,6 +87,18 @@ const EBOXUnit = StampIt({
   EBOXUnitItems[this.name] = this;
 }).methods({
   get() {return this.value},
+
+  getLH() {
+    return BigInt.asUintN(18, this.value >> 18n);
+  },
+
+  getRH() {
+    return BigInt.asUintN(18, this.value);
+  },
+
+  joinHalves(lh, rh) {
+    return (BigInt.asUintN(18, lh) << 18n | BigInt.asUintN(18, rh);
+  }
 });
 
 module.exports.EBOXUnit = EBOXUnit;
@@ -291,13 +303,57 @@ const VMA = Reg
       .compose({name: 'VMA'})
       .init({name: 'VMA', bitWidth: 35 - 13 + 1})
       .methods({
+
         load() {
+
+          // COND/=<60:65>D,0
+          //     VMA_#=30
+          //     VMA_#+TRAP=31
+          //     VMA_#+MODE=32
+          //     VMA_#+AR32-35=33
+          //     VMA_#+PI*2=34
+          //     VMA DEC=35	;VMA_VMA-1
+          //     VMA INC=36	;VMA_VMA+1
+
+// XXX unfinished. This is probably going to have to take the
+// Addr+Data Paths VMA architecture completely into account. The good
+// news is that the logic to do some of this is part of SCD TRAP MIX.
+
+          switch (CR.COND) {
+          case CR['VMA_#']:
+          case CR['VMA_#+TRAP']:
+          case CR['VMA_#+MODE']:
+          case CR['VMA_#+AR32-35']:
+          case CR['VMA_#+PI*2']:
+            break;
+
+//VMA DEC=35	;VMA_VMA-1
+//VMA INC=36	;VMA_VMA+1
+          }
+
+          // VMA
+          switch (CR.VMA) {
+          case 0:                     // VMA (noop)
+            break;
+          case 1:                     // PC or LOAD
+            // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
+            this.value = PC.value;
+            break;
+          case 2:                     // PC+1
+            this.value = this.joinHalves(this.getLH(), PC.value + 1n);
+            break;
+          case 3:                     // AD (ENTIRE VMA, INCLUDING SECTION)
+            this.value = AD.value;
+            break;
+          }
         },
 
         inc() {
+          this.value = BigInt.asUintN(this.bitWidth, this.value + 1n);
         },
 
         dec() {
+          this.value = BigInt.asUintN(this.bitWidth, this.value - 1n);
         },
 
         hold() {

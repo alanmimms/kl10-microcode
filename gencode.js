@@ -282,8 +282,6 @@ function generateFunctions() {
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
     ].join('\n  ');
 
-    const stores = {};              // Used by store() and storing process.
-    const storesConstsCode = ['// Stores consts:'];
     const specCode = handleSPEC(mw);
 
     const tailCall = ['// Tail call recursion'];
@@ -297,27 +295,10 @@ function generateFunctions() {
       tailCall.push(`// XXX calculated tailCall not yet implemented!`);
     }
 
-    // VMA
-    switch (getField(mw, cramDefs, 'VMA')) {
-    case 0:                     // VMA (noop)
-      break;
-    case 1:                     // PC or LOAD (;MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD)
-      store('VMA', 'PC');
-      break;
-    case 2:                     // PC+1
-      store('VMA', 'PC+1');
-      break;
-    case 3:                     // AD (ENTIRE VMA, INCLUDING SECTION)
-      store('VMA', 'AD');
-      break;
-    }
-
     return `\
 function cram_${octal4(ma)}(cpu) {
   ${[
     headerCode,
-    ``,
-    storesConstsCode,
     ``,
     specCode,
     ``,
@@ -326,20 +307,6 @@ function cram_${octal4(ma)}(cpu) {
   }
 },
 `;
-
-    // When a `cram_xxxx` function needs to modify a CPU state
-    // register, call this with its name. This will note that we need
-    // to store back the value of the modification and it will declare
-    // a const for `dest` to hold the result until it is stored back
-    // at the end of the function. This allows many references to a
-    // CPU state register that all receive the same value (start of
-    // this cycle) and the value will then be updated at the end of
-    // the cycle with the value held in the const.
-    function store(dest, value) {
-      if (stores[dest]) console.log(`CODING ERROR: multiple stores to ${dest}`);
-      stores[dest] = value;
-      storesConstsCode.push(`const ${dest} = ${value};`);
-    }
   });
 }
 
