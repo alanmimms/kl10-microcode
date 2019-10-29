@@ -271,42 +271,22 @@ function generateModel() {
 }
 
 
-function generateMicrocode() {
-  const moduleHeader = `\
-'use strict';
-`;
-
-  const cramArray = `module.exports.cram = [
-` +
-        cram.map(mw => `BigInt(0o${_.padStart(mw.toString(8), 84/3, '0')})`).join(',\n')
-  + `
-];`;
-
-  const dramArray = `module.exports.dram = [
-` +
-        dram.map(mw => `BigInt(0o${_.padStart(mw.toString(8), 24/3, '0')})`).join(',\n')
-  + `
-];`;
-
-  const functionsHeader = `
-module.exports.ops = [
-`;
-
-  const allFunctions = _.range(EBOX.CRAM.nWords).map(ma => {
+function generateFunctions() {
+  return _.range(EBOX.CRAM.nWords).map(ma => {
     const mw = cram[ma];
 
     const headerCode = [
-      `  computeCPUState(0o${octal4(ma)});`,
+      `computeCPUState(0o${octal4(ma)});`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
-    ];
+    ].join('\n  ');
 
     const stores = {};              // Used by store() and storing process.
-    const storesConstsCode = [];
+    const storesConstsCode = ['// Stores consts:'];
     const specCode = handleSPEC(mw);
 
-    const tailCall = [];
+    const tailCall = ['// Tail call recursion'];
 
     if (1) {                    // Constant next CRAM address
       // XXX This is temporary to show the concept, but it is also wrong.
@@ -334,12 +314,16 @@ module.exports.ops = [
 
     return `\
 function cram_${octal4(ma)}(cpu) {
-${[].concat(
-  headerCode,
-  storesConstsCode,
-  specCode,
-  tailCall)
-  .join('\n  ')}
+  ${[
+    headerCode,
+    ``,
+    storesConstsCode,
+    ``,
+    specCode,
+    ``,
+    tailCall,
+  ].flat().join('\n  ')
+  }
 },
 `;
 
@@ -356,19 +340,27 @@ ${[].concat(
       stores[dest] = value;
       storesConstsCode.push(`const ${dest} = ${value};`);
     }
-  }).join(`\n\n`);
+  });
+}
 
-  const functionsTrailer = `
+
+function generateXRAMArray(typeName, wordsArray, bitWidth) {
+  return `module.exports.${typeName} = [
+  ${wordsArray.map(mw => `BigInt(0o${_.padStart(mw.toString(8), bitWidth/3, '0')})`).join(',\n  ')}
 ];
 `;
+}
 
+
+function generateMicrocode() {
   const allCode = [
-    moduleHeader,
-    cramArray,
-    dramArray,
-    functionsHeader,
-    allFunctions,
-    functionsTrailer,
+    `'use strict';`,
+    '',
+    generateXRAMArray('cram', cram, 84),
+    generateXRAMArray('dram', dram, 24),
+    `module.exports.ops = [`,
+    generateFunctions(),
+    `];`,
   ].join('\n\n');
   
   fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
