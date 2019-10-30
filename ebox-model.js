@@ -148,12 +148,12 @@ module.exports.BitCombiner = BitCombiner;
 // FM. Elements are BigInt by default. The `input` is the EBOXUnit
 // that provides a value for calls to `latch()`.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, input, addr = 0, elementValue = 0n}) {
+      .init(function({nWords, input, bitWidth, addr = 0, elementValue = 0n}) {
         this.data = new Array(nWords).map(x => elementValue);
         this.nWords = nWords,
         this.input = input;
         this.addr = addr;
-        this.bitWidth = this.input.bitWidth;
+        this.bitWidth = bitWidth || input && input.bitWidth;
       }).methods({
 
         get() {
@@ -185,9 +185,9 @@ module.exports.Mux = Mux;
 
 // Latch input for later retrieval.
 const Reg = EBOXUnit.compose({name: 'Reg'})
-      .init(function({input}) {
+      .init(function({input, bitWidth}) {
         this.input = input;
-        this.bitWidth = input.bitWidth;
+        this.bitWidth = bitWidth || input && input.bitWidth;
         this.latched = 0n;
       }).methods({
 
