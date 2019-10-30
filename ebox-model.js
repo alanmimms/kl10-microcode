@@ -26,39 +26,6 @@ const definesMatches = define_mic
 const defines = definesMatches.groups;
 
 
-// Parse a sequence of microcode field definitions (see define.mic for
-// examples) and return BitField stamps for each of the fields.
-function defineBitFields(input, s) {
-  const bitWidth = input.bitWidth;
-
-  return s.split(/\n/).reduce((state, line) => {
-    const [, name, s, e] = line.match(/^([^\/;]+)\/=<(\d+):(\d+)>.*/) || [];
-
-    if (name) {
-      state.curField = name;
-      const entry = BitField({name, s: parseInt(s), e: parseInt(e), input, bitWidth});
-      state.fields.push(entry);
-      input[name] = entry;
-    } else {
-      const [, name, value] = line.match(/^\s+([^=;]+)=(\d+).*/) || [];
-
-      if (name) {
-
-        if (state.curField) {
-          const fields = state.fields;
-          fields[fields.length - 1][name] = BigInt(parseInt(value, 8));
-        } else {
-          console.log(`ERROR: no field context for value definition in "${line}"`);
-        }
-      } else {
-        // Ignore lines that do not match either regexp.
-      }
-    }
-
-    return state;
-  }, {fields: [], curField: null});
-}
-
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
 const maskForBit = (n, width = 36) => Math.pow(2, width - 1 - n);
 
@@ -102,6 +69,22 @@ const EBOXUnit = StampIt({
 });
 
 module.exports.EBOXUnit = EBOXUnit;
+
+
+// XXX TODO: Build a ClockedUnit composed from EBOXUnit for each type
+// of Unit that has a clock and latches its value (RAM and Reg for
+// example). Use `getInputs()` method to retrieve inputs and aggregate
+// them to save what would be saved by the latch on the clock edge.
+//
+// On non-clocked Units:
+// * `latch()` does nothing or is unimplemented.
+// * `clock()` does nothing or is unimplemented.
+// * `get()` returns `getInputs()` result directly..
+//
+// On ClockedUnits:
+// * `latch()` copies `getInputs()` result into `latchedValue`.
+// * `clock()` copies `latchedValue` to `value.
+// * `get()` returns `value`.
 
 
 // BitField definition. Define with a specific name. Convention is
@@ -688,6 +671,39 @@ function computeCPUState(newCA) {
 
 }
 
+
+// Parse a sequence of microcode field definitions (see define.mic for
+// examples) and return BitField stamps for each of the fields.
+function defineBitFields(input, s) {
+  const bitWidth = input.bitWidth;
+
+  return s.split(/\n/).reduce((state, line) => {
+    const [, name, s, e] = line.match(/^([^\/;]+)\/=<(\d+):(\d+)>.*/) || [];
+
+    if (name) {
+      state.curField = name;
+      const entry = BitField({name, s: parseInt(s), e: parseInt(e), input, bitWidth});
+      state.fields.push(entry);
+      input[name] = entry;
+    } else {
+      const [, name, value] = line.match(/^\s+([^=;]+)=(\d+).*/) || [];
+
+      if (name) {
+
+        if (state.curField) {
+          const fields = state.fields;
+          fields[fields.length - 1][name] = BigInt(parseInt(value, 8));
+        } else {
+          console.log(`ERROR: no field context for value definition in "${line}"`);
+        }
+      } else {
+        // Ignore lines that do not match either regexp.
+      }
+    }
+
+    return state;
+  }, {fields: [], curField: null});
+}
 
 // Export every EBOXUnit
 Object.assign(module.exports, EBOXUnitItems);
