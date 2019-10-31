@@ -38,11 +38,13 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 // Base Stamp for EBOX functional units. This is an abstract Stamp
 // defining protocol but all should be completely overridden.
 //
-// The convention is that each EBOXUnit has a `get()` method
+// The convention is that each EBOXUnit has a `getInputs()` method
 // (sometimes with parameters) that retrieves the unit's value based
-// on its current inputs and configuration. If the unit is a RAM or a
-// Reg there is also a `latch()` method that stores a value at the
-// EBOXUnit's current address(RAM) or in its `latched` property (Reg).
+// on its current inputs and configuration. In non-clocked Units the
+// `get()` method simply returns the value retieved by `getInputs()`.
+// In clocked Units there is also a `latch()` method that stores a
+// value at the EBOXUnit's current address(RAM) or in its `latched`
+// property (Reg).
 const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
 const EBOXUnit = StampIt({
   // Must override in derived stamps
@@ -53,7 +55,7 @@ const EBOXUnit = StampIt({
   this.bitWidth = bitWidth;
   EBOXUnitItems[this.name] = this;
 }).methods({
-  get() {return this.value},
+  get() {return this.getInputs()},
 
   getLH() {
     return BigInt.asUintN(18, this.value >> 18n);
@@ -71,20 +73,34 @@ const EBOXUnit = StampIt({
 module.exports.EBOXUnit = EBOXUnit;
 
 
-// XXX TODO: Build a ClockedUnit composed from EBOXUnit for each type
-// of Unit that has a clock and latches its value (RAM and Reg for
-// example). Use `getInputs()` method to retrieve inputs and aggregate
-// them to save what would be saved by the latch on the clock edge.
+// ClockedUnit is composed from EBOXUnit for each type of Unit that
+// has a clock and latches its value (RAM and Reg for example). It
+// uses `getInputs()` method to retrieve inputs and aggregate them to
+// save what would be saved by the latch on the clock edge.
 //
 // On non-clocked Units:
 // * `latch()` does nothing or is unimplemented.
 // * `clock()` does nothing or is unimplemented.
-// * `get()` returns `getInputs()` result directly..
+// * `get()` returns `getInputs()` result directly.
 //
 // On ClockedUnits:
 // * `latch()` copies `getInputs()` result into `latchedValue`.
-// * `clock()` copies `latchedValue` to `value.
+// * `clock()` copies `latchedValue` to `value`.
 // * `get()` returns `value`.
+const ClockedUnit = EBOXUnit
+      .compose({name: 'ClockedUnit'})
+      .init(function({input, bitWidth}) {
+        this.latchedValue = this.value = 0n;
+        this.input = input;
+        this.bitWidth = bitWidth || input && input.bitWidth;
+      }).methods({
+        get() {return this.value},
+        latch() {this.latchedValue = this.getInputs()},
+        clock() {this.value = this.latchedValue},
+      });
+module.exports.ClockedUnit = ClockedUnit;
+
+
 
 
 // BitField definition. Define with a specific name. Convention is
@@ -102,7 +118,7 @@ const BitField = EBOXUnit
         this.mask = (1n << BigInt(this.nBits)) - 1n;
       }).methods({
 
-        get() {
+        getInputs() {
           const v = this.input.get();
           return (BigInt.asUintN(this.nBits + 1, v) >> this.shift) & this.mask;
         },
@@ -133,7 +149,7 @@ const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
         this.bitWidth = inputs.reduce((cur, i) => cur += i.bitWidth, 0);
       }).methods({
 
-        get() {
+        getInputs() {
           return this.inputs.reduce((v, i) => {
             v = (v << i.bitWidth) | i.get();
             return v;
@@ -146,22 +162,37 @@ module.exports.BitCombiner = BitCombiner;
 // Given an address, retrieve the stored word. Can also store new
 // words for diagnostic purposes. This is meant for CRAM and DRAM, not
 // FM. Elements are BigInt by default. The `input` is the EBOXUnit
-// that provides a value for calls to `latch()`.
+// that provides a value for calls to `latch()` or write data. A
+// nonzero value on `control` means the clock cycle is a WRITE,
+// otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, input, bitWidth, addr = 0, elementValue = 0n}) {
+      .init(function({nWords, input, bitWidth,
+                      control = zeroUnit, addrInput = 0, elementValue = 0n}) {
         this.data = new Array(nWords).map(x => elementValue);
         this.nWords = nWords,
         this.input = input;
-        this.addr = addr;
+        this.control = control;
+        this.writeCycle = false;
+        this.addrInput = addrInput;
         this.bitWidth = bitWidth || input && input.bitWidth;
+        this.latchedValue = this.latchedAddr = 0n;
       }).methods({
 
-        get() {
-          return this.data[this.addr];
+        get() { return this.value },
+
+        clock() {
+
+          if (this.writeCycle) {
+            this.data[this.latchedAddr] = this.value = this.latchedValue;
+          } else {
+            this.latchedValue = this.value = this.data[this.latchedAddr];
+          }
         },
 
-        latch(value) {
-          this.data[this.addr] = this.input.get();
+        latch() {
+          this.writeCycle = !!this.control.get();
+          this.latchedAddr = this.addrInput;
+          if (this.writeCycle) this.latchedValue = this.getInputs();
         },
       });
 module.exports.RAM = RAM;
