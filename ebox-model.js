@@ -146,21 +146,20 @@ const EBOXUnit = StampIt({
     return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh);
   },
 });
-
 module.exports.EBOXUnit = EBOXUnit;
+
 
 ////////////////////////////////////////////////////////////////
 // BitField definition. Define with a specific name. Convention is
 // that `s` is PDP10 numbered leftmost bit and `e` is PDP10 numbered
 // rightmost bit in field. So number of bits is `e-s+1`.
-const BitField = EBOXUnit
-      .compose({name: 'BitField'})
+// Not an EBOXUnit, just a useful stamp.
+const BitField = StampIt.compose({name: 'BitField'})
       .init(function({s, e}) {
         this.s = s;
         this.e = e;
-        this.bitWidth = e - s + 1;
-        this.shift = shiftForBit(e, this.bitWidth);
         this.nBits = e - s + 1;
+        this.shift = shiftForBit(e, this.nBits);
         this.mask = (1n << BigInt(this.nBits)) - 1n;
       }).methods({
 
@@ -174,17 +173,16 @@ module.exports.BitField = BitField;
 
 ////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
-const ConstantUnit = EBOXUnit
-      .compose({name: 'ConstantUnit'})
+const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
       .init(function ({name, value, bitWidth = 36}) {
         this.name = name;
         this.value = value >= 0 ? value : BigInt.asUintN(bitWidth, value);
       });
 
-const zeroUnit = ConstantUnit({name: 'zero', value: 0n});
-const onesUnit = ConstantUnit({name: 'ones', value: -1n});
-module.exports.zeroUnit = zeroUnit;
-module.exports.onesUnit = onesUnit;
+const zero = ConstantUnit({name: 'zero', value: 0n});
+const ones = ConstantUnit({name: 'ones', value: -1n});
+module.exports.zero = zero;
+module.exports.ones = ones;
 
 
 ////////////////////////////////////////////////////////////////
@@ -213,7 +211,7 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = zeroUnit, addrInput = 0, elementValue = 0n}) {
+      .init(function({nWords, control = zero, addrInput = 0, elementValue = 0n}) {
         this.data = new Array(nWords).map(x => elementValue);
         this.nWords = nWords,
         this.control = control;
@@ -301,8 +299,7 @@ module.exports.ShiftMult = ShiftMult;
 ////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
-const ShiftDiv = EBOXUnit
-      .compose({name: 'ShiftDiv'})
+const ShiftDiv = EBOXUnit.compose({name: 'ShiftDiv'})
       .init(function({divisor = 2}) {
         this.divisor = divisor;
       }).methods({
@@ -347,8 +344,7 @@ const BR = Reg.props({name: 'BR', bitWidth: 36});
 const BRX = Reg.props({name: 'BRX', bitWidth: 36});
 const SC = Reg.props({name: 'SC', bitWidth: 10});
 
-const FE = Reg
-      .compose({name: 'FE'})
+const FE = Reg.compose({name: 'FE'})
       .props({name: 'FE', bitWidth: 10})
       .methods({
         load() {
@@ -358,8 +354,7 @@ const FE = Reg
         },
       });
 
-const VMA = Reg
-      .compose({name: 'VMA'})
+const VMA = Reg.compose({name: 'VMA'})
       .props({name: 'VMA', bitWidth: 35 - 13 + 1})
       .methods({
 
@@ -428,8 +423,7 @@ const VMA = Reg
         },
       });
 
-const MQ = Reg
-      .compose({name: 'MQ'})
+const MQ = Reg.compose({name: 'MQ'})
       .props({name: 'MQ', bitWidth: 36})
       .methods({
         load() {
@@ -545,7 +539,7 @@ const SH = LogicUnit.props({
 const ADA = Mux.props({
   name: 'ADA',
   control: CR.ADA,
-  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, AR, ARX, MQ, PC]});
+  inputs: [zero, zero, zero, zero, AR, ARX, MQ, PC]});
 
 const ADB = Mux.props({
   name: 'ADB',
@@ -558,14 +552,14 @@ const ADXA = Mux.props({
   name: 'ADXA',
   bitWidth: 36,
   control: CR.ADA,
-  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, ARX, ARX, ARX, ARX],
+  inputs: [zero, zero, zero, zero, ARX, ARX, ARX, ARX],
 });
 
 const ADXB = Mux.props({
   name: 'ADXB',
   bitWidth: 36,
   control: CR.ADB,
-  inputs: [zeroUnit, BRXx2, BRX, ARXx4],
+  inputs: [zero, BRXx2, BRX, ARXx4],
 });
 
 // XXX needs implementation
@@ -626,13 +620,13 @@ const ADx2 = ShiftMult.props({name: 'ADx2', inputs: [AD], multiplier: 2});
 const ADdiv4 = ShiftDiv.props({name: 'ADdiv4', inputs: [AD], divisor: 4});
 
 // XXX temporary. This needs to be implemented.
-const SERIAL_NUMBER = zeroUnit;
+const SERIAL_NUMBER = zero;
 
 // XXX very temporary. Needs implementation.
-const EBUS = zeroUnit;
+const EBUS = zero;
 
 // XXX very temporary. Needs implementation.
-const CACHE = zeroUnit;
+const CACHE = zero;
 
 const ARMR = Mux.props({
   name: 'ARMR',
@@ -655,7 +649,7 @@ const ARXM = Mux.props({
   name: 'ARXM',
   bitWidth: 36,
   control: CR.ARXM,
-  inputs: [zeroUnit, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
+  inputs: [zero, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
 });
 
 const SCM = Mux.props({
@@ -677,7 +671,7 @@ const SCADA = Mux.props({
   name: 'SCADA',
   bitWidth: 10,
   control: CR.SCADA,
-  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, FE, AR_POS, AR_EXP, CR['#']],
+  inputs: [zero, zero, zero, zero, FE, AR_POS, AR_EXP, CR['#']],
 });
 
 const SCADB = Mux.props({
@@ -694,7 +688,7 @@ const MQM = Mux.props({
   name: 'MQM',
   bitWidth: 36,
   control: CR.MQM,
-  inputs: [zeroUnit, zeroUnit, zeroUnit, zeroUnit, MQdiv4, SH, AD, onesUnit],
+  inputs: [zero, zero, zero, zero, MQdiv4, SH, AD, ones],
 });
 MQ.input = MQM;
 
@@ -709,8 +703,7 @@ const VMA_HELD_OR_PC = Mux.props({
   bitWidth: 36,
   inputs: [PC, VMA_HELD],
 
-  control: BitCombiner
-    .compose({name: 'SEL VMA HELD'})
+  control: BitCombiner.compose({name: 'SEL VMA HELD'})
     .props({
       inputs: [CR.COND],
     }).methods({
@@ -762,8 +755,7 @@ function defineBitFields(input, s) {
       if (name) {
 
         if (state.curField) {
-          const fields = state.fields;
-          fields[fields.length - 1][name] = BigInt(parseInt(value, 8));
+          state.fields[state.fields.length - 1][name] = BigInt(parseInt(value, 8));
         } else {
           console.log(`ERROR: no field context for value definition in "${line}"`);
         }
