@@ -33,53 +33,12 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 
 
 ////////////////////////////////////////////////////////////////
-// Stamps
-
-// Base Stamp for EBOX functional units. This is an abstract Stamp
-// defining protocol but all should be completely overridden.
-//
-// The convention is that each EBOXUnit has a `getInputs()` method
-// (sometimes with parameters) that retrieves the unit's value based
-// on its current inputs and configuration. In non-clocked Units the
-// `get()` method simply returns the value retieved by `getInputs()`.
-// In clocked Units there is also a `latch()` method that stores a
-// value at the EBOXUnit's current address(RAM) or in its `latched`
-// property (Reg).
-const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
-const EBOXUnit = StampIt({
-  // Must override in derived stamps
-  name: 'EBOXUnit',
-}).init(function({name, bitWidth}) {
-  this.name = name;
-  this.value = 0n;
-  this.bitWidth = bitWidth;
-  EBOXUnitItems[this.name] = this;
-}).methods({
-  get() {return this.getInputs()},
-
-  getLH() {
-    return BigInt.asUintN(18, this.value >> 18n);
-  },
-
-  getRH() {
-    return BigInt.asUintN(18, this.value);
-  },
-
-  joinHalves(lh, rh) {
-    return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh);
-  }
-});
-
-module.exports.EBOXUnit = EBOXUnit;
-
-
-////////////////////////////////////////////////////////////////
 //
 // Stolen from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR)
-// and from 214 Figure 3-7 NICOND Dispatch and Waiting.
+// and p. 214 Figure 3-7 NICOND Dispatch and Waiting.
 //
 // _ |_____________________| _____________________ |_
-//  \/  micro instruction  \/  micro instruction  \/   CR
+//  \/  micro instruction1 \/  micro instruction2 \/   CR
 // _/\_____________________/\_____________________/\_
 //   |                     |                       |
 //   |_________            | __________            |_
@@ -126,54 +85,79 @@ module.exports.EBOXUnit = EBOXUnit;
 //   |     /////           \                       |    IR MIXER IN
 // __|____/////            |\ _____________________|_
 //   |                     |                       |
-//   |                     | 
-//   |                     +-- clock() sets up value to return from get() next cycle
 //   |                     |
 //   |                     +-- instruction loads into ARX
+//   |                     | 
+//   |                     +-- `clock()` copies `latchedValue` to `value`
 //   |
-//   +-- latch(), samples input value using getInputs() while it is stable
+//   +-- `latch()`, saves `getInputs()` value to `latchedValue`
 //
-////////////////////////////////////////////////////////////////
 
-// ClockedUnit is composed from EBOXUnit for each type of Unit that
-// has a clock and latches its value (RAM and Reg for example). It
-// uses `getInputs()` method to retrieve inputs and aggregate them to
-// save what would be saved by the latch on the clock edge.
+////////////////////////////////////////////////////////////////
+// Stamps
+
+// Base Stamp for EBOX functional units. This is an abstract Stamp
+// defining protocol but all should be completely overridden.
 //
-// On non-clocked Units:
-// * `latch()` does nothing or is unimplemented.
-// * `clock()` does nothing or is unimplemented.
-// * `get()` returns `getInputs()` result directly.
+// The convention is that each EBOXUnit has a `getInputs()` method
+// (sometimes with parameters) that retrieves the unit's value based
+// on its current inputs and configuration. EBOXUnit uses
+// `getInputs()` method to retrieve inputs and aggregates them to save
+// what would be saved on the clock edge.
 //
-// On ClockedUnits:
+// The combinational logic in the KL10 does not really transition
+// piecemeal like our implementation would do if we simply allowed
+// each Unit's output to change as we walk through and recalculate
+// each Unit's state during each clock. So we have to effectively
+// treat EVERY Unit as being clocked and apply the latch --> clock
+// discipline because we do not have hardware paralellism. So every
+// Unit actually is composed from EBOXUnit.
+//
 // * `latch()` copies `getInputs()` result into `latchedValue`.
 // * `clock()` copies `latchedValue` to `value`.
 // * `get()` returns `value`.
-const ClockedUnit = EBOXUnit
-      .compose({name: 'ClockedUnit'})
-      .init(function({input, bitWidth}) {
-        this.latchedValue = this.value = 0n;
-        this.input = input;
-        this.bitWidth = bitWidth || input && input.bitWidth;
-      }).methods({
-        get() {return this.value},
-        latch() {this.latchedValue = this.getInputs()},
-        clock() {this.value = this.latchedValue},
-      });
-module.exports.ClockedUnit = ClockedUnit;
 
+const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
+const EBOXUnit = StampIt({
+  // Must override in derived stamps
+  name: 'EBOXUnit',
+}).init(function({name, inputs, bitWidth}) {
+  this.name = name;
+  this.value = 0n;
+  this.bitWidth = bitWidth;
+  EBOXUnitItems[this.name] = this;
+  this.latchedValue = this.value = 0n;
+  this.inputs = inputs;
+  this.bitWidth = bitWidth || inputs && inputs.bitWidth;
+}).methods({
+  get() {return this.value},
+  latch() {this.latchedValue = this.getInputs()},
+  clock() {this.value = this.latchedValue},
 
+  getLH() {
+    return BigInt.asUintN(18, this.value >> 18n);
+  },
 
+  getRH() {
+    return BigInt.asUintN(18, this.value);
+  },
 
+  joinHalves(lh, rh) {
+    return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh);
+  },
+});
+
+module.exports.EBOXUnit = EBOXUnit;
+
+////////////////////////////////////////////////////////////////
 // BitField definition. Define with a specific name. Convention is
 // that `s` is PDP10 numbered leftmost bit and `e` is PDP10 numbered
 // rightmost bit in field. So number of bits is `e-s+1`.
 const BitField = EBOXUnit
       .compose({name: 'BitField'})
-      .init(function({s, e, input}) {
+      .init(function({s, e}) {
         this.s = s;
         this.e = e;
-        this.input = input;
         this.bitWidth = e - s + 1;
         this.shift = shiftForBit(e, this.bitWidth);
         this.nBits = e - s + 1;
@@ -181,19 +165,19 @@ const BitField = EBOXUnit
       }).methods({
 
         getInputs() {
-          const v = this.input.get();
+          const v = this.inputs.get();
           return (BigInt.asUintN(this.nBits + 1, v) >> this.shift) & this.mask;
         },
       });
 module.exports.BitField = BitField;
 
 
+////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
 const ConstantUnit = EBOXUnit
       .compose({name: 'ConstantUnit'})
       .init(function ({name, value, bitWidth = 36}) {
         this.name = name;
-        this.bitWidth = bitWidth;
         this.value = value >= 0 ? value : BigInt.asUintN(bitWidth, value);
       });
 
@@ -203,12 +187,12 @@ module.exports.zeroUnit = zeroUnit;
 module.exports.onesUnit = onesUnit;
 
 
+////////////////////////////////////////////////////////////////
 // Take a group of inputs and concatenate them into a single wide
 // field.
 const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
-      .init(function({inputs}) {
-        this.inputs = inputs;
-        this.bitWidth = inputs.reduce((cur, i) => cur += i.bitWidth, 0);
+      .init(function() {
+        this.bitWidth = this.inputs.reduce((cur, i) => cur += i.bitWidth, 0);
       }).methods({
 
         getInputs() {
@@ -221,23 +205,20 @@ const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
 module.exports.BitCombiner = BitCombiner;
 
 
+////////////////////////////////////////////////////////////////
 // Given an address, retrieve the stored word. Can also store new
 // words for diagnostic purposes. This is meant for CRAM and DRAM, not
-// FM. Elements are BigInt by default. The `input` is the EBOXUnit
-// that provides a value for calls to `latch()` or write data. A
-// nonzero value on `control` means the clock cycle is a WRITE,
-// otherwise it is a read.
+// FM. Elements are BigInt by default. The one element in `inputs` is
+// the EBOXUnit that provides a value for calls to `latch()` or write
+// data. A nonzero value on `control` means the clock cycle is a
+// WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, input, bitWidth,
-                      control = zeroUnit, addrInput = 0, elementValue = 0n}) {
+      .init(function({nWords, control = zeroUnit, addrInput = 0, elementValue = 0n}) {
         this.data = new Array(nWords).map(x => elementValue);
         this.nWords = nWords,
-        this.input = input;
         this.control = control;
         this.writeCycle = false;
         this.addrInput = addrInput;
-        this.bitWidth = bitWidth || input && input.bitWidth;
-        this.latchedValue = this.latchedAddr = 0n;
       }).methods({
 
         get() { return this.value },
@@ -260,13 +241,13 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
 module.exports.RAM = RAM;
 
 
-// Given a selector input and a series of selectable inputs, produce
+////////////////////////////////////////////////////////////////
+// Given a control input and a series of selectable inputs, produce
 // the value of the selected input on the output.
 const Mux = EBOXUnit.compose({name: 'Mux'})
-      .init(function({inputs, control}) {
-        this.inputs = inputs;
+      .init(function({control}) {
         this.control = control;
-        this.bitWidth = inputs[0].bitWidth;
+        this.bitWidth = this.inputs.reduce((cur, i) => Math.max(cur, i), this.bitWidth || 0);
       }).methods({
 
         get() {
@@ -276,28 +257,25 @@ const Mux = EBOXUnit.compose({name: 'Mux'})
 module.exports.Mux = Mux;
 
 
-// Latch input for later retrieval.
+////////////////////////////////////////////////////////////////
+// Latch inputs for later retrieval.
 const Reg = EBOXUnit.compose({name: 'Reg'})
-      .init(function({input, bitWidth}) {
-        this.input = input;
-        this.bitWidth = bitWidth || input && input.bitWidth;
-        this.latched = 0n;
-      }).methods({
+      .methods({
 
         latch() {
           this.value = this.latched;
-          this.latched = this.input.get();
+          this.latched = this.inputs.get();
         },
       });
 module.exports.Reg = Reg;
 
 
+////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const LogicUnit = EBOXUnit.compose({name: 'LogicUnit'})
-      .init(function({splitter, inputs, func}) {
+      .init(function({splitter, func}) {
         this.splitter = splitter;
-        this.inputs = inputs;
         this.func = func;
       }).methods({
 
@@ -308,53 +286,53 @@ const LogicUnit = EBOXUnit.compose({name: 'LogicUnit'})
 module.exports.LogicUnit = LogicUnit;
 
 
+////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftMult = EBOXUnit.compose({name: 'ShiftMult'})
-      .init(function({input, multiplier = 2}) {
-        this.input = input;
+      .init(function({multiplier = 2}) {
+        this.multiplier = multiplier;
       }).methods({
-        get() {return this.input.get() * this.multiplier }
+        get() {return this.inputs.get() * this.multiplier }
       });
 module.exports.ShiftMult = ShiftMult;
 
 
+////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftDiv = EBOXUnit
       .compose({name: 'ShiftDiv'})
-      .init(function({input, divisor = 2}) {
-        this.input = input;
+      .init(function({divisor = 2}) {
+        this.divisor = divisor;
       }).methods({
-        get() {return this.input.get() / this.divisor }
+        get() {return this.inputs.get() / this.divisor }
       });
 module.exports.ShiftDiv = ShiftDiv;
 
 
 ////////////////////////////////////////////////////////////////
-// RAMs
 // Wire up an EBOX block diagram.
 
-// Used to provide a uWord to CRAM to load it
+// RAMs
+// CRAM_IN is used to provide a uWord to CRAM when loading it.
 const CRAM_IN = Reg({name: 'CRAM_IN', bitWidth: 84});
-
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: CRAM_IN.bitWidth, input: CRAM_IN});
-const CR = Reg({name: 'CR', input: CRAM, bitWidth: CRAM.bitWidth});
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: CRAM_IN.bitWidth, inputs: [CRAM_IN]});
+const CR = Reg({name: 'CR', inputs: [CRAM], bitWidth: CRAM.bitWidth});
 
 defineBitFields(CR, defines.CRAM);
 
-
+// DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = Reg({name: 'DRAM_IN', bitWidth: 24});
-const DRAM = RAM({name: 'DRAM', input: DRAM_IN, nWords: 512, bitWidth: 24});
-const DR = Reg({name: 'DR', input: DRAM});
+const DRAM = RAM({name: 'DRAM', inputs: [DRAM_IN], nWords: 512, bitWidth: 24});
+const DR = Reg({name: 'DR', inputs: [DRAM]});
 
 defineBitFields(DR, defines.DRAM);
 
-
-// This needs its `input` set before a `latch()` call.
+// This needs its `inputs` set before a `latch()` call.
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
-////////////////////////////////////////////////////////////////
+
 // Registers
 const IR = Reg.props({name: 'IR', bitWidth: 12});
 const IRAC = Reg.props({name: 'IRAC', bitWidth: 4});
@@ -397,8 +375,8 @@ const VMA = Reg
           // elsewhere.
           //
           // It is pretty clear I need a completely new data path
-          // diagram for VMA based on M8542 which replaces M8523 which
-          // is outdated for KL10-PV model B but is shown on p. 137.
+          // diagram for VMA based on M8542 which replaces the M8523 -
+          // outdated for KL10-PV model B but is shown on p. 137.
 
           // Note the data path diagram shows these values inverted
           // because in schematics they are active low. These are
@@ -480,22 +458,22 @@ const AR = BitCombiner.props({name: 'AR', inputs: [ARL, ARR]});
 
 ////////////////////////////////////////////////////////////////
 // BitField splitters used by various muxes and logic elements.
-const AR_00_08 = BitField.props({name: 'AR_00_08', s: 0, e: 8, input: AR});
-const AR_EXP = BitField.props({name: 'AR_EXP', s: 1, e: 8, input: AR});
-const AR_SIZE = BitField.props({name: 'AR_SIZE', s: 6, e: 11, input: AR});
-const AR_POS = BitField.props({name: 'AR_POS', s: 0, e: 5, input: AR});
+const AR_00_08 = BitField.props({name: 'AR_00_08', s: 0, e: 8, inputs: [AR]});
+const AR_EXP = BitField.props({name: 'AR_EXP', s: 1, e: 8, inputs: [AR]});
+const AR_SIZE = BitField.props({name: 'AR_SIZE', s: 6, e: 11, inputs: [AR]});
+const AR_POS = BitField.props({name: 'AR_POS', s: 0, e: 5, inputs: [AR]});
 // XXX needs AR18 to determine direction of shift
-const AR_SHIFT = BitField.props({name: 'AR_SHIFT', s: 28, e: 35, input: AR});
-const AR_00_12 = BitField.props({name: 'AR_00_12', s: 0, e: 12, input: AR});
-const AR_12_36 = BitField.props({name: 'AR_12_35', s: 12, e: 35, input: AR});
+const AR_SHIFT = BitField.props({name: 'AR_SHIFT', s: 28, e: 35, inputs: [AR]});
+const AR_00_12 = BitField.props({name: 'AR_00_12', s: 0, e: 12, inputs: [AR]});
+const AR_12_36 = BitField.props({name: 'AR_12_35', s: 12, e: 35, inputs: [AR]});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult.props({name: 'BRx2', input: BR, multiplier: 2});
-const ARx4 = ShiftMult.props({name: 'ARx2', input: AR, multiplier: 4});
-const BRXx2 = ShiftMult.props({name: 'BRXx2', input: BRX, multiplier: 2});
-const ARXx4 = ShiftMult.props({name: 'ARXx4', input: ARX, multiplier: 4});
-const MQdiv4 = ShiftDiv.props({name: 'MQdiv4', input: MQ, divisor: 4});
+const BRx2 = ShiftMult.props({name: 'BRx2', inputs: [BR], multiplier: 2});
+const ARx4 = ShiftMult.props({name: 'ARx2', inputs: [AR], multiplier: 4});
+const BRXx2 = ShiftMult.props({name: 'BRXx2', inputs: [BRX], multiplier: 2});
+const ARXx4 = ShiftMult.props({name: 'ARXx4', inputs: [ARX], multiplier: 4});
+const MQdiv4 = ShiftDiv.props({name: 'MQdiv4', inputs: [MQ], divisor: 4});
 
 
 // SCAD CONTROL
@@ -608,15 +586,15 @@ const ARSIGN_SMEAR = LogicUnit.props({
   },
 });
 
-const SCAD_EXP = BitField.props({name: 'SCAD_EXP', s: 0, e: 8, input: SCAD});
-const SCAD_POS = BitField.props({name: 'SCAD_POS', s: 0, e: 5, input: SCAD});
-const PC_13_17 = BitField.props({name: 'PC_13_17', s: 13, e: 17, input: PC});
+const SCAD_EXP = BitField.props({name: 'SCAD_EXP', s: 0, e: 8, inputs: [SCAD]});
+const SCAD_POS = BitField.props({name: 'SCAD_POS', s: 0, e: 5, inputs: [SCAD]});
+const PC_13_17 = BitField.props({name: 'PC_13_17', s: 13, e: 17, inputs: [PC]});
 
 const VMA_PREV_SECT_13_17 = BitField.props({
   name: 'VMA_PREV_SECT_13_17',
   s: 13,
   e: 17,
-  input: VMA_PREV_SECT
+  inputs: [VMA_PREV_SECT],
 });
 
 const ARMML = Mux.props({
@@ -644,8 +622,8 @@ const ARMMR = Mux.props({
 
 const ARMM = BitCombiner.props({name: 'ARMM', inputs: [ARMML, ARMMR]});
 
-const ADx2 = ShiftMult.props({name: 'ADx2', input: AD, multiplier: 2});
-const ADdiv4 = ShiftDiv.props({name: 'ADdiv4', input: AD, divisor: 4});
+const ADx2 = ShiftMult.props({name: 'ADx2', inputs: [AD], multiplier: 2});
+const ADdiv4 = ShiftDiv.props({name: 'ADdiv4', inputs: [AD], divisor: 4});
 
 // XXX temporary. This needs to be implemented.
 const SERIAL_NUMBER = zeroUnit;
@@ -670,8 +648,8 @@ const ARML = Mux.props({
   inputs: [ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
 });
 
-const ADXx2 = ShiftMult.props({name: 'ADXx2', input: ADX, multiplier: 2});
-const ADXdiv4 = ShiftDiv.props({name: 'ADXdiv4', input: ADX, divisor: 4});
+const ADXx2 = ShiftMult.props({name: 'ADXx2', inputs: [ADX], multiplier: 2});
+const ADXdiv4 = ShiftDiv.props({name: 'ADXdiv4', inputs: [ADX], divisor: 4});
 
 const ARXM = Mux.props({
   name: 'ARXM',
@@ -710,7 +688,7 @@ const SCADB = Mux.props({
   inputs: [FE, AR_SIZE, AR_00_08, CR['#']],
 });
 
-SCAD.inputs = [SCADA, SCADB];
+SCAD.input = [SCADA, SCADB];
 
 const MQM = Mux.props({
   name: 'MQM',
@@ -721,8 +699,8 @@ const MQM = Mux.props({
 MQ.input = MQM;
 
 
-const SCD_FLAGS = Reg.props({name: 'SCD_FLAGS', bitWidth: 13, input: AR_00_12});
-const VMA_FLAGS = Reg.props({name: 'VMA_FLAGS', bitWidth: 13, input: null /* XXX */});
+const SCD_FLAGS = Reg.props({name: 'SCD_FLAGS', bitWidth: 13, inputs: [AR_00_12]});
+const VMA_FLAGS = Reg.props({name: 'VMA_FLAGS', bitWidth: 13, inputs: [null] /* XXX */});
 const PC_PLUS_FLAGS = BitCombiner.props({name: 'PC_PLUS_FLAGS', inputs: [SCD_FLAGS, PC]});
 const VMA_PLUS_FLAGS = BitCombiner.props({name: 'VMA_PLUS_FLAGS', inputs: [VMA_FLAGS, VMA_HELD]});
 
