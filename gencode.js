@@ -189,6 +189,7 @@ function readAndHandleDirectives() {
   // Delete unused fields in CRAM
   delete cramDefs.U0;
   delete cramDefs.U21;
+  delete cramDefs.U23;
   delete cramDefs.U42;
   delete cramDefs.U45;
   delete cramDefs.U48;
