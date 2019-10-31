@@ -73,6 +73,52 @@ const EBOXUnit = StampIt({
 module.exports.EBOXUnit = EBOXUnit;
 
 
+/*
+
+  |                     |                       |
+_ |_____________________| _____________________ |_
+ \/  micro instruction  \/  micro instruction  \/   CR
+_/\_____________________/\_____________________/\_
+  |                     |                       |
+  |_________            | __________            |_
+  /         \           |/          \           /    EBOX CLOCK
+_/|          \__________/            \_________/|
+  |                     |                       |
+  |           __________|             _________ |
+  |          /          \            /         \|    EBOX SYNC
+____________/           |\__________/           \_
+  |                     |                       |
+  |_____________________|                       |
+  /                     \                       |    COND/LOAD IR
+_/|                     |\______________________|_
+  |                     |                       |
+  |_____________________| _____________________ |_
+  /                     \/                     \/    AD/A
+_/|                     |\_____________________/\_
+  |                     |                       |
+  |_____________________| _____________________ |_
+  /                     \/                     \/    ADA/AR
+_/|                     |\_____________________/\_
+  |                     |                       |
+  |_________            | ______________________|_
+  /         \ UNLATCHED |/ LATCHED              |    HOLD IR
+_/|          \__________/                       |
+  |                     |                       |
+  |      _______________|                       |
+  |     /////           |\                      |    IR MIXER IN
+__|____/////            | \_____________________|_
+  |                     |                       |
+  |                     | 
+  |                     +-- clock() sets up value to return from get() next cycle
+  |
+  +-- latch(), samples input value using getInputs() while it is stable
+
+ */
+
+
+
+
+
 // ClockedUnit is composed from EBOXUnit for each type of Unit that
 // has a clock and latches its value (RAM and Reg for example). It
 // uses `getInputs()` method to retrieve inputs and aggregate them to
