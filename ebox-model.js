@@ -119,7 +119,6 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 
 const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
 const EBOXUnit = StampIt({
-  // Must override in derived stamps
   name: 'EBOXUnit',
 }).init(function({name, inputs, bitWidth}) {
   this.name = name;
@@ -331,31 +330,30 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
 
 // Registers
-const IR = Reg.props({name: 'IR', bitWidth: 12});
-const IRAC = Reg.props({name: 'IRAC', bitWidth: 4});
-const PC = Reg.props({name: 'PC', bitWidth: 35 - 13 + 1});
-const ADR_BREAK = Reg.props({name: 'ADR BREAK', bitWidth: 35 - 13 + 1});
-const VMA_HELD = Reg.props({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
-const VMA_PREV_SECT = Reg.props({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
-const ARL = Reg.props({name: 'ARL', bitWidth: 18});
-const ARR = Reg.props({name: 'ARR', bitWidth: 18});
-const ARX = Reg.props({name: 'ARX', bitWidth: 36});
-const BR = Reg.props({name: 'BR', bitWidth: 36});
-const BRX = Reg.props({name: 'BRX', bitWidth: 36});
-const SC = Reg.props({name: 'SC', bitWidth: 10});
+const IR = Reg({name: 'IR', bitWidth: 12});
+const IRAC = Reg({name: 'IRAC', bitWidth: 4});
+const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1});
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1});
+const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
+const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
+const ARL = Reg({name: 'ARL', bitWidth: 18});
+const ARR = Reg({name: 'ARR', bitWidth: 18});
+const ARX = Reg({name: 'ARX', bitWidth: 36});
+const BR = Reg({name: 'BR', bitWidth: 36});
+const BRX = Reg({name: 'BRX', bitWidth: 36});
+const SC = Reg({name: 'SC', bitWidth: 10});
 
 const FE = Reg.compose({name: 'FE'})
-      .props({name: 'FE', bitWidth: 10})
       .methods({
         load() {
         },
 
         shrt() {
         },
-      });
+      }) ({name: 'FE', bitWidth: 10});
+
 
 const VMA = Reg.compose({name: 'VMA'})
-      .props({name: 'VMA', bitWidth: 35 - 13 + 1})
       .methods({
 
         latch() {
@@ -421,10 +419,9 @@ const VMA = Reg.compose({name: 'VMA'})
             break;
           }
         },
-      });
+      }) ({name: 'VMA', bitWidth: 35 - 13 + 1});
 
 const MQ = Reg.compose({name: 'MQ'})
-      .props({name: 'MQ', bitWidth: 36})
       .methods({
         load() {
         },
@@ -437,7 +434,7 @@ const MQ = Reg.compose({name: 'MQ'})
 
         hold() {
         },
-      });
+      }) ({name: 'MQ', bitWidth: 36});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -447,27 +444,27 @@ const MQ = Reg.compose({name: 'MQ'})
 
 ////////////////////////////////////////////////////////////////
 // BitCombiners for common register/mux aggregates
-const AR = BitCombiner.props({name: 'AR', inputs: [ARL, ARR]});
+const AR = BitCombiner({name: 'AR', inputs: [ARL, ARR]});
 
 
 ////////////////////////////////////////////////////////////////
 // BitField splitters used by various muxes and logic elements.
-const AR_00_08 = BitField.props({name: 'AR_00_08', s: 0, e: 8, inputs: [AR]});
-const AR_EXP = BitField.props({name: 'AR_EXP', s: 1, e: 8, inputs: [AR]});
-const AR_SIZE = BitField.props({name: 'AR_SIZE', s: 6, e: 11, inputs: [AR]});
-const AR_POS = BitField.props({name: 'AR_POS', s: 0, e: 5, inputs: [AR]});
+const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, inputs: [AR]});
+const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, inputs: [AR]});
+const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, inputs: [AR]});
+const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, inputs: [AR]});
 // XXX needs AR18 to determine direction of shift
-const AR_SHIFT = BitField.props({name: 'AR_SHIFT', s: 28, e: 35, inputs: [AR]});
-const AR_00_12 = BitField.props({name: 'AR_00_12', s: 0, e: 12, inputs: [AR]});
-const AR_12_36 = BitField.props({name: 'AR_12_35', s: 12, e: 35, inputs: [AR]});
+const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, inputs: [AR]});
+const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, inputs: [AR]});
+const AR_12_36 = BitField({name: 'AR_12_35', s: 12, e: 35, inputs: [AR]});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult.props({name: 'BRx2', inputs: [BR], multiplier: 2});
-const ARx4 = ShiftMult.props({name: 'ARx2', inputs: [AR], multiplier: 4});
-const BRXx2 = ShiftMult.props({name: 'BRXx2', inputs: [BRX], multiplier: 2});
-const ARXx4 = ShiftMult.props({name: 'ARXx4', inputs: [ARX], multiplier: 4});
-const MQdiv4 = ShiftDiv.props({name: 'MQdiv4', inputs: [MQ], divisor: 4});
+const BRx2 = ShiftMult({name: 'BRx2', inputs: [BR], multiplier: 2});
+const ARx4 = ShiftMult({name: 'ARx2', inputs: [AR], multiplier: 4});
+const BRXx2 = ShiftMult({name: 'BRXx2', inputs: [BRX], multiplier: 2});
+const ARXx4 = ShiftMult({name: 'ARXx4', inputs: [ARX], multiplier: 4});
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', inputs: [MQ], divisor: 4});
 
 
 // SCAD CONTROL
@@ -480,35 +477,28 @@ const MQdiv4 = ShiftDiv.props({name: 'MQdiv4', inputs: [MQ], divisor: 4});
 // 6    A|B
 // 7    A&B
 // XXX no implementation yet.
-const SCAD = LogicUnit
-      .props({name: 'SCAD', bitWidth: 10, func: CR.SCAD})
-      .methods({
-        get() {
-          console.log(`${this.name} needs a 'get()' implementation`);
-        },
-      });
+const SCAD = LogicUnit.methods({
+  get() {
+    console.log(`${this.name} needs a 'get()' implementation`);
+  },
+}) ({name: 'SCAD', bitWidth: 10, func: CR.SCAD});
 
 
-const AD = LogicUnit.props({name: 'AD', bitWidth: 38, func: CR.AD})
-      .methods({
+const AD = LogicUnit.methods({
 
-        get() {
-          const func = this.func.get();
-          console.log(`${this.name} needs a 'get()' implementation`);
+  get() {
+    const func = this.func.get();
+    console.log(`${this.name} needs a 'get()' implementation`);
 
-          switch (func) {
-          default:
-          case 0:
-            break;
-          }
-        },
-      });
+    switch (func) {
+    default:
+    case 0:
+      break;
+    }
+  },
+}) ({name: 'AD', bitWidth: 38, func: CR.AD});
 
-const SH = LogicUnit.props({
-  name: 'SH',
-  bitWidth: 36,
-  func: CR.SH,
-}).methods({
+const SH = LogicUnit.methods({
 
   get() {
     const count = SC.get();
@@ -531,31 +521,35 @@ const SH = LogicUnit.props({
       return (src3 >> 18) | (src3 << 18);
     }
   },
+}) ({
+  name: 'SH',
+  bitWidth: 36,
+  func: CR.SH,
 });
 
 
 ////////////////////////////////////////////////////////////////
 // Muxes
-const ADA = Mux.props({
+const ADA = Mux({
   name: 'ADA',
   control: CR.ADA,
   inputs: [zero, zero, zero, zero, AR, ARX, MQ, PC]});
 
-const ADB = Mux.props({
+const ADB = Mux({
   name: 'ADB',
   bitWidth: 36,
   control: CR.ADB,
   inputs: [FM, BRx2, BR, ARx4],
 });
 
-const ADXA = Mux.props({
+const ADXA = Mux({
   name: 'ADXA',
   bitWidth: 36,
   control: CR.ADA,
   inputs: [zero, zero, zero, zero, ARX, ARX, ARX, ARX],
 });
 
-const ADXB = Mux.props({
+const ADXB = Mux({
   name: 'ADXB',
   bitWidth: 36,
   control: CR.ADB,
@@ -563,61 +557,53 @@ const ADXB = Mux.props({
 });
 
 // XXX needs implementation
-const ADX = LogicUnit.props({
+const ADX = LogicUnit({
   name: 'ADX',
   bitWidth: 36,
   control: CR.AD,
   inputs: [ADXA, ADXB],
 });
 
-const ARSIGN_SMEAR = LogicUnit.props({
-  name: 'ARSIGN_SMEAR',
-  bitWidth: 9,
-  inputs: [AR],
-}).methods({
+const ARSIGN_SMEAR = LogicUnit.methods({
   get() {
     return +!!(AR.get() & maskForBit(0, 9));
   },
-});
+}) ({name: 'ARSIGN_SMEAR', bitWidth: 9, inputs: [AR]});
 
-const SCAD_EXP = BitField.props({name: 'SCAD_EXP', s: 0, e: 8, inputs: [SCAD]});
-const SCAD_POS = BitField.props({name: 'SCAD_POS', s: 0, e: 5, inputs: [SCAD]});
-const PC_13_17 = BitField.props({name: 'PC_13_17', s: 13, e: 17, inputs: [PC]});
+const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, inputs: [SCAD]});
+const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, inputs: [SCAD]});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, inputs: [PC]});
 
-const VMA_PREV_SECT_13_17 = BitField.props({
+const VMA_PREV_SECT_13_17 = BitField({
   name: 'VMA_PREV_SECT_13_17',
   s: 13,
   e: 17,
   inputs: [VMA_PREV_SECT],
 });
 
-const ARMML = Mux.props({
+const ARMML = Mux({
   name: 'ARMML',
   bitWidth: 9,
   control: CR.ARMM,
   inputs: [CR['#'], ARSIGN_SMEAR, SCAD_EXP, SCAD_POS],
 });
 
-const ARMMR = Mux.props({
+const ARMMR = Mux.methods({
+  get() {
+    return +!!(CR.VMAX & CR.VMAX['PREV SEC']);
+  },
+}) ({
   name: 'ARMMR',
   bitWidth: 17 - 13 + 1,
   inputs: [PC_13_17, VMA_PREV_SECT_13_17],
-
-  control: BitCombiner.props({
-    name: 'ARMMRcontrol',
-    inputs: [CR.VMAX],
-  }).methods({
-    get() {
-      return +!!(CR.VMAX & CR.VMAX['PREV SEC']);
-    },
-  }),
+  control: BitCombiner({name: 'ARMMRcontrol', inputs: [CR.VMAX]}),
 });
 
 
-const ARMM = BitCombiner.props({name: 'ARMM', inputs: [ARMML, ARMMR]});
+const ARMM = BitCombiner({name: 'ARMM', inputs: [ARMML, ARMMR]});
 
-const ADx2 = ShiftMult.props({name: 'ADx2', inputs: [AD], multiplier: 2});
-const ADdiv4 = ShiftDiv.props({name: 'ADdiv4', inputs: [AD], divisor: 4});
+const ADx2 = ShiftMult({name: 'ADx2', inputs: [AD], multiplier: 2});
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: [AD], divisor: 4});
 
 // XXX temporary. This needs to be implemented.
 const SERIAL_NUMBER = zero;
@@ -628,53 +614,49 @@ const EBUS = zero;
 // XXX very temporary. Needs implementation.
 const CACHE = zero;
 
-const ARMR = Mux.props({
+const ARMR = Mux({
   name: 'ARMR',
   bitWidth: 18,
   control: CR.AR,
   inputs: [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
 });
 
-const ARML = Mux.props({
+const ARML = Mux({
   name: 'ARML',
   bitWidth: 18,
   control: CR.AR,
   inputs: [ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
 });
 
-const ADXx2 = ShiftMult.props({name: 'ADXx2', inputs: [ADX], multiplier: 2});
-const ADXdiv4 = ShiftDiv.props({name: 'ADXdiv4', inputs: [ADX], divisor: 4});
+const ADXx2 = ShiftMult({name: 'ADXx2', inputs: [ADX], multiplier: 2});
+const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', inputs: [ADX], divisor: 4});
 
-const ARXM = Mux.props({
+const ARXM = Mux({
   name: 'ARXM',
   bitWidth: 36,
   control: CR.ARXM,
   inputs: [zero, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
 });
 
-const SCM = Mux.props({
+const SCM = Mux.methods({
+  get() {
+    return CR.SC | (+(CR.SPEC === CR.SPEC['SCM ALT']) << 1);
+  },
+}) ({
   name: 'SCM',
   bitWidth: 10,
   inputs: [SC, FE, SCAD, AR_SHIFT],
-
-  control: BitCombiner.props({
-    name: 'SCMcontrol',
-    inputs: [CR.SC, CR.SPEC],
-  }).methods({
-    get() {
-      return CR.SC | (+(CR.SPEC === CR.SPEC['SCM ALT']) << 1);
-    },
-  }),
+  control: BitCombiner({name: 'SCMcontrol', inputs: [CR.SC, CR.SPEC]}),
 });
 
-const SCADA = Mux.props({
+const SCADA = Mux({
   name: 'SCADA',
   bitWidth: 10,
   control: CR.SCADA,
   inputs: [zero, zero, zero, zero, FE, AR_POS, AR_EXP, CR['#']],
 });
 
-const SCADB = Mux.props({
+const SCADB = Mux({
   name: 'SCADB',
   bitWidth: 10,
   control: CR.SCADB,
@@ -684,7 +666,7 @@ const SCADB = Mux.props({
 
 SCAD.input = [SCADA, SCADB];
 
-const MQM = Mux.props({
+const MQM = Mux({
   name: 'MQM',
   bitWidth: 36,
   control: CR.MQM,
@@ -693,26 +675,20 @@ const MQM = Mux.props({
 MQ.input = MQM;
 
 
-const SCD_FLAGS = Reg.props({name: 'SCD_FLAGS', bitWidth: 13, inputs: [AR_00_12]});
-const VMA_FLAGS = Reg.props({name: 'VMA_FLAGS', bitWidth: 13, inputs: [null] /* XXX */});
-const PC_PLUS_FLAGS = BitCombiner.props({name: 'PC_PLUS_FLAGS', inputs: [SCD_FLAGS, PC]});
-const VMA_PLUS_FLAGS = BitCombiner.props({name: 'VMA_PLUS_FLAGS', inputs: [VMA_FLAGS, VMA_HELD]});
+const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13, inputs: [AR_00_12]});
+const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, inputs: [null] /* XXX */});
+const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', inputs: [SCD_FLAGS, PC]});
+const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', inputs: [VMA_FLAGS, VMA_HELD]});
 
-const VMA_HELD_OR_PC = Mux.props({
+const VMA_HELD_OR_PC = Mux.methods({
+  get() {
+    return +(CR.COND === CR.COND['VMA HELD']);
+  },
+}) ({
   name: 'VMA HELD OR PC',
   bitWidth: 36,
   inputs: [PC, VMA_HELD],
-
-  control: BitCombiner.compose({name: 'SEL VMA HELD'})
-    .props({
-      inputs: [CR.COND],
-    }).methods({
-
-      get() {
-        return +(CR.COND === CR.COND['VMA HELD']);
-      },
-    }),
-
+  control: BitCombiner({name: 'SEL VMA HELD',inputs: [CR.COND]}),
 });
 
 
@@ -769,4 +745,4 @@ function defineBitFields(input, s) {
 }
 
 // Export every EBOXUnit
-Object.assign(module.exports, EBOXUnitItems);
+module.exports = Object.assign(module.exports, EBOXUnitItems);
