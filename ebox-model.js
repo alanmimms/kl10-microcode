@@ -1,4 +1,5 @@
 'use strict';
+const _ = require('lodash');
 const fs = require('fs');
 const util = require('util');
 const StampIt = require('@stamp/it');
@@ -117,21 +118,54 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 // * `clock()` copies `latchedValue` to `value`.
 // * `get()` returns `value`.
 
-const EBOXUnitItems = {};       // Accumulated list of EBOXUnit stamps
+const EBOX = StampIt({
+}).init(function ({name, serialNumber}) {
+  this.serialNumber = serialNumber;
+  this.units = {};              // List of all EBOX Units
+  this.unitArray = [];          // List of all EBOX Units as an array of objects
+})
+.methods({
+
+  reset() {
+    this.unitArray = Object.keys(this.units).map(name => this.units[name]);
+
+    // Reset every Unit back to initial value.
+    this.unitArray.forEach(unit => unit.reset());
+
+    // RESET always generates a bunch of clocks with zero CRAM.
+    _.range(10).forEach(k => {this.latch(); this.clock()});
+  },
+
+  latch() {
+    this.unitArray.forEach(unit => console.log(`latch ${unit.name}`) || unit.latch());
+  },
+
+  clock() {
+    this.unitArray.forEach(unit => unit.clock());
+  },
+  
+}) ({name: 'EBOX', serialNumber: 4042});
+module.exports.EBOX = EBOX;
+
+
 const EBOXUnit = StampIt({
   name: 'EBOXUnit',
 }).init(function({name, inputs, bitWidth}) {
   this.name = name;
-  this.value = 0n;
+  EBOX.units[this.name] = this;
   this.bitWidth = bitWidth;
-  EBOXUnitItems[this.name] = this;
-  this.latchedValue = this.value = 0n;
-  this.inputs = inputs;
-  this.bitWidth = bitWidth || inputs && inputs.bitWidth;
+  this.inputs = inputs || [];
+  this.bitWidth = bitWidth ||   // If not specified, use MAX of input bitWidth values
+    this.inputs.reduce((cur, i) => Math.max(cur, i), this.bitWidth || 0);
+  this.reset();
 }).methods({
+  reset() {this.latchedValue = this.value = 0n},
   get() {return this.value},
   latch() {this.latchedValue = this.getInputs()},
   clock() {this.value = this.latchedValue},
+
+  // NEARLY ALWAYS should be overridden in derivative stamps
+  getInputs() {return this.value},
 
   getLH() {
     return BigInt.asUintN(18, this.value >> 18n);
@@ -163,7 +197,7 @@ const BitField = StampIt.compose({name: 'BitField'})
       }).methods({
 
         getInputs() {
-          const v = this.inputs.get();
+          const v = this.inputs[0].get();
           return (BigInt.asUintN(this.nBits + 1, v) >> this.shift) & this.mask;
         },
       });
@@ -210,13 +244,18 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = ZERO, addrInput = 0, elementValue = 0n}) {
-        this.data = new Array(nWords).map(x => elementValue);
+      .init(function({nWords, control = ZERO, addrInput = 0, initValue = 0n}) {
         this.nWords = nWords,
         this.control = control;
         this.writeCycle = false;
         this.addrInput = addrInput;
+        this.initValue = initValue;
+        this.reset();
       }).methods({
+
+        reset() {
+          this.data = new Array(this.nWords).map(x => this.initValue);
+        },
 
         get() { return this.value },
 
@@ -244,7 +283,6 @@ module.exports.RAM = RAM;
 const Mux = EBOXUnit.compose({name: 'Mux'})
       .init(function({control}) {
         this.control = control;
-        this.bitWidth = this.inputs.reduce((cur, i) => Math.max(cur, i), this.bitWidth || 0);
       }).methods({
 
         get() {
@@ -261,7 +299,7 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
 
         latch() {
           this.value = this.latched;
-          this.latched = this.inputs.get();
+          this.latched = this.inputs[0].get();
         },
       });
 module.exports.Reg = Reg;
@@ -290,7 +328,7 @@ const ShiftMult = EBOXUnit.compose({name: 'ShiftMult'})
       .init(function({multiplier = 2}) {
         this.multiplier = multiplier;
       }).methods({
-        get() {return this.inputs.get() * this.multiplier }
+        get() {return this.inputs[0].get() * this.multiplier }
       });
 module.exports.ShiftMult = ShiftMult;
 
@@ -302,7 +340,7 @@ const ShiftDiv = EBOXUnit.compose({name: 'ShiftDiv'})
       .init(function({divisor = 2}) {
         this.divisor = divisor;
       }).methods({
-        get() {return this.inputs.get() / this.divisor }
+        get() {return this.inputs[0].get() / this.divisor }
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -312,14 +350,14 @@ module.exports.ShiftDiv = ShiftDiv;
 
 // RAMs
 // CRAM_IN is used to provide a uWord to CRAM when loading it.
-const CRAM_IN = Reg({name: 'CRAM_IN', bitWidth: 84});
+const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: CRAM_IN.bitWidth, inputs: [CRAM_IN]});
 const CR = Reg({name: 'CR', inputs: [CRAM], bitWidth: CRAM.bitWidth});
 
 defineBitFields(CR, defines.CRAM);
 
 // DRAM_IN is used to provide a word to DRAM when loading it.
-const DRAM_IN = Reg({name: 'DRAM_IN', bitWidth: 24});
+const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
 const DRAM = RAM({name: 'DRAM', inputs: [DRAM_IN], nWords: 512, bitWidth: 24});
 const DR = Reg({name: 'DR', inputs: [DRAM]});
 
@@ -329,7 +367,7 @@ defineBitFields(DR, defines.DRAM);
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
 
-// Registers
+// Registers XXX these all need inputs
 const IR = Reg({name: 'IR', bitWidth: 12});
 const IRAC = Reg({name: 'IRAC', bitWidth: 4});
 const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1});
@@ -605,8 +643,13 @@ const ARMM = BitCombiner({name: 'ARMM', inputs: [ARMML, ARMMR]});
 const ADx2 = ShiftMult({name: 'ADx2', inputs: [AD], multiplier: 2});
 const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: [AD], divisor: 4});
 
-// XXX temporary. This needs to be implemented.
-const SERIAL_NUMBER = ZERO;
+const SERIAL_NUMBER = ConstantUnit.methods({
+
+  reset() {
+    this.value = EBOX.serialNumber;
+  },
+}) ({name: 'SERIAL_NUMBER', value: 0n});
+
 
 // XXX very temporary. Needs implementation.
 const EBUS = ZERO;
@@ -745,4 +788,5 @@ function defineBitFields(input, s) {
 }
 
 // Export every EBOXUnit
-module.exports = Object.assign(module.exports, EBOXUnitItems);
+module.exports = Object.assign(module.exports, EBOX.units);
+
