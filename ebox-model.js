@@ -178,10 +178,10 @@ const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
         this.value = value >= 0 ? value : BigInt.asUintN(bitWidth, value);
       });
 
-const zero = ConstantUnit({name: 'zero', value: 0n});
-const ones = ConstantUnit({name: 'ones', value: -1n});
-module.exports.zero = zero;
-module.exports.ones = ones;
+const ZERO = ConstantUnit({name: 'ZERO', value: 0n});
+const ONES = ConstantUnit({name: 'ONES', value: -1n});
+module.exports.ZERO = ZERO;
+module.exports.ONES = ONES;
 
 
 ////////////////////////////////////////////////////////////////
@@ -210,7 +210,7 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = zero, addrInput = 0, elementValue = 0n}) {
+      .init(function({nWords, control = ZERO, addrInput = 0, elementValue = 0n}) {
         this.data = new Array(nWords).map(x => elementValue);
         this.nWords = nWords,
         this.control = control;
@@ -533,7 +533,7 @@ const SH = LogicUnit.methods({
 const ADA = Mux({
   name: 'ADA',
   control: CR.ADA,
-  inputs: [zero, zero, zero, zero, AR, ARX, MQ, PC]});
+  inputs: [ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC]});
 
 const ADB = Mux({
   name: 'ADB',
@@ -546,14 +546,14 @@ const ADXA = Mux({
   name: 'ADXA',
   bitWidth: 36,
   control: CR.ADA,
-  inputs: [zero, zero, zero, zero, ARX, ARX, ARX, ARX],
+  inputs: [ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX],
 });
 
 const ADXB = Mux({
   name: 'ADXB',
   bitWidth: 36,
   control: CR.ADB,
-  inputs: [zero, BRXx2, BRX, ARXx4],
+  inputs: [ZERO, BRXx2, BRX, ARXx4],
 });
 
 // XXX needs implementation
@@ -606,13 +606,13 @@ const ADx2 = ShiftMult({name: 'ADx2', inputs: [AD], multiplier: 2});
 const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: [AD], divisor: 4});
 
 // XXX temporary. This needs to be implemented.
-const SERIAL_NUMBER = zero;
+const SERIAL_NUMBER = ZERO;
 
 // XXX very temporary. Needs implementation.
-const EBUS = zero;
+const EBUS = ZERO;
 
 // XXX very temporary. Needs implementation.
-const CACHE = zero;
+const CACHE = ZERO;
 
 const ARMR = Mux({
   name: 'ARMR',
@@ -635,7 +635,7 @@ const ARXM = Mux({
   name: 'ARXM',
   bitWidth: 36,
   control: CR.ARXM,
-  inputs: [zero, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
+  inputs: [ZERO, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
 });
 
 const SCM = Mux.methods({
@@ -653,7 +653,7 @@ const SCADA = Mux({
   name: 'SCADA',
   bitWidth: 10,
   control: CR.SCADA,
-  inputs: [zero, zero, zero, zero, FE, AR_POS, AR_EXP, CR['#']],
+  inputs: [ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, CR['#']],
 });
 
 const SCADB = Mux({
@@ -670,7 +670,7 @@ const MQM = Mux({
   name: 'MQM',
   bitWidth: 36,
   control: CR.MQM,
-  inputs: [zero, zero, zero, zero, MQdiv4, SH, AD, ones],
+  inputs: [ZERO, ZERO, ZERO, ZERO, MQdiv4, SH, AD, ONES],
 });
 MQ.input = MQM;
 
