@@ -9,8 +9,8 @@ const StampIt = require('@stamp/it');
 // DRAM definitions sections so we can parse them into definitions we
 // can use.
 const definesRE = new RegExp([
-  /^.*\.TOC\s+"CONTROL RAM DEFINITIONS -- J, AD"/,
-  /\s+(?<CRAM>.*?)(?=\.DCODE\s+)/,
+  /^.*\.TOC\s+"CONTROL RAM DEFINITIONS -- J, AD"\s+/,
+  /(?<CRAM>.*?)(?=\.DCODE\s+)/,
   /(?<DRAM>.*?)(?=\s+\.UCODE\s+)/,
 ].map(re => re.source).join(''), 'ms');
 
@@ -30,6 +30,7 @@ const defines = definesMatches.groups;
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
 const maskForBit = (n, width = 36) => Math.pow(2, width - 1 - n);
 
+// The shift right count to get PDP10 bit #n into LSB.
 const shiftForBit = (n, width = 36) => width - 1 - n;
 
 
@@ -126,16 +127,12 @@ const EBOX = StampIt({
 })
 .methods({
 
-  fixupForwardReferences() {
+  fixupInputs() {
     this.unitArray = Object.keys(this.units).map(name => this.units[name]);
-    console.log(`EBOX.fixupForwardReferences ${this.unitArray.length} units`);
 
-    // For every EBOXUnit that has some, we fix up remaining forward
-    // references.
-    this.unitArray.forEach(u => u.fixupForwardReferences());
-
-    // We can fix up bitWidth since all inputs are fully resolved now.
-    this.unitArray.forEach(u => u.calculateBitWidth());
+    // For every EBOXUnit that has some, we transform `inputs` from
+    // string to array of Units.
+    this.unitArray.forEach(u => u.fixupInputs());
   },
 
   reset() {
@@ -161,47 +158,33 @@ module.exports.EBOX = EBOX;
 
 const EBOXUnit = StampIt({
   name: 'EBOXUnit',
-}).init(function({name, inputs, fwdInputs, bitWidth}) {
+}).init(function({name, inputs, bitWidth}) {
   this.name = name;
   EBOX.units[this.name] = this;
+  this.inputs = inputs || [];
+  this.value = this.latchedValue = 0n;
 
-  this.inputs = inputs || [];   // May be replaced by fixupForwardReferences()!
-  this.fwdInputs = fwdInputs;
-
-  // We remember if bitWidth needs to be fixed up after forward
-  // references are resolved or if it was explicitly specified.
+  // We remember if bitWidth needs to be fixed up after inputs are
+  // transformed or if it was explicitly specified.
   this.specifiedBitWidth = this.bitWidth = bitWidth;
 
   this.reset();
 }).methods({
 
-  // Called by EBOX enumeration of all Units to transform the
-  // `fwdInputs` property value to `inputs` and `bitWidth` values.
-  // `fwdInputs` can be a comma separated string or a singleton
-  // string.
-  fixupForwardReferences() {
-    if (!this.fwdInputs) { console.log(`${this.name} has no fwdInputs`); return;}
+  // Called by EBOX enumeration of all Units to transform the `inputs`
+  // string of comma-separated EBOXUnit names into an array of
+  // EBOXUnits.
+  fixupInputs() {
+    if (typeof this.inputs !== 'string') return;
 
-    this.inputs = this.fwdInputs.split(/,/)
+    this.inputs = this.inputs.split(/,\s*/)
       .map(fi => {
-        const name = fi.trim();
-        const unit = EBOX.units[name];
-        if (!unit) console.error(`In ${this.name}.fwdInputs ${name} is not defined`);
+        const unit = eval(fi);
+        if (!unit) console.error(`In ${this.name}.inputs ${fi} is not defined`);
         return unit;
       });
 
-    console.log(`${this.name} fixed inputs = [${this.inputs.map(i => i.name).join(', ')}]`);
-  },
-
-  // Called to recalculate our bit width based on changes to inputs
-  // (e.g., after `fwdInputs` fixup.
-  calculateBitWidth() {
-    if (this.specifiedBitWidth) return; // Do what we are told if we are told.
-
-    // If not specified, use MAX of input bitWidth values
-    console.log(`Calculate ${this.name} inputs=[${this.inputs.map(i => i.name).join(',')}]`);
-    this.bitWidth = this.inputs.reduce(Math.max, 0);
-    console.log(`Calculate ${this.name} bitWidth=${this.bitWidth}`);
+//    console.log(`${this.name} inputs=[${this.inputs.map(i => i.name).join(', ')}]`);
   },
 
   reset() {this.latchedValue = this.value = 0n},
@@ -233,16 +216,22 @@ module.exports.EBOXUnit = EBOXUnit;
 // rightmost bit in field. So number of bits is `e-s+1`.
 // Not an EBOXUnit, just a useful stamp.
 const BitField = StampIt.compose({name: 'BitField'})
-      .init(function({name, s, e}) {
+      .init(function({name, inputs, s, e}) {
+        this.name = name;
         this.s = s;
         this.e = e;
+        this.inputs = inputs;
         this.nBits = e - s + 1;
-        this.shift = shiftForBit(e, this.nBits);
+        this.shift = shiftForBit(e, this.inputs[0].bitWidth);
         this.mask = (1n << BigInt(this.nBits)) - 1n;
       }).methods({
+        get() {
+          return this.getInputs();
+        },
 
         getInputs() {
           const v = this.inputs[0].get();
+          console.log(`${this.name}.getInputs v=${v} this=${util.inspect(this)}`);
           return (BigInt.asUintN(this.nBits + 1, v) >> this.shift) & this.mask;
         },
       });
@@ -254,7 +243,13 @@ module.exports.BitField = BitField;
 const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
       .init(function ({name, value, bitWidth = 36}) {
         this.name = name;
+        this.constant = true;
         this.value = value >= 0 ? value : BigInt.asUintN(bitWidth, value);
+      }).methods({
+        latch() {},
+        clock() {},
+        getInputs() {return this.value},
+        get() {return this.value},
       });
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
@@ -268,13 +263,6 @@ module.exports.ONES = ONES;
 // field.
 const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
       .methods({
-
-        // Our bitWidth is the sum of the widths of the fields we
-        // concatenate.
-        calculateBitWidth() {
-          this.bitWidth = this.inputs.reduce((cur, i) => cur += i.bitWidth, 0);
-          console.log(`Calculate ${this.name} bitWidth=${this.bitWidth}`);
-        },
 
         getInputs() {
           return this.inputs.reduce((v, i) => {
@@ -415,20 +403,19 @@ module.exports.ShiftDiv = ShiftDiv;
 // RAMs
 // CRAM_IN is used to provide a uWord to CRAM when loading it.
 const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
-const CRAM = RAM({name: 'CRAM', nWords: 2048, inputs: [CRAM_IN]});
-const CR = Reg({name: 'CR', inputs: [CRAM]});
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84, inputs: 'CRAM_IN'});
+const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
-defineBitFields(CR, defines.CRAM);
+defineBitFields(CR, defines.CRAM, `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/));
 
 // DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
-const DRAM = RAM({name: 'DRAM', nWords: 512, inputs: [DRAM_IN]});
-const DR = Reg({name: 'DR', inputs: [DRAM]});
+const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24, inputs: 'DRAM_IN'});
+const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
-// This needs its `inputs` set before a `latch()` call.
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, inputs: 'AR'});
 
 
 const AD = LogicUnit.methods({
@@ -443,20 +430,17 @@ const AD = LogicUnit.methods({
       break;
     }
   },
-}) ({name: 'AD', bitWidth: 38, func: CR.AD});
+}) ({name: 'AD', bitWidth: 38, func: CR.AD, inputs: 'ADB,ADA'});
 
 
 // Instruction register. This flows from CACHE (eventually) and AD.
-const IR = Reg({name: 'IR', bitWidth: 12, inputs: [AD]});
+const IR = Reg({name: 'IR', bitWidth: 12, inputs: 'AD'});
 
 // AC field of IR.
 // This is ECL 10173 with flow through input to output while !HOLD
 // (HOLD DRAM B) whose rising edge latches inputs.
-const IRAC = Reg({
-  name:'IRAC',
-  bitWidth: 4,
-  inputs: [BitField({name: 'IR_09_12', s: 9, e: 12, inputs: [IR]})],
-});
+const IR_09_12 = BitField({name: 'IR_09_12', s: 9, e: 12, inputs: 'IR'});
+const IRAC = Reg({name:'IRAC', bitWidth: 4, inputs: 'IR_09_12'});
 
 const VMA = Reg.compose({name: 'VMA'})
       .methods({
@@ -526,21 +510,15 @@ const VMA = Reg.compose({name: 'VMA'})
         },
       }) ({name: 'VMA', bitWidth: 35 - 13 + 1});
 
-const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1, inputs: [VMA]});
+const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1, inputs: 'VMA'});
 
-const ADR_BREAK = Reg({
-  name: 'ADR BREAK',
-  bitWidth: 35 - 13 + 1,
-  inputs: [BitField({name: 'AD_13_35', s: 13, e: 35, inputs: [AD]})],
-});
+const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, inputs: 'AD'});
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1, inputs: 'AD_13_35'});
 
-const VMA_HELD = Reg({name: 'VMA HELD', inputs: [VMA]});
+const VMA_HELD = Reg({name: 'VMA HELD', inputs: 'VMA', bitWidth: 35 - 13 + 1});
 
-const VMA_PREV_SECT = Reg({
-  name: 'VMA PREV SECT',
-  bitWidth: 17 - 13 + 1,
-  inputs: [BitField({name: 'AD_13_17', s: 13, e: 17, inputs: [AD]})],
-});
+const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, inputs: 'AD'});
+const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1, inputs: 'AD_13_17'});
 
 const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
       .methods({
@@ -561,9 +539,9 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
             return 3;
         },
         
-      }) ({name: 'FEcontrol', bitWidth: 2, inputs: [CR]});
+      }) ({name: 'FEcontrol', bitWidth: 2, inputs: 'CR'});
 
-const MQ = Reg({name: 'MQ', bitWidth: 36, fwdInputs: 'MQM'});
+const MQ = Reg({name: 'MQ', bitWidth: 36, inputs: 'MQM'});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -573,22 +551,22 @@ const MQ = Reg({name: 'MQ', bitWidth: 36, fwdInputs: 'MQM'});
 
 ////////////////////////////////////////////////////////////////
 // BitField splitters used by various muxes and logic elements.
-const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, fwdInputs: 'AR'});
-const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, fwdInputs: 'AR'});
-const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, fwdInputs: 'AR'});
-const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, fwdInputs: 'AR'});
+const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, inputs: 'AR'});
+const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, inputs: 'AR'});
+const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, inputs: 'AR'});
+const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, inputs: 'AR'});
 // XXX needs AR18 to determine direction of shift
-const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, fwdInputs: 'AR'});
-const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, fwdInputs: 'AR'});
-const AR_12_36 = BitField({name: 'AR_12_35', s: 12, e: 35, fwdInputs: 'AR'});
+const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, inputs: 'AR'});
+const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, inputs: 'AR'});
+const AR_12_36 = BitField({name: 'AR_12_35', s: 12, e: 35, inputs: 'AR'});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult({name: 'BRx2', fwdInputs: 'BR', multiplier: 2});
-const ARx4 = ShiftMult({name: 'ARx4', fwdInputs: 'AR', multiplier: 4});
-const BRXx2 = ShiftMult({name: 'BRXx2', fwdInputs: 'BRX', multiplier: 2});
-const ARXx4 = ShiftMult({name: 'ARXx4', fwdInputs: 'ARX', multiplier: 4});
-const MQdiv4 = ShiftDiv({name: 'MQdiv4', fwdInputs: 'MQ', divisor: 4});
+const BRx2 = ShiftMult({name: 'BRx2', inputs: 'BR', multiplier: 2, bitWidth: 36});
+const ARx4 = ShiftMult({name: 'ARx4', inputs: 'AR', multiplier: 4, bitWidth: 36});
+const BRXx2 = ShiftMult({name: 'BRXx2', inputs: 'BRX', multiplier: 2, bitWidth: 36});
+const ARXx4 = ShiftMult({name: 'ARXx4', inputs: 'ARX', multiplier: 4, bitWidth: 36});
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', inputs: 'MQ', divisor: 4, bitWidth: 36});
 
 
 // SCAD CONTROL
@@ -607,7 +585,7 @@ const SCAD = LogicUnit.methods({
   },
 }) ({name: 'SCAD', bitWidth: 10, func: CR.SCAD});
 
-const FE = ShiftReg({name: 'FE', control: FEcontrol, inputs: [SCAD]});
+const FE = ShiftReg({name: 'FE', control: FEcontrol, inputs: 'SCAD', bitWidth: 10});
 
 const SH = LogicUnit.methods({
 
@@ -641,87 +619,60 @@ const SH = LogicUnit.methods({
 
 ////////////////////////////////////////////////////////////////
 // Muxes
-const ADA = Mux({
-  name: 'ADA',
-  control: CR.ADA,
-  fwdInputs: 'ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC'});
+const ADA = Mux({name: 'ADA', control: CR.ADA, bitWidth: 36,
+                 inputs: 'ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC'});
 
-const ADB = Mux({
-  name: 'ADB',
-  bitWidth: 36,
-  control: CR.ADB,
-  fwdInputs: 'FM, BRx2, BR, ARx4',
-});
+const ADB = Mux({name: 'ADB', bitWidth: 36, control: CR.ADB, bitWidth: 36,
+                 inputs: 'FM, BRx2, BR, ARx4'});
 
-const ADXA = Mux({
-  name: 'ADXA',
-  bitWidth: 36,
-  control: CR.ADA,
-  fwdInputs: 'ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX',
-});
+const ADXA = Mux({name: 'ADXA', bitWidth: 36, control: CR.ADA, bitWidth: 36,
+                  inputs: 'ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX'});
 
-const ADXB = Mux({
-  name: 'ADXB',
-  bitWidth: 36,
-  control: CR.ADB,
-  fwdInputs: 'ZERO, BRXx2, BRX, ARXx4',
-});
+const ADXB = Mux({name: 'ADXB', bitWidth: 36, control: CR.ADB, bitWidth: 36,
+                  inputs: 'ZERO, BRXx2, BRX, ARXx4'});
 
 // XXX needs implementation
-const ADX = LogicUnit({
-  name: 'ADX',
-  bitWidth: 36,
-  control: CR.AD,
-  inputs: [ADXA, ADXB],
-});
+const ADX = LogicUnit({name: 'ADX', bitWidth: 36, control: CR.AD, bitWidth: 36,
+                       inputs: 'ADXA, ADXB'});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
   get() {
     return +!!(AR.get() & maskForBit(0, 9));
   },
-}) ({name: 'ARSIGN_SMEAR', bitWidth: 9, fwdInputs: 'AR'});
+}) ({name: 'ARSIGN_SMEAR', bitWidth: 9, inputs: 'AR'});
 
-const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, inputs: [SCAD]});
-const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, inputs: [SCAD]});
-const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, inputs: [PC]});
+const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, inputs: 'SCAD'});
+const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, inputs: 'SCAD'});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, inputs: 'PC'});
 
-const VMA_PREV_SECT_13_17 = BitField({
-  name: 'VMA_PREV_SECT_13_17',
-  s: 13,
-  e: 17,
-  inputs: [VMA_PREV_SECT],
-});
+const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17,
+                                      inputs: 'VMA_PREV_SECT'});
 
-const ARMML = Mux({
-  name: 'ARMML',
-  bitWidth: 9,
-  control: CR.ARMM,
-  inputs: [CR['#'], ARSIGN_SMEAR, SCAD_EXP, SCAD_POS],
-});
+const MAGIC_NUMBER = CR['#'];
+
+const ARMML = Mux({name: 'ARMML', bitWidth: 9, control: CR.ARMM, 
+                   inputs: 'MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS'});
 
 const ARMMR = Mux.methods({
   get() {
     return +!!(CR.VMAX & CR.VMAX['PREV SEC']);
   },
-}) ({
-  name: 'ARMMR',
-  bitWidth: 17 - 13 + 1,
-  inputs: [PC_13_17, VMA_PREV_SECT_13_17],
-  control: BitCombiner({name: 'ARMMRcontrol', inputs: [CR.VMAX]}),
-});
+}) ({name: 'ARMMR', bitWidth: 17 - 13 + 1,
+     inputs: 'PC_13_17, VMA_PREV_SECT_13_17',
+     control: CR.VMAX});
 
 
-const ARMM = BitCombiner({name: 'ARMM', inputs: [ARMML, ARMMR]});
+const ARMM = BitCombiner({name: 'ARMM', bitWidth: 9 + 5, inputs: 'ARMML, ARMMR'});
 
-const ADx2 = ShiftMult({name: 'ADx2', inputs: [AD], multiplier: 2});
-const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: [AD], divisor: 4});
+const ADx2 = ShiftMult({name: 'ADx2', inputs: 'AD', multiplier: 2, bitWidth: 36});
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: 'AD', divisor: 4, bitWidth: 36});
 
 const SERIAL_NUMBER = ConstantUnit.methods({
 
   reset() {
     this.value = EBOX.serialNumber;
   },
-}) ({name: 'SERIAL_NUMBER', value: 0n});
+}) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18});
 
 
 // XXX very temporary. Needs implementation.
@@ -730,90 +681,58 @@ const EBUS = ZERO;
 // XXX very temporary. Needs implementation.
 const CACHE = ZERO;
 
-const ARMR = Mux({
-  name: 'ARMR',
-  bitWidth: 18,
-  control: CR.AR,
-  inputs: [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
-});
+const ARMR = Mux({name: 'ARMR', bitWidth: 18, control: CR.AR,
+                  inputs: 'SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4'});
 
-const ARML = Mux({
-  name: 'ARML',
-  bitWidth: 18,
-  control: CR.AR,
-  inputs: [ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4],
-});
+const ARML = Mux({name: 'ARML', bitWidth: 18, control: CR.AR,
+                  inputs: 'ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4'});
 
-const ADXx2 = ShiftMult({name: 'ADXx2', inputs: [ADX], multiplier: 2});
-const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', inputs: [ADX], divisor: 4});
+const ADXx2 = ShiftMult({name: 'ADXx2', inputs: 'ADX', multiplier: 2, bitWidth: 36});
+const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', inputs: 'ADX', divisor: 4, bitWidth: 36});
 
-const ARXM = Mux({
-  name: 'ARXM',
-  bitWidth: 36,
-  control: CR.ARXM,
-  inputs: [ZERO, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4],
-});
+const ARXM = Mux({name: 'ARXM', bitWidth: 36, control: CR.ARXM,
+                  inputs: 'ZERO, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4'});
 
-const ARL = Reg({name: 'ARL', bitWidth: 18, inputs: [ARML]});
-const ARR = Reg({name: 'ARR', bitWidth: 18, inputs: [ARMR]});
-const ARX = Reg({name: 'ARX', bitWidth: 36, inputs: [ARXM]});
-const AR = BitCombiner({name: 'AR', inputs: [ARL, ARR]});
-const BR = Reg({name: 'BR', bitWidth: 36, inputs: [AR]});
-const BRX = Reg({name: 'BRX', bitWidth: 36, inputs: [ARX]});
-const SC = Reg({name: 'SC', bitWidth: 10, fwdInputs: 'SCM'});
+const ARL = Reg({name: 'ARL', bitWidth: 18, inputs: 'ARML'});
+const ARR = Reg({name: 'ARR', bitWidth: 18, inputs: 'ARMR'});
+const ARX = Reg({name: 'ARX', bitWidth: 36, inputs: 'ARXM'});
+const AR = BitCombiner({name: 'AR', inputs: 'ARL, ARR'});
+const BR = Reg({name: 'BR', bitWidth: 36, inputs: 'AR'});
+const BRX = Reg({name: 'BRX', bitWidth: 36, inputs: 'ARX'});
+const SC = Reg({name: 'SC', bitWidth: 10, inputs: 'SCM'});
 
 const SCM = Mux.methods({
   get() {
     return CR.SC | (+(CR.SPEC === CR.SPEC['SCM ALT']) << 1);
   },
-}) ({
-  name: 'SCM',
-  bitWidth: 10,
-  inputs: [SC, FE, SCAD, AR_SHIFT],
-  control: BitCombiner({name: 'SCMcontrol', inputs: [CR.SC, CR.SPEC]}),
-});
+}) ({name: 'SCM', bitWidth: 10, inputs: 'SC, FE, SCAD, AR_SHIFT',
+     control: BitCombiner({name: 'SCMcontrol', bitWidth: 2,
+                           inputs: 'CR.SC, CR.SPEC'})});
 
-const SCADA = Mux({
-  name: 'SCADA',
-  bitWidth: 10,
-  control: CR.SCADA,
-  inputs: [ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, CR['#']],
-});
+const SCADA = Mux({name: 'SCADA', bitWidth: 10, control: CR.SCADA,
+                   inputs: 'ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, MAGIC_NUMBER'});
 
-const SCADB = Mux({
-  name: 'SCADB',
-  bitWidth: 10,
-  control: CR.SCADB,
-  // XXX This input #3 is shown as "0,#" in p. 137
-  inputs: [FE, AR_SIZE, AR_00_08, CR['#']],
-});
+const SCADB = Mux({name: 'SCADB', bitWidth: 10, control: CR.SCADB,
+                   // XXX This input #3 is shown as "0,#" in p. 137
+                   inputs: 'FE, AR_SIZE, AR_00_08, MAGIC_NUMBER'});
 
 SCAD.input = [SCADA, SCADB];
 
-const MQM = Mux({
-  name: 'MQM',
-  bitWidth: 36,
-  control: CR.MQM,
-  inputs: [ZERO, ZERO, ZERO, ZERO, MQdiv4, SH, AD, ONES],
-});
-MQ.inputs[0] = MQM;
+const MQM = Mux({name: 'MQM', bitWidth: 36, control: CR.MQM,
+                 inputs: 'ZERO, ZERO, ZERO, ZERO, MQdiv4, SH, AD, ONES'});
 
-
-const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13, inputs: [AR_00_12]});
-const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, inputs: [null] /* XXX */});
-const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', inputs: [SCD_FLAGS, PC]});
-const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', inputs: [VMA_FLAGS, VMA_HELD]});
+const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13, inputs: 'AR_00_12'});
+const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, inputs: 'ZERO' /* XXX */});
+const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36,
+                                   inputs: 'SCD_FLAGS, PC'});
+const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36,
+                                    inputs: 'VMA_FLAGS, VMA_HELD'});
 
 const VMA_HELD_OR_PC = Mux.methods({
   get() {
     return +(CR.COND === CR.COND['VMA HELD']);
   },
-}) ({
-  name: 'VMA HELD OR PC',
-  bitWidth: 36,
-  inputs: [PC, VMA_HELD],
-  control: BitCombiner({name: 'SEL VMA HELD',inputs: [CR.COND]}),
-});
+}) ({name: 'VMA HELD OR PC', bitWidth: 36, inputs: 'PC, VMA_HELD', control: CR.COND});
 
 
 function computeCPUState(newCA) {
@@ -838,29 +757,45 @@ function computeCPUState(newCA) {
 
 // Parse a sequence of microcode field definitions (see define.mic for
 // examples) and return BitField stamps for each of the fields.
-function defineBitFields(input, s) {
-  const bitWidth = input.bitWidth;
+// Pass an array of field names to ignore (for CRAM unused fields).
+function defineBitFields(input, s, ignoreFields = []) {
+  const inputs = [input];       // BitField does not get input transformation
 
   return s.split(/\n/).reduce((state, line) => {
-    const [, name, s, e] = line.match(/^([^\/;]+)\/=<(\d+):(\d+)>.*/) || [];
+    const m = line.match(/^(?<name>[^\/;]+)\/=<(?<ss>\d+):(?<es>\d+)>.*/);
 
-    if (name) {
-      state.curField = name;
-      const entry = BitField({name, s: parseInt(s), e: parseInt(e), input, bitWidth});
-      state.fields.push(entry);
-      input[name] = entry;
-    } else {
-      const [, name, value] = line.match(/^\s+([^=;]+)=(\d+).*/) || [];
+    // Define a subfield of `input`, but only if it is not an unused CRAM field
+    if (m) {
+      const {name, ss, es} = m.groups;
 
-      if (name) {
+      if (name && !ignoreFields.includes(name)) {
+        const s = parseInt(ss);
+        const e = parseInt(es);
+        const bitWidth = e - s + 1;
+        state.curField = BitField({name: `${input.name}['${name}']`, s, e, inputs, bitWidth});
+        state.fields.push(state.curField);
+        input[name] = state.curField;
+      }
+    } else {                    // Define a constant name for this subfield
+      const m = line.match(/^\s+(?<name>[^=;]+)=(?<value>\d+).*/);
 
-        if (state.curField) {
-          state.fields[state.fields.length - 1][name] = BigInt(parseInt(value, 8));
+      if (m) {
+        const {name, value} = m.groups;
+
+        if (name) {
+
+          if (state.curField) {
+            state.curField[name] = ConstantUnit({
+              name: `${input.name}['${name}']`,
+              value: BigInt(parseInt(value, 8)),
+              bitWidth: state.curField.bitWidth,
+            });
+          } else {
+            console.log(`ERROR: no field context for value definition in "${line}"`);
+          }
         } else {
-          console.log(`ERROR: no field context for value definition in "${line}"`);
+          // Ignore lines that do not match either regexp.
         }
-      } else {
-        // Ignore lines that do not match either regexp.
       }
     }
 
@@ -869,8 +804,8 @@ function defineBitFields(input, s) {
 }
 
 
-// Fixup any forward references and recalculate bitWidth properties.
-EBOX.fixupForwardReferences();
+// Transform `inputs` from comma separated string to array of Units.
+EBOX.fixupInputs();
 
 
 // Export every EBOXUnit

@@ -171,7 +171,7 @@ function readAndHandleDirectives() {
       m = f.match(/^([^.][^/=]*)\/=<(\d+)(?::(\d+))?>.*/);
 
       if (m) {
-        //    console.log(`${ramName}: ${m[1]}/=<${m[2]}${m[3]? ":" + m[3] : ''}>`);
+//        console.log(`${ramName}: ${m[1]}/=<${m[2]}${m[3]? ":" + m[3] : ''}>`);
         fn = m[1];
         fieldDefs[fn] = {s: +m[2]};
         if (m[3])
@@ -185,16 +185,6 @@ function readAndHandleDirectives() {
         fieldDefs[fn][m[1]] = +m[2];
       }
     });
-
-  // Delete unused fields in CRAM
-  delete cramDefs.U0;
-  delete cramDefs.U21;
-  delete cramDefs.U23;
-  delete cramDefs.U42;
-  delete cramDefs.U45;
-  delete cramDefs.U48;
-  delete cramDefs.U51;
-  delete cramDefs.U73;
 }
 
 
