@@ -5,6 +5,12 @@ const util = require('util');
 const StampIt = require('@stamp/it');
 
 
+// EBOX notes:
+//
+// M8539 APR module is replaced by M8545 in KL10 model B.
+// M8523 VMA module is replaced by M8542 in KL10 model B.
+
+
 // Split `define.mic` file to retrieve CRAM definitions section and
 // DRAM definitions sections so we can parse them into definitions we
 // can use.
@@ -221,9 +227,9 @@ const BitField = StampIt.compose({name: 'BitField'})
         this.s = s;
         this.e = e;
         this.inputs = inputs;
-        this.nBits = e - s + 1;
+        this.bitWidth = e - s + 1;
         this.shift = shiftForBit(e, this.inputs[0].bitWidth);
-        this.mask = (1n << BigInt(this.nBits)) - 1n;
+        this.mask = (1n << BigInt(this.bitWidth)) - 1n;
       }).methods({
         get() {
           return this.getInputs();
@@ -232,7 +238,7 @@ const BitField = StampIt.compose({name: 'BitField'})
         getInputs() {
           const v = this.inputs[0].get();
           console.log(`${this.name}.getInputs v=${v} this=${util.inspect(this)}`);
-          return (BigInt.asUintN(this.nBits + 1, v) >> this.shift) & this.mask;
+          return (BigInt.asUintN(this.bitWidth + 1, v) >> this.shift) & this.mask;
         },
       });
 module.exports.BitField = BitField;
@@ -282,7 +288,7 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = ZERO, addrInput = 0, initValue = 0n}) {
+      .init(function({nWords, control = ZERO, addrInput, initValue = 0n}) {
         this.nWords = nWords,
         this.control = control;
         this.writeCycle = false;
@@ -398,24 +404,103 @@ module.exports.ShiftDiv = ShiftDiv;
 
 
 ////////////////////////////////////////////////////////////////
+// Compute N+k for a given input. Can be used to subtract using
+// negative k.
+const Adder = EBOXUnit.compose({name: 'Adder'})
+      .init(function({k = 1}) {
+        this.k = k;
+      }).methods({
+        get() {return this.inputs[0].get() + this.k}
+      });
+module.exports.ShiftDiv = ShiftDiv;
+
+
+////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 
 // RAMs
+
+// Complex CRAM address calculation logic goes here...
+const CRAM_ADDR = LogicUnit.methods({
+}) ({name: 'CRAM_ADDR', bitWidth: 11});
+
 // CRAM_IN is used to provide a uWord to CRAM when loading it.
 const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84, inputs: 'CRAM_IN'});
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
+                  inputs: 'CRAM_IN', addrInput: CRAM_ADDR});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
 defineBitFields(CR, defines.CRAM, `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/));
 
+// Complex DRAM address calculation logic goes here...
+const DRAM_ADDR = LogicUnit.methods({
+}) ({name: 'DRAM_ADDR', bitWidth: 9});
+
 // DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
-const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24, inputs: 'DRAM_IN'});
+const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
+                  inputs: 'DRAM_IN', addrInput: DRAM_ADDR});
 const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, inputs: 'AR'});
+const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, inputs: 
+
+const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, inputs: 'ARX'});
+const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, inputs: 'VMA'});
+
+const FM_ADR = LogicUnit.methods({
+  
+  getInputs() {
+    
+    switch(this.control.get()) {
+    default:
+    case CR.FMADR.AC0:
+      return IRAC.get();
+    case CR.FMADR.AC1:
+      return (IRAC.get() + 1) & 15n;
+    case CR.FMADR.XR:
+      return ARX_14_17.get();
+    case CR.FMADR.VMA:
+      return VMA_32_35.get();
+    case CR.FMADR.AC2:
+      return (IRAC.get() + 2) & 15n;
+    case CR.FMADR.AC3:
+      return (IRAC.get() + 3) & 15n;
+    case CR.FMADR['AC+#']:
+      return (IRAC.get() + MAGIC_NUMBER.get()) & 15n;
+    case CR.FMADR['#B#']:
+      // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
+      return MAGIC_NUMBER.get() & 15n;
+    }
+  },
+}) ({name: 'FM_ADR', bitWidth: 4, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
+
+
+const FM_BLOCK = LogicUnit.methods({
+  
+  getInputs() {
+    
+    switch(this.control.get()) {
+    default:
+    case CR.FMADR.AC0:
+    case CR.FMADR.AC1:
+    case CR.FMADR.XR:
+    case CR.FMADR.VMA:
+    case CR.FMADR.AC2:
+    case CR.FMADR.AC3:
+    case CR.FMADR['AC+#']:
+      return CURRENT_BLOCK.get();
+    case CR.FMADR['#B#']:
+      // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
+      return (MAGIC_NUMBER.get() >> 4n) & 7n;
+    }
+  },
+}) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
+
+const FMA = BitCombiner({name: 'FMA', inputs: 'FM_BLOCK,FM_ADR'});
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
+                inputs: 'AR', addrInput: FMA});
 
 
 const AD = LogicUnit.methods({
@@ -760,8 +845,9 @@ function computeCPUState(newCA) {
 // Pass an array of field names to ignore (for CRAM unused fields).
 function defineBitFields(input, s, ignoreFields = []) {
   const inputs = [input];       // BitField does not get input transformation
+  let curField = undefined;
 
-  return s.split(/\n/).reduce((state, line) => {
+  return s.split(/\n/).forEach(line => {
     const m = line.match(/^(?<name>[^\/;]+)\/=<(?<ss>\d+):(?<es>\d+)>.*/);
 
     // Define a subfield of `input`, but only if it is not an unused CRAM field
@@ -772,9 +858,8 @@ function defineBitFields(input, s, ignoreFields = []) {
         const s = parseInt(ss);
         const e = parseInt(es);
         const bitWidth = e - s + 1;
-        state.curField = BitField({name: `${input.name}['${name}']`, s, e, inputs, bitWidth});
-        state.fields.push(state.curField);
-        input[name] = state.curField;
+        curField = BitField({name: `${input.name}['${name}']`, s, e, inputs, bitWidth});
+        input[name] = curField;
       }
     } else {                    // Define a constant name for this subfield
       const m = line.match(/^\s+(?<name>[^=;]+)=(?<value>\d+).*/);
@@ -784,12 +869,8 @@ function defineBitFields(input, s, ignoreFields = []) {
 
         if (name) {
 
-          if (state.curField) {
-            state.curField[name] = ConstantUnit({
-              name: `${input.name}['${name}']`,
-              value: BigInt(parseInt(value, 8)),
-              bitWidth: state.curField.bitWidth,
-            });
+          if (curField) {
+            curField[name] = BigInt(parseInt(value, 8));
           } else {
             console.log(`ERROR: no field context for value definition in "${line}"`);
           }
@@ -798,9 +879,7 @@ function defineBitFields(input, s, ignoreFields = []) {
         }
       }
     }
-
-    return state;
-  }, {fields: [], curField: null});
+  });
 }
 
 
@@ -811,3 +890,4 @@ EBOX.fixupInputs();
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, EBOX.units);
 
+//EBOX.reset();
