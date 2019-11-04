@@ -40,6 +40,26 @@ const maskForBit = (n, width = 36) => Math.pow(2, width - 1 - n);
 const shiftForBit = (n, width = 36) => width - 1 - n;
 
 
+// All of our Units need to have a name for debugging and display.
+const Named = StampIt({name: 'Named'})
+      .init(function({name}) {
+        this.name = name;
+      });
+
+
+const Clock = Named.init(function({drives = []}) {
+        this.drives = drives;
+      }).methods({
+
+        addUnit(unit) {
+          this.drives.push(unit);
+        },
+
+        clock() {
+        },
+      });
+
+
 ////////////////////////////////////////////////////////////////
 //
 // Stolen from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR)
@@ -125,11 +145,12 @@ const shiftForBit = (n, width = 36) => width - 1 - n;
 // * `clock()` copies `latchedValue` to `value`.
 // * `get()` returns `value`.
 
-const EBOX = StampIt({
-}).init(function ({name, serialNumber}) {
+const EBOX = StampIt.compose(Named, {
+}).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
   this.units = {};              // List of all EBOX Units
   this.unitArray = [];          // List of all EBOX Units as an array of objects
+  this.clock = Clock({name: 'EBOXClock'});
 })
 .methods({
 
@@ -146,16 +167,19 @@ const EBOX = StampIt({
     // Reset every Unit back to initial value.
     this.unitArray.forEach(unit => unit.reset());
 
-    // RESET always generates a bunch of clocks with zero CRAM.
-    _.range(10).forEach(k => {this.latch(); this.clock()});
+    // RESET always generates a bunch of clocks with zero CRAM and DRAM.
+    _.range(10).forEach(k => {
+      this.latch();
+      this.clock();
+    });
   },
 
   latch() {
-    this.unitArray.forEach(unit => unit.latch());
+    this.clock.drives.forEach(unit => console.log(`${unit.name}.latch()`) || unit.latch());
   },
 
   clock() {
-    this.unitArray.forEach(unit => unit.clock());
+    this.clock.drives.forEach(unit => console.log(`${unit.name}.clock()`) || unit.clock());
   },
   
 }) ({name: 'EBOX', serialNumber: 4042});
@@ -164,16 +188,18 @@ module.exports.EBOX = EBOX;
 
 const EBOXUnit = StampIt({
   name: 'EBOXUnit',
-}).init(function({name, inputs, bitWidth}) {
+}).init(function({name, inputs, bitWidth, clock = EBOX.clock}) {
   this.name = name;
   EBOX.units[this.name] = this;
   this.inputs = inputs || [];
+  this.clock = clock;
   this.value = this.latchedValue = 0n;
 
   // We remember if bitWidth needs to be fixed up after inputs are
   // transformed or if it was explicitly specified.
   this.specifiedBitWidth = this.bitWidth = bitWidth;
 
+  clock.addUnit(this);
   this.reset();
 }).methods({
 
@@ -430,10 +456,12 @@ const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
                   inputs: 'CRAM_IN', addrInput: CRAM_ADDR});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
-defineBitFields(CR, defines.CRAM, `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/));
+const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
+defineBitFields(CR, defines.CRAM, excludeCRAMfields);
 
 // Complex DRAM address calculation logic goes here...
 const DRAM_ADDR = LogicUnit.methods({
+  // XXX this needs to be defined
 }) ({name: 'DRAM_ADDR', bitWidth: 9});
 
 // DRAM_IN is used to provide a word to DRAM when loading it.
@@ -444,7 +472,9 @@ const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
-const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, inputs: ''});
+const LOAD_AC_BLOCKS = 
+const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, clock: LOAD_AC_BLOCKS,
+                           inputs: ''});
 
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, inputs: 'ARX'});
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, inputs: 'VMA'});
@@ -496,7 +526,8 @@ const FM_BLOCK = LogicUnit.methods({
       return (MAGIC_NUMBER.get() >> 4n) & 7n;
     }
   },
-}) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
+}) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR,
+     inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
 
 const FMA = BitCombiner({name: 'FMA', inputs: 'FM_BLOCK,FM_ADR'});
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
@@ -600,7 +631,7 @@ const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1, inputs: 'VMA'});
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, inputs: 'AD'});
 const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1, inputs: 'AD_13_35'});
 
-const VMA_HELD = Reg({name: 'VMA HELD', inputs: 'VMA', bitWidth: 35 - 13 + 1});
+const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1, inputs: 'VMA'});
 
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, inputs: 'AD'});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1, inputs: 'AD_13_17'});
