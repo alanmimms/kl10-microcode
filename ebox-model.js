@@ -444,7 +444,7 @@ const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
-const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, inputs: 
+const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, inputs: ''});
 
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, inputs: 'ARX'});
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, inputs: 'VMA'});
