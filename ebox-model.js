@@ -1189,5 +1189,3 @@ Fixupable.fixup();
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, EBOX.units);
-
-//EBOX.reset();

@@ -200,7 +200,7 @@ function parse(lines, re) {
 
     if (m) {
       const a = parseInt(m[1], 8);
-      bytes[a] = BigInt('0o' + m.slice(2).join(''));
+      bytes[a] = `0o${m.slice(2).join('')}`;
     }
 
     return bytes;
@@ -298,30 +298,32 @@ function cram_${octal4(ma)}(cpu) {
   }
 },
 `;
-  });
+  }).join('\n\n');
 }
 
 
-function generateXRAMArray(typeName, wordsArray, bitWidth) {
-  return `module.exports.${typeName} = [
-  ${wordsArray.map(mw => `BigInt(0o${_.padStart(mw.toString(8), bitWidth/3, '0')})`).join(',\n  ')}
+function generateXRAMArray(wordsArray, bitWidth) {
+  return wordsArray.map(mw => `${_.padStart(mw.toString(8), bitWidth/3, '0')}n`).join(',\n  ');
+}
+
+
+function generateFile(filename, code) {
+  const allCode = `\
+'use strict';
+
+module.exports = [
+${code}
 ];
 `;
+  
+  fs.writeFileSync(filename, allCode, {mode: 0o664});
 }
 
 
 function generateMicrocode() {
-  const allCode = [
-    `'use strict';`,
-    '',
-    generateXRAMArray('cram', cram, 84),
-    generateXRAMArray('dram', dram, 24),
-    `module.exports.ops = [`,
-    generateFunctions(),
-    `];`,
-  ].join('\n\n');
-  
-  fs.writeFileSync(`microcode.js`, allCode, {mode: 0o664});
+  generateFile('cram.js', generateXRAMArray(cram, 84));
+  generateFile('dram.js', generateXRAMArray(dram, 24));
+  generateFile('microcode.js', generateFunctions());
 }
 
 
