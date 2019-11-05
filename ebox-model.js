@@ -212,14 +212,14 @@ const EBOX = StampIt.compose(Named, {
 
   latch() {
     this.clock.drives.forEach(unit => {
-      console.log(`${unit.name}.latch()`);
+//      console.log(`${unit.name}.latch()`);
       unit.latch();
     });
   },
 
   clockEdge() {
     this.clock.drives.forEach(unit => {
-      console.log(`${unit.name}.clockEdge()`);
+//      console.log(`${unit.name}.clockEdge()`);
       unit.clockEdge();
     });
   },
@@ -355,21 +355,17 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
       }).methods({
 
         reset() {
-          console.log(`RAM ${this.name} reset()`);
           this.data = _.range(this.nWords).map(x => this.initValue);
         },
 
         get() { return this.value },
 
         clockEdge() {
-            console.log(`${this.name}[${this.latchedAddr.toString(8)}]`);
 
           if (this.writeCycle) {
             this.data[this.latchedAddr] = this.value = this.latchedValue;
-            console.log(`   wrote ${this.value.toString(8)}`);
           } else {
             this.latchedValue = this.value = this.data[this.latchedAddr];
-            console.log(`   read ${this.value.toString(8)}`);
           }
         },
 
@@ -789,6 +785,7 @@ const ARXx4 = ShiftMult({name: 'ARXx4', inputs: 'ARX', shift: 1, bitWidth: 36});
 // 7    A&B
 // XXX no implementation yet.
 const SCAD = LogicUnit.methods({
+
   getInputs() {
     console.log(`${this.name} needs a 'getInputs()' implementation`);
     return 0n;
