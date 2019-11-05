@@ -571,18 +571,26 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
 
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
-  this.bitWidth = bitWidth;
+  this.bitWidth = bitWidth = BigInt(bitWidth);
   this.ONES = (1n << bitWidth) - 1n;
+  this.name = 'ALU10181';
 }).methods({
 
   add(a, b, cin = 0n) {
+    const sum = (a + b + cin);
+    this.cout = sum > this.ONES ? 1n : 0n;
+    return sum & this.ONES;
   },
 
   sub(a, b, cin = 0n) {
+    const diff = (a - b - cin);
+    this.cout = diff > this.ONES ? 1n : 0n;
+    return diff & this.ONES;
   },
 
   do(func, a, b, cin = 0n) {
 
+    // XXX this badly needs testing
     switch (func) {
     // ARITHMETIC
     default:
@@ -591,11 +599,11 @@ const ALU10181 = StampIt.init(function({bitWidth = 36}) {
     case 0o02: return this.add(a, a & b, cin);
     case 0o03: return this.add(a, a, cin);
     case 0o04: return this.add(a | b, 0n, cin);
-    case 0o05: return this.add(a & NOT(b), a | b, cin);
+    case 0o05: return this.add(a | b, a & NOT(b), cin);
     case 0o06: return this.add(a, b, cin);
     case 0o07: return this.add(a, a | b, cin);
-    case 0o10: return {value: a | NOT(b), cout: 0n};
-    case 0o11: return this.sub(a, b, 1n);
+    case 0o10: return this.add(a | NOT(b), 0n, cin);
+    case 0o11: return this.sub(a, b, cin ^ 1n);
     case 0o12: return this.add(a | NOT(b), a & b, cin);
     case 0o13: return this.add(a, a | NOT(b), cin);
     case 0o14: return this.add(this.ONES, 0n, cin);
@@ -634,8 +642,17 @@ const ALU10181 = StampIt.init(function({bitWidth = 36}) {
 });
 
 
-const AD = LogicUnit.init(function() {
-  this.alu = ALU10181({bitWidth: 38});
+const DataPathALU = LogicUnit.init(function({bitWidth}) {
+  this.alu = ALU10181({bitWidth});
+
+  this.getCarry = EBOXUnit.init(function({parentALU}) {
+    this.parentALU = parentALU;
+  }).methods({
+
+    getInputs() {
+      return this.parentALU.cout;
+    },
+    }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
 }).methods({
 
   do(aluFunction, a, b, cin = 0n) {
@@ -645,32 +662,51 @@ const AD = LogicUnit.init(function() {
   },
 
   getInputs() {
-    const func = this.func.getInputs();
-    const af = func & 0o37;
-    const [a, b] = [this.inputs[0].getInputs(), this.inputs[1].getInputs()];
+    const func = Number(this.func.getInputs());
+    const f = func & 0o37;
+    const a = this.inputs[0].getInputs();
+    const b = this.inputs[1].getInputs();
+    const cin = (func & 0o40) ? 1n : this.inputs[2].getInputs();
 
     // XXX CIN is affected by p. 364 E7/E8/E19 grid A4-5.
     // When that isn't true, CIN is ADX COUT.
+    //
+    // Also note that SPEC/XCRY AR0 means AD XORed with AR00
+    //
+    // Also note the schematic symbols XXX CRY 36 mean the carry INTO
+    // the LSB of the adder for XXX (i.e., from a bit to the right).
 
     switch(func) {
-    case CR.AD['A+1']:    return this.do(af, a, 1n);
-    case CR.AD['A*2']:    return this.do(af, a, a);
-    case CR.AD['A*2+1']:  return this.do(af, a, a, 1n);
-    case CR.AD['A+B']:    return this.do(af, a, b);
-    case CR.AD['A+B+1']:  return this.do(af, a, b, 1n);
-    case CR.AD['ORCB']:   return this.do(af, a, b, 1n);
-    case CR.AD['A-B-1']:  return this.do(af, a, b, 1n);
-    case CR.AD['A-B']:    return this.do(af, a, b);
-    case CR.AD['XCRY-1']: return this.do(af, 0n, 0n, cin);
-    case CR.AD['A-1']:    return this.do(af, a, 1n);
+    case CR.AD['A+1']:      return this.do(f, a, cin);
+    case CR.AD['A+XCRY']:   return this.do(f, a, cin);
+    case CR.AD['A+ANDCB']:  return this.do(f, a);
+    case CR.AD['A+AND']:    return this.do(f, a);
+    case CR.AD['A*2']:      return this.do(f, a, a);
+    case CR.AD['A*2+1']:    return this.do(f, a, a, 1n);
+    case CR.AD['OR+1']:     return this.do(f, a, a, cin);
+    case CR.AD['OR+ANDCB']: return this.do(f, a, a);
+    case CR.AD['A+B']:      return this.do(f, a, b);
+    case CR.AD['A+B+1']:    return this.do(f, a, b, cin);
+    case CR.AD['A+OR']:     return this.do(f, a, b);
+    case CR.AD['ORCB+1']:   return this.do(f, a, b, cin);
+    case CR.AD['A-B-1']:    return this.do(f, a, b);
+    case CR.AD['A-B']:      return this.do(f, a, b, cin);
+    case CR.AD['AND+ORCB']: return this.do(f, a, b, cin);
+    case CR.AD['XCRY-1']:   return this.do(f, a, b, cin);
+    case CR.AD['ANDCB-1']:  return this.do(f, a, b);
+    case CR.AD['AND-1']:    return this.do(f, a, b);
+    case CR.AD['A-1']:      return this.do(f, a, b);
     }
 
     return 0n;
   },
+});
 
-  getCarry() {
-  },
-}) ({name: 'AD', bitWidth: 38, func: CR.AD, inputs: 'ADB,ADA'});
+const ADX = DataPathALU({name: 'ADX', bitWidth: 36, func: CR.AD,
+                         inputs: 'ADXA, ADXB, ZERO'});
+
+const AD = DataPathALU({name: 'AD', bitWidth: 38, func: CR.AD,
+                        inputs: 'ADB, ADA, ZERO'});
 
 
 // Instruction register. This flows from CACHE (eventually) and AD.
@@ -870,11 +906,26 @@ const ARXx4 = ShiftMult({name: 'ARXx4', inputs: 'ARX', shift: 1, bitWidth: 36});
 // 6    A|B
 // 7    A&B
 // XXX no implementation yet.
-const SCAD = LogicUnit.methods({
+const SCAD = LogicUnit.init(function({bitWidth}) {
+  this.alu = ALU10181({bitWidth});
+}).methods({
 
   getInputs() {
-    console.log(`${this.name} needs a 'getInputs()' implementation`);
-    return 0n;
+    const func = Number(this.func.getInputs());
+    const a = this.inputs[0].getInputs();
+    const b = this.inputs[1].getInputs();
+
+    switch(func) {
+    default:
+    case CR.SCAD.A:        return this.alu.do(0o00, a, b);
+    case CR.SCAD['A-B-1']: return this.alu.do(0o11, a, b);
+    case CR.SCAD['A+B']:   return this.alu.do(0o06, a, b);
+    case CR.SCAD['A-1']:   return this.alu.do(0o17, a, b);
+    case CR.SCAD['A+1']:   return this.alu.do(0o00, a, b, 1n);
+    case CR.SCAD['A-B']:   return this.alu.do(0o11, a, b, 1n);
+    case CR.SCAD.OR:       return this.alu.do(0o04, a, b);
+    case CR.SCAD.AND:      return this.alu.do(0o16, a, b, 1n);
+    }
   },
 }) ({name: 'SCAD', bitWidth: 10, inputs: 'SCADA, SCADB', func: CR.SCAD});
 
@@ -916,22 +967,14 @@ const SH = LogicUnit.methods({
 const ADA = Mux({name: 'ADA', control: CR.ADA, bitWidth: 36,
                  inputs: 'ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC'});
 
-const ADB = Mux({name: 'ADB', bitWidth: 36, control: CR.ADB, bitWidth: 36,
+const ADB = Mux({name: 'ADB', bitWidth: 36, control: CR.ADB,
                  inputs: 'FM, BRx2, BR, ARx4'});
 
-const ADXA = Mux({name: 'ADXA', bitWidth: 36, control: CR.ADA, bitWidth: 36,
+const ADXA = Mux({name: 'ADXA', bitWidth: 36, control: CR.ADA,
                   inputs: 'ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX'});
 
-const ADXB = Mux({name: 'ADXB', bitWidth: 36, control: CR.ADB, bitWidth: 36,
+const ADXB = Mux({name: 'ADXB', bitWidth: 36, control: CR.ADB,
                   inputs: 'ZERO, BRXx2, BRX, ARXx4'});
-
-// XXX needs implementation
-const ADX = LogicUnit.methods({
-
-  getCarry() {
-  },
-}) ({name: 'ADX', bitWidth: 36, control: CR.AD, bitWidth: 36,
-                       inputs: 'ADXA, ADXB'});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
   getInputs() {
