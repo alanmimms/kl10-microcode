@@ -8,7 +8,9 @@ const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
 const EBOX = require('./ebox-model');
-const UCODE = require('./microcode.js');
+const CRAMwords = require('./cram.js');
+const DRAMwords = require('./dram.js');
+const UCODEops = require('./microcode.js');
 
 
 const optionList =   {
@@ -45,16 +47,21 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 function main()
 {
   const {CRAM, DRAM, CR, DR} = EBOX;
+  const cpu = {
+
+    updateState(cra) {
+    },
+  };               // XXX for now
 
   // Load CRAM from our Microcode
-  _.range(0, UCODE.CRAM.nWords).forEach((mw, addr) => {
+  _.range(0, CRAMwords.nWords).forEach((mw, addr) => {
     CRAM.addr = addr;
     CR.value = mw;
     CRAM.latch();
   });
 
   // Load DRAM from our Microcode
-  _.range(0, UCODE.DRAM.nWords).forEach((dw, addr) => {
+  _.range(0, DRAMwords.nWords).forEach((dw, addr) => {
     DRAM.addr = addr;
     DR.value = dw;
     DRAM.latch();
@@ -66,7 +73,7 @@ function main()
 
   // Launch the microcode by calling the first microinstruction
   // function.
-  EBOX.ops[0](cpu);
+  UCODEops[0](cpu);
 }
 
 

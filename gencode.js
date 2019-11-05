@@ -267,7 +267,7 @@ function generateFunctions() {
     const mw = cram[ma];
 
     const headerCode = [
-      `computeCPUState(0o${octal4(ma)});`,
+      `cpu.updateState(0o${octal4(ma)});`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
