@@ -574,12 +574,19 @@ const AD = LogicUnit.methods({
 
   getInputs() {
     const func = this.func.getInputs();
-    console.log(`${this.name} needs a 'getInputs()' implementation`);
+    const [a, b] = [this.inputs[0].getInputs(), this.inputs[1].getInputs()];
 
     switch (func) {
     default:
-    case 0:
-      break;
+    case CR.AD['A+1']:   return a + 1n;
+    case CR.AD['A*2']:   return a + a;
+    case CR.AD['A*2+1']: return a + a + 1n;
+    case CR.AD['A+B']:   return a + b;
+    case CR.AD['A+B+1']: return a + b + 1n;
+    case CR.AD['ORCB']:  return a | (b ^ ((1n << 38n) - 1n));
+    case CR.AD['A-B-1']: return a - b - 1;
+    case CR.AD['A-B']:   return a - b;
+    case CR.AD['XCRY-1']:return a - b;
     }
 
     return 0n;
