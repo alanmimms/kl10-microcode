@@ -11,6 +11,8 @@
   "dependencies": {
     "@stamp/arg-over-prop": "^1.0.4",
     "@stamp/it": "^1.1.0",
+    "command-line-args": "^5.1.1",
+    "command-line-usage": "^6.1.0",
     "hexo": "^4.0.0",
     "lodash": "^4.7.0"
   }
