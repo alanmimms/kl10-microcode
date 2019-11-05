@@ -307,13 +307,17 @@ function generateXRAMArray(wordsArray, bitWidth) {
 }
 
 
-function generateFile(filename, code) {
+function generateFile({filename, prefixCode = '', code, suffixCode = '', arrayName = ''}) {
   const allCode = `\
 'use strict';
 
-module.exports = [
+${prefixCode}
+
+module.exports${arrayName} = [
 ${code}
 ];
+
+${suffixCode}
 `;
   
   fs.writeFileSync(filename, allCode, {mode: 0o664});
@@ -321,9 +325,20 @@ ${code}
 
 
 function generateMicrocode() {
-  generateFile('cram.js', generateXRAMArray(cram, 84));
-  generateFile('dram.js', generateXRAMArray(dram, 24));
-  generateFile('microcode.js', generateFunctions());
+  generateFile({filename: 'cram.js', code: generateXRAMArray(cram, 84)});
+  generateFile({filename: 'dram.js', code: generateXRAMArray(dram, 24)});
+
+  generateFile({filename: 'microcode.js', arrayName: '.ops',
+                prefixCode: `\
+var EBOX;
+`,
+                code: generateFunctions(),
+                suffixCode: `\
+
+module.exports.initialize = function initialize(e) {
+  EBOX = e;
+};
+`});
 }
 
 
