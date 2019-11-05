@@ -570,26 +570,105 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
                 inputs: 'AR', addrInput: FMA});
 
 
-const AD = LogicUnit.methods({
+const ALU10181 = StampIt.init(function({bitWidth = 36}) {
+  this.bitWidth = bitWidth;
+  this.ONES = (1n << bitWidth) - 1n;
+}).methods({
+
+  add(a, b, cin = 0n) {
+  },
+
+  sub(a, b, cin = 0n) {
+  },
+
+  do(func, a, b, cin = 0n) {
+
+    switch (func) {
+    // ARITHMETIC
+    default:
+    case 0o00: return this.add(a, 0n, cin);
+    case 0o01: return this.add(a, a & NOT(b), cin);
+    case 0o02: return this.add(a, a & b, cin);
+    case 0o03: return this.add(a, a, cin);
+    case 0o04: return this.add(a | b, 0n, cin);
+    case 0o05: return this.add(a & NOT(b), a | b, cin);
+    case 0o06: return this.add(a, b, cin);
+    case 0o07: return this.add(a, a | b, cin);
+    case 0o10: return {value: a | NOT(b), cout: 0n};
+    case 0o11: return this.sub(a, b, 1n);
+    case 0o12: return this.add(a | NOT(b), a & b, cin);
+    case 0o13: return this.add(a, a | NOT(b), cin);
+    case 0o14: return this.add(this.ONES, 0n, cin);
+    case 0o15: return this.sub(a & NOT(b), 1n, cin);
+    case 0o16: return this.sub(a & b, 1n, cin);
+    case 0o17: return this.sub(a, 1n, cin);
+
+    // BOOLEAN
+    case 0o20: return BOOL(NOT(a), a);
+    case 0o21: return BOOL(NOT(a) | NOT(b), this.add(a, a & NOT(b)));
+    case 0o22: return BOOL(NOT(a) | b, this.add(a, a & b));
+    case 0o23: return BOOL(1n, this.add(a, a));
+    case 0o24: return BOOL(a & b, a | b);
+    case 0o25: return BOOL(NOT(b), this.add(a & NOT(b), a | b));
+    case 0o26: return BOOL(NOT(a ^ b), this.add(a, b));
+    case 0o27: return BOOL(a | NOT(b), this.add(a, a | b));
+    case 0o30: return BOOL(NOT(a) & b, a | NOT(b));
+    case 0o31: return BOOL(a ^ b, this.sub(a, b, 1n));
+    case 0o32: return BOOL(b, this.add(a | NOT(b), a & b));
+    case 0o33: return BOOL(a | b, this.add(a, a | NOT(b)));
+    case 0o34: return BOOL(0n, this.ONES);
+    case 0o35: return BOOL(a & NOT(b), this.sub(a & NOT(b), 1n));
+    case 0o36: return BOOL(a & b, this.sub(a & b, 1n));
+    case 0o37: return BOOL(a, this.sub(a, 1n));
+    }
+
+
+    function BOOL(noCarry, withCarry) {
+      return {value: cin ? withCarry : noCarry, cout: 0n};
+    }
+    
+    function NOT(v) {
+      return v ^ this.ONES;
+    }
+  },
+});
+
+
+const AD = LogicUnit.init(function() {
+  this.alu = ALU10181({bitWidth: 38});
+}).methods({
+
+  do(aluFunction, a, b, cin = 0n) {
+    const v = this.alu.do(aluFunction, a, b, cin);
+    this.cout = v.cout;
+    return v.value;
+  },
 
   getInputs() {
     const func = this.func.getInputs();
+    const af = func & 0o37;
     const [a, b] = [this.inputs[0].getInputs(), this.inputs[1].getInputs()];
 
-    switch (func) {
-    default:
-    case CR.AD['A+1']:   return a + 1n;
-    case CR.AD['A*2']:   return a + a;
-    case CR.AD['A*2+1']: return a + a + 1n;
-    case CR.AD['A+B']:   return a + b;
-    case CR.AD['A+B+1']: return a + b + 1n;
-    case CR.AD['ORCB']:  return a | (b ^ ((1n << 38n) - 1n));
-    case CR.AD['A-B-1']: return a - b - 1;
-    case CR.AD['A-B']:   return a - b;
-    case CR.AD['XCRY-1']:return a - b;
+    // XXX CIN is affected by p. 364 E7/E8/E19 grid A4-5.
+    // When that isn't true, CIN is ADX COUT.
+
+    switch(func) {
+    case CR.AD['A+1']:    return this.do(af, a, 1n);
+    case CR.AD['A*2']:    return this.do(af, a, a);
+    case CR.AD['A*2+1']:  return this.do(af, a, a, 1n);
+    case CR.AD['A+B']:    return this.do(af, a, b);
+    case CR.AD['A+B+1']:  return this.do(af, a, b, 1n);
+    case CR.AD['ORCB']:   return this.do(af, a, b, 1n);
+    case CR.AD['A-B-1']:  return this.do(af, a, b, 1n);
+    case CR.AD['A-B']:    return this.do(af, a, b);
+    case CR.AD['XCRY-1']: return this.do(af, 0n, 0n, cin);
+    case CR.AD['A-1']:    return this.do(af, a, 1n);
     }
 
     return 0n;
+  },
+
+  getCarry() {
   },
 }) ({name: 'AD', bitWidth: 38, func: CR.AD, inputs: 'ADB,ADA'});
 
@@ -847,7 +926,11 @@ const ADXB = Mux({name: 'ADXB', bitWidth: 36, control: CR.ADB, bitWidth: 36,
                   inputs: 'ZERO, BRXx2, BRX, ARXx4'});
 
 // XXX needs implementation
-const ADX = LogicUnit({name: 'ADX', bitWidth: 36, control: CR.AD, bitWidth: 36,
+const ADX = LogicUnit.methods({
+
+  getCarry() {
+  },
+}) ({name: 'ADX', bitWidth: 36, control: CR.AD, bitWidth: 36,
                        inputs: 'ADXA, ADXB'});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
