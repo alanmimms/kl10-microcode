@@ -34,10 +34,53 @@ const defines = definesMatches.groups;
 
 
 // Array containing the bit mask indexed by PDP-10 numbered bit number.
-const maskForBit = (n, width = 36) => Math.pow(2, width - 1 - n);
+const maskForBit = (n, width = 36) => BigInt(Math.pow(2, width - 1 - n));
 
 // The shift right count to get PDP10 bit #n into LSB.
-const shiftForBit = (n, width = 36) => width - 1 - n;
+const shiftForBit = (n, width = 36) => BigInt(BigInt(width) - 1n - BigInt(n));
+
+
+// This is a mixin for anything with a `this.name` property and a
+// `this.fixups` property, where `fixups` is comma separated list of
+// property names on `this` whose value is itself a comma separated
+// list of names to convert (in place) from string to array of object
+// refs. This allows forward refernces to objects in more than one
+// property on our Stamps, resolving these foward references for all
+// Stamps that use this mixin facility after all Stamps that are
+// defined by calling Fixupable.fixup().
+const Fixupable = StampIt({name: 'Fixupable'})
+      .statics({
+        needsFixup: [],
+
+        // Called at end of declarations to transform the `inputs`
+        // string of comma-separated names into an array of real objects.
+        fixup() {
+
+          Fixupable.needsFixup.forEach(fu => {
+            if (fu.fixupsDebug) debugger;
+            if (!fu.fixups || typeof fu.fixups !== 'string') return;
+
+            fu.fixups.split(/,\s*/).forEach(fuName => {
+              if (typeof fu[fuName] !== 'string') return;
+
+              fu[fuName] = fu[fuName].split(/,\s*/)
+                .map(fi => {
+                  const resolution = eval(fi);
+
+                  if (typeof resolution === undefined) {
+                    console.error(`Fixupable: ${fu.name}.${fuName} ${fi} is not defined`);
+                  }
+                  
+                  return resolution;
+                });
+            });
+          });
+        },
+      }).init(function({fixups = 'inputs', fixupsDebug = false}) {
+        this.fixups = fixups;
+        this.fixupsDebug = fixupsDebug;
+        Fixupable.needsFixup.push(this);
+      });
 
 
 // All of our Units need to have a name for debugging and display.
@@ -55,7 +98,7 @@ const Clock = Named.init(function({drives = []}) {
           this.drives.push(unit);
         },
 
-        clock() {
+        clockEdge() {
         },
       });
 
@@ -116,7 +159,7 @@ const Clock = Named.init(function({drives = []}) {
 //   |                     |
 //   |                     +-- instruction loads into ARX
 //   |                     | 
-//   |                     +-- `clock()` copies `latchedValue` to `value`
+//   |                     +-- `clockEdge()` copies `latchedValue` to `value`
 //   |
 //   +-- `latch()`, saves `getInputs()` value to `latchedValue`
 //
@@ -128,10 +171,10 @@ const Clock = Named.init(function({drives = []}) {
 // defining protocol but all should be completely overridden.
 //
 // The convention is that each EBOXUnit has a `getInputs()` method
-// (sometimes with parameters) that retrieves the unit's value based
-// on its current inputs and configuration. EBOXUnit uses
-// `getInputs()` method to retrieve inputs and aggregates them to save
-// what would be saved on the clock edge.
+// that retrieves the unit's value based on its current inputs and
+// configuration. EBOXUnit uses `getInputs()` method to retrieve
+// inputs and aggregates them to save what would be saved on the clock
+// edge.
 //
 // The combinational logic in the KL10 does not really transition
 // piecemeal like our implementation would do if we simply allowed
@@ -142,7 +185,7 @@ const Clock = Named.init(function({drives = []}) {
 // Unit actually is composed from EBOXUnit.
 //
 // * `latch()` copies `getInputs()` result into `latchedValue`.
-// * `clock()` copies `latchedValue` to `value`.
+// * `clockEdge()` copies `latchedValue` to `value`.
 // * `get()` returns `value`.
 
 const EBOX = StampIt.compose(Named, {
@@ -150,19 +193,12 @@ const EBOX = StampIt.compose(Named, {
   this.serialNumber = serialNumber;
   this.units = {};              // List of all EBOX Units
   this.unitArray = [];          // List of all EBOX Units as an array of objects
-  this.clock = Clock({name: 'EBOXClock'});
+  this.clock = Clock({name: 'EBOXClock', control: 'ZERO'});
 })
 .methods({
 
-  fixupInputs() {
-    this.unitArray = Object.keys(this.units).map(name => this.units[name]);
-
-    // For every EBOXUnit that has some, we transform `inputs` from
-    // string to array of Units.
-    this.unitArray.forEach(u => u.fixupInputs());
-  },
-
   reset() {
+    this.unitArray = Object.keys(this.units).map(name => this.units[name]);
 
     // Reset every Unit back to initial value.
     this.unitArray.forEach(unit => unit.reset());
@@ -170,59 +206,49 @@ const EBOX = StampIt.compose(Named, {
     // RESET always generates a bunch of clocks with zero CRAM and DRAM.
     _.range(10).forEach(k => {
       this.latch();
-      this.clock();
+      this.clockEdge();
     });
   },
 
   latch() {
-    this.clock.drives.forEach(unit => console.log(`${unit.name}.latch()`) || unit.latch());
+    this.clock.drives.forEach(unit => {
+      console.log(`${unit.name}.latch()`);
+      unit.latch();
+    });
   },
 
-  clock() {
-    this.clock.drives.forEach(unit => console.log(`${unit.name}.clock()`) || unit.clock());
+  clockEdge() {
+    this.clock.drives.forEach(unit => {
+      console.log(`${unit.name}.clockEdge()`);
+      unit.clockEdge();
+    });
   },
   
 }) ({name: 'EBOX', serialNumber: 4042});
 module.exports.EBOX = EBOX;
 
 
-const EBOXUnit = StampIt({
+const EBOXUnit = StampIt.compose(Fixupable, {
   name: 'EBOXUnit',
-}).init(function({name, inputs, bitWidth, clock = EBOX.clock}) {
+}).init(function({name, bitWidth, inputs = '', clock = EBOX.clock}) {
   this.name = name;
   EBOX.units[this.name] = this;
-  this.inputs = inputs || [];
+  this.inputs = inputs;
   this.clock = clock;
   this.value = this.latchedValue = 0n;
 
   // We remember if bitWidth needs to be fixed up after inputs are
   // transformed or if it was explicitly specified.
-  this.specifiedBitWidth = this.bitWidth = bitWidth;
+  this.specifiedBitWidth = this.bitWidth = 
+    typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
 
   clock.addUnit(this);
   this.reset();
 }).methods({
-
-  // Called by EBOX enumeration of all Units to transform the `inputs`
-  // string of comma-separated EBOXUnit names into an array of
-  // EBOXUnits.
-  fixupInputs() {
-    if (typeof this.inputs !== 'string') return;
-
-    this.inputs = this.inputs.split(/,\s*/)
-      .map(fi => {
-        const unit = eval(fi);
-        if (!unit) console.error(`In ${this.name}.inputs ${fi} is not defined`);
-        return unit;
-      });
-
-//    console.log(`${this.name} inputs=[${this.inputs.map(i => i.name).join(', ')}]`);
-  },
-
   reset() {this.latchedValue = this.value = 0n},
   get() {return this.value},
   latch() {this.latchedValue = this.getInputs()},
-  clock() {this.value = this.latchedValue},
+  clockEdge() {this.value = this.latchedValue},
 
   // NEARLY ALWAYS should be overridden in derivative stamps
   getInputs() {return this.value},
@@ -247,24 +273,24 @@ module.exports.EBOXUnit = EBOXUnit;
 // that `s` is PDP10 numbered leftmost bit and `e` is PDP10 numbered
 // rightmost bit in field. So number of bits is `e-s+1`.
 // Not an EBOXUnit, just a useful stamp.
-const BitField = StampIt.compose({name: 'BitField'})
-      .init(function({name, inputs, s, e}) {
+const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
+      .init(function({name, s, e, inputs = ''}) {
         this.name = name;
         this.s = s;
         this.e = e;
         this.inputs = inputs;
-        this.bitWidth = e - s + 1;
+        this.bitWidth = BigInt(e - s + 1);
         this.shift = shiftForBit(e, this.inputs[0].bitWidth);
         this.mask = (1n << BigInt(this.bitWidth)) - 1n;
       }).methods({
+
         get() {
           return this.getInputs();
         },
 
         getInputs() {
-          const v = this.inputs[0].get();
-          console.log(`${this.name}.getInputs v=${v} this=${util.inspect(this)}`);
-          return (BigInt.asUintN(this.bitWidth + 1, v) >> this.shift) & this.mask;
+          const v = this.inputs[0].getInputs();
+          return (BigInt.asUintN(Number(this.bitWidth) + 1, v) >> this.shift) & this.mask;
         },
       });
 module.exports.BitField = BitField;
@@ -273,13 +299,14 @@ module.exports.BitField = BitField;
 ////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
 const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
-      .init(function ({name, value, bitWidth = 36}) {
+      .init(function ({name, value, bitWidth = 36n}) {
         this.name = name;
+        this.inputs = [];       // To avoid "is not defined" messages from FixupableInputs
         this.constant = true;
-        this.value = value >= 0 ? value : BigInt.asUintN(bitWidth, value);
+        this.value = value >= 0 ? value : BigInt.asUintN(Number(bitWidth), value);
       }).methods({
         latch() {},
-        clock() {},
+        clockEdge() {},
         getInputs() {return this.value},
         get() {return this.value},
       });
@@ -298,7 +325,7 @@ const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
 
         getInputs() {
           return this.inputs.reduce((v, i) => {
-            v = (v << i.bitWidth) | i.get();
+            v = (v << i.bitWidth) | i.getInputs();
             return v;
           }, 0n);
         }
@@ -314,33 +341,41 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = ZERO, addrInput, initValue = 0n}) {
+      .init(function({nWords, fixups = 'inputs,control', 
+                      control = ZERO, addrInput, initValue = 0n}) {
         this.nWords = nWords,
+        this.fixups = fixups;
         this.control = control;
         this.writeCycle = false;
         this.addrInput = addrInput;
         this.initValue = initValue;
+        this.latchedValue = this.value = initValue;
+        this.latchedAddr = 0;
         this.reset();
       }).methods({
 
         reset() {
-          this.data = new Array(this.nWords).map(x => this.initValue);
+          console.log(`RAM ${this.name} reset()`);
+          this.data = _.range(this.nWords).map(x => this.initValue);
         },
 
         get() { return this.value },
 
-        clock() {
+        clockEdge() {
+            console.log(`${this.name}[${this.latchedAddr.toString(8)}]`);
 
           if (this.writeCycle) {
             this.data[this.latchedAddr] = this.value = this.latchedValue;
+            console.log(`   wrote ${this.value.toString(8)}`);
           } else {
             this.latchedValue = this.value = this.data[this.latchedAddr];
+            console.log(`   read ${this.value.toString(8)}`);
           }
         },
 
         latch() {
-          this.writeCycle = !!this.control.get();
-          this.latchedAddr = this.addrInput;
+          this.writeCycle = !!this.control.getInputs();
+          this.latchedAddr = this.addrInput.getInputs();
           if (this.writeCycle) this.latchedValue = this.getInputs();
         },
       });
@@ -351,12 +386,13 @@ module.exports.RAM = RAM;
 // Given a control input and a series of selectable inputs, produce
 // the value of the selected input on the output.
 const Mux = EBOXUnit.compose({name: 'Mux'})
-      .init(function({control}) {
+      .init(function({fixups = 'inputs,control', control}) {
         this.control = control;
+        this.fixups = fixups;
       }).methods({
 
-        get() {
-          return this.inputs[this.control].get();
+        getInputs() {
+          return this.inputs[this.control.getInputs()].getInputs();
         }
       });
 module.exports.Mux = Mux;
@@ -368,8 +404,8 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
       .methods({
 
         latch() {
-          this.value = this.latched;
-          this.latched = this.inputs[0].get();
+          this.value = this.latchedValue;
+          this.latchedValue = this.inputs[0].getInputs();
         },
       });
 module.exports.Reg = Reg;
@@ -383,8 +419,9 @@ module.exports.Reg = Reg;
 // 2: SHIFT LEFT
 // 3: HOLD
 const ShiftReg = EBOXUnit.compose({name: 'ShiftReg'})
-      .init(function({control}) {
+      .init(function({fixups = 'inputs,control', control}) {
         this.control = control;
+        this.fixups = fixups;
       });
 module.exports.ShiftReg = ShiftReg;
 
@@ -393,13 +430,16 @@ module.exports.ShiftReg = ShiftReg;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const LogicUnit = EBOXUnit.compose({name: 'LogicUnit'})
-      .init(function({splitter, func}) {
+      .init(function({splitter, fixups = 'inputs,control', control, func}) {
         this.splitter = splitter;
+        this.control = control;
+        this.fixups = fixups;
         this.func = func;
       }).methods({
 
         get() {
           console.log(`${this.name} needs a 'get()' implementation`);
+          return 0n;
         },
       });
 module.exports.LogicUnit = LogicUnit;
@@ -409,10 +449,10 @@ module.exports.LogicUnit = LogicUnit;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftMult = EBOXUnit.compose({name: 'ShiftMult'})
-      .init(function({multiplier = 2}) {
-        this.multiplier = multiplier;
+      .init(function({shift = 1}) {
+        this.shift = BigInt(shift);
       }).methods({
-        get() {return this.inputs[0].get() * this.multiplier }
+        getInputs() {return this.inputs[0].getInputs() << this.shift },
       });
 module.exports.ShiftMult = ShiftMult;
 
@@ -421,10 +461,10 @@ module.exports.ShiftMult = ShiftMult;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftDiv = EBOXUnit.compose({name: 'ShiftDiv'})
-      .init(function({divisor = 2}) {
-        this.divisor = divisor;
+      .init(function({shift = 1}) {
+        this.shift = BigInt(shift);
       }).methods({
-        get() {return this.inputs[0].get() / this.divisor }
+        getInputs() {return this.inputs[0].getInputs() >> this.shift },
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -436,7 +476,7 @@ const Adder = EBOXUnit.compose({name: 'Adder'})
       .init(function({k = 1}) {
         this.k = k;
       }).methods({
-        get() {return this.inputs[0].get() + this.k}
+        getInputs() {return this.inputs[0].getInputs() + this.k},
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -472,9 +512,9 @@ const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
-const LOAD_AC_BLOCKS = 
+const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
 const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, clock: LOAD_AC_BLOCKS,
-                           inputs: ''});
+                           inputs: 'EBUS'});
 
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, inputs: 'ARX'});
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, inputs: 'VMA'});
@@ -483,25 +523,25 @@ const FM_ADR = LogicUnit.methods({
   
   getInputs() {
     
-    switch(this.control.get()) {
+    switch(this.control.getInputs()) {
     default:
     case CR.FMADR.AC0:
-      return IRAC.get();
+      return IRAC.getInputs();
     case CR.FMADR.AC1:
-      return (IRAC.get() + 1) & 15n;
+      return (IRAC.getInputs() + 1) & 15n;
     case CR.FMADR.XR:
-      return ARX_14_17.get();
+      return ARX_14_17.getInputs();
     case CR.FMADR.VMA:
-      return VMA_32_35.get();
+      return VMA_32_35.getInputs();
     case CR.FMADR.AC2:
-      return (IRAC.get() + 2) & 15n;
+      return (IRAC.getInputs() + 2) & 15n;
     case CR.FMADR.AC3:
-      return (IRAC.get() + 3) & 15n;
+      return (IRAC.getInputs() + 3) & 15n;
     case CR.FMADR['AC+#']:
-      return (IRAC.get() + MAGIC_NUMBER.get()) & 15n;
+      return (IRAC.getInputs() + MAGIC_NUMBER.getInputs()) & 15n;
     case CR.FMADR['#B#']:
       // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
-      return MAGIC_NUMBER.get() & 15n;
+      return MAGIC_NUMBER.getInputs() & 15n;
     }
   },
 }) ({name: 'FM_ADR', bitWidth: 4, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
@@ -511,7 +551,7 @@ const FM_BLOCK = LogicUnit.methods({
   
   getInputs() {
     
-    switch(this.control.get()) {
+    switch(this.control.getInputs()) {
     default:
     case CR.FMADR.AC0:
     case CR.FMADR.AC1:
@@ -520,10 +560,10 @@ const FM_BLOCK = LogicUnit.methods({
     case CR.FMADR.AC2:
     case CR.FMADR.AC3:
     case CR.FMADR['AC+#']:
-      return CURRENT_BLOCK.get();
+      return CURRENT_BLOCK.getInputs();
     case CR.FMADR['#B#']:
       // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
-      return (MAGIC_NUMBER.get() >> 4n) & 7n;
+      return (MAGIC_NUMBER.getInputs() >> 4n) & 7n;
     }
   },
 }) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR,
@@ -536,15 +576,17 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
 
 const AD = LogicUnit.methods({
 
-  get() {
-    const func = this.func.get();
-    console.log(`${this.name} needs a 'get()' implementation`);
+  getInputs() {
+    const func = this.func.getInputs();
+    console.log(`${this.name} needs a 'getInputs()' implementation`);
 
     switch (func) {
     default:
     case 0:
       break;
     }
+
+    return 0n;
   },
 }) ({name: 'AD', bitWidth: 38, func: CR.AD, inputs: 'ADB,ADA'});
 
@@ -595,7 +637,7 @@ const VMA = Reg.compose({name: 'VMA'})
           //     VMA DEC=35	;VMA_VMA-1
           //     VMA INC=36	;VMA_VMA+1
 
-          switch (CR.COND) {
+          switch (CR.COND.getInputs()) {
           case CR['VMA_#']:
           case CR['VMA_#+TRAP']:
           case CR['VMA_#+MODE']:
@@ -609,7 +651,7 @@ const VMA = Reg.compose({name: 'VMA'})
           }
 
           // VMA
-          switch (CR.VMA) {
+          switch (CR.VMA.getInputs()) {
           case 0:                     // VMA (noop)
             break;
           case 1:                     // PC or LOAD
@@ -647,9 +689,9 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
         // 3: HOLD
         getInputs() {
 
-          if (CR.FE) 
+          if (CR.FE.getInputs()) 
             return 0;
-          else if (CR.COND == CR.COND['FE SHRT']) 
+          else if (CR.COND.getInputs() == CR.COND['FE SHRT']) 
             return 1;
           else
             return 3;
@@ -657,7 +699,59 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
         
       }) ({name: 'FEcontrol', bitWidth: 2, inputs: 'CR'});
 
-const MQ = Reg({name: 'MQ', bitWidth: 36, inputs: 'MQM'});
+const MQ = LogicUnit.methods({
+
+  getInputs() {
+
+    // Our complex operations are selected by COND/REG CTL
+    if (CR.COND.getInputs() === CR.COND['REG CTL']) {
+      const MQ_CTL = CR['MQ CTL'];
+
+      if (MQ.getInputs() === MQ['MQ SEL']) {
+
+        switch (MQ_CTL.getInputs()) {
+        default:
+        case MQ_CTL.MQ:
+          return this.latchedValue;
+
+        case MQ_CTL['MQ*2']:
+          return (this.latchedValue << 1n) | ADX.getInputs() & 1;
+
+        case MQ_CTL['MQ*.5']:
+          return (this.latchedValue >> 1n) & ~(maskForBit(0)  |
+                                               maskForBit(6)  |
+                                               maskForBit(12) |
+                                               maskForBit(18) |
+                                               maskForBit(24) |
+                                               maskForBit(30));
+
+        case MQ_CTL['0S']:
+          return 0n;
+        }
+      } else {                  // Must be MQ/MQM SEL
+
+        switch (MQ_CTL.getInputs()) {
+        default:
+        case MQ_CTL['SH']:
+          return SH.getInputs();
+
+        case MQ_CTL['MQ*.25']:
+          return ((this.latchedValue >> 2n) & ~(3n << 34n)) | (ADX.getInputs() << 34n);
+
+        case MQ_CTL['1S']:
+          return ONES.get();
+
+        case MQ_CTL['1S']:
+          return AD.getInputs();
+        }
+      }
+    }
+
+    return 0n;
+  },
+}) ({name: 'MQ', bitWidth: 36,
+     // ZERO is complex above
+     inputs: 'ZERO, SH, ONES, AD'});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -678,11 +772,10 @@ const AR_12_36 = BitField({name: 'AR_12_35', s: 12, e: 35, inputs: 'AR'});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult({name: 'BRx2', inputs: 'BR', multiplier: 2, bitWidth: 36});
-const ARx4 = ShiftMult({name: 'ARx4', inputs: 'AR', multiplier: 4, bitWidth: 36});
-const BRXx2 = ShiftMult({name: 'BRXx2', inputs: 'BRX', multiplier: 2, bitWidth: 36});
-const ARXx4 = ShiftMult({name: 'ARXx4', inputs: 'ARX', multiplier: 4, bitWidth: 36});
-const MQdiv4 = ShiftDiv({name: 'MQdiv4', inputs: 'MQ', divisor: 4, bitWidth: 36});
+const BRx2 = ShiftMult({name: 'BRx2', inputs: 'BR', shift: 1, bitWidth: 36});
+const ARx4 = ShiftMult({name: 'ARx4', inputs: 'AR', shift: 1, bitWidth: 36});
+const BRXx2 = ShiftMult({name: 'BRXx2', inputs: 'BRX', shift: 1, bitWidth: 36});
+const ARXx4 = ShiftMult({name: 'ARXx4', inputs: 'ARX', shift: 1, bitWidth: 36});
 
 
 // SCAD CONTROL
@@ -696,33 +789,35 @@ const MQdiv4 = ShiftDiv({name: 'MQdiv4', inputs: 'MQ', divisor: 4, bitWidth: 36}
 // 7    A&B
 // XXX no implementation yet.
 const SCAD = LogicUnit.methods({
-  get() {
-    console.log(`${this.name} needs a 'get()' implementation`);
+  getInputs() {
+    console.log(`${this.name} needs a 'getInputs()' implementation`);
+    return 0n;
   },
-}) ({name: 'SCAD', bitWidth: 10, func: CR.SCAD});
+}) ({name: 'SCAD', bitWidth: 10, inputs: 'SCADA, SCADB', func: CR.SCAD});
 
 const FE = ShiftReg({name: 'FE', control: FEcontrol, inputs: 'SCAD', bitWidth: 10});
 
 const SH = LogicUnit.methods({
 
-  get() {
-    const count = SC.get();
-    const func = this.func.get();
+  getInputs() {
+    const count = SC.getInputs();
+    const func = this.func.getInputs();
 
     switch (func) {
     default:
     case 0:
-      const src0 = (AR << 36n) | ARX;
-      return (count < 0 || count > 35) ? ARX.get() : src0 << count;
+      const arx0 = ARX.getInputs();
+      const src0 = (AR.getInputs() << 36n) | arx0;
+      return (count < 0 || count > 35) ? arx0 : src0 << count;
 
     case 1:
-      return AR.get();
+      return AR.getInputs();
 
     case 2:
-      return ARX.get();
+      return ARX.getInputs();
 
     case 3:
-      const src3 = AR.get();
+      const src3 = AR.getInputs();
       return (src3 >> 18) | (src3 << 18);
     }
   },
@@ -752,8 +847,8 @@ const ADX = LogicUnit({name: 'ADX', bitWidth: 36, control: CR.AD, bitWidth: 36,
                        inputs: 'ADXA, ADXB'});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
-  get() {
-    return +!!(AR.get() & maskForBit(0, 9));
+  getInputs() {
+    return BigInt(+!!(AR.getInputs() & maskForBit(0, 9)));
   },
 }) ({name: 'ARSIGN_SMEAR', bitWidth: 9, inputs: 'AR'});
 
@@ -770,8 +865,8 @@ const ARMML = Mux({name: 'ARMML', bitWidth: 9, control: CR.ARMM,
                    inputs: 'MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS'});
 
 const ARMMR = Mux.methods({
-  get() {
-    return +!!(CR.VMAX & CR.VMAX['PREV SEC']);
+  getInputs() {
+    return BigInt(+!!(CR.VMAX.getInputs() & CR.VMAX['PREV SEC']));
   },
 }) ({name: 'ARMMR', bitWidth: 17 - 13 + 1,
      inputs: 'PC_13_17, VMA_PREV_SECT_13_17',
@@ -780,13 +875,13 @@ const ARMMR = Mux.methods({
 
 const ARMM = BitCombiner({name: 'ARMM', bitWidth: 9 + 5, inputs: 'ARMML, ARMMR'});
 
-const ADx2 = ShiftMult({name: 'ADx2', inputs: 'AD', multiplier: 2, bitWidth: 36});
-const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: 'AD', divisor: 4, bitWidth: 36});
+const ADx2 = ShiftMult({name: 'ADx2', inputs: 'AD', shift: 1, bitWidth: 36});
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', inputs: 'AD', shift: 2, bitWidth: 36});
 
 const SERIAL_NUMBER = ConstantUnit.methods({
 
   reset() {
-    this.value = EBOX.serialNumber;
+    this.value = BigInt(EBOX.serialNumber);
   },
 }) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18});
 
@@ -803,27 +898,75 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18, control: CR.AR,
 const ARML = Mux({name: 'ARML', bitWidth: 18, control: CR.AR,
                   inputs: 'ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4'});
 
-const ADXx2 = ShiftMult({name: 'ADXx2', inputs: 'ADX', multiplier: 2, bitWidth: 36});
-const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', inputs: 'ADX', divisor: 4, bitWidth: 36});
-
-const ARXM = Mux({name: 'ARXM', bitWidth: 36, control: CR.ARXM,
-                  inputs: 'ZERO, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4'});
-
 const ARL = Reg({name: 'ARL', bitWidth: 18, inputs: 'ARML'});
 const ARR = Reg({name: 'ARR', bitWidth: 18, inputs: 'ARMR'});
-const ARX = Reg({name: 'ARX', bitWidth: 36, inputs: 'ARXM'});
+
+const ARX = LogicUnit.methods({
+
+  getInputs() {
+    const ARX = CR.ARX;
+
+    // Our complex operations are selected by ARX/
+    switch (ARX.getInputs()) {
+    default:
+    case ARX.MEM:
+    case ARX.ARX:
+      return this.latchedValue;
+
+    case ARX.CACHE:
+      return 0n;                // XXX someday...
+
+    case ARX.AD:
+      return AD.getInputs();
+
+    case ARX.MQ:
+      return MQ.getInputs();
+
+    case ARX.SH:
+      return SH.getInputs();
+
+    case ARX['ADX*2']:
+      return ADX.getInputs() << 1n | ((MQ.getInputs() >> 35n) & 1);
+
+    case ARX.ADX:
+      return ADX.getInputs();
+
+    case ARX['ADX*.25']:
+      return ADX.getInputs() >> 2n | (AD.getInputs() & 3n);
+    }
+  },
+}) ({name: 'ARX', bitWidth: 36,
+     control: 'CR.ARX',
+     // The ZERO inputs are complex as above
+     inputs: 'ARX, CACHE, AD, MQ, SH, ZERO, ADX, ZERO',
+    });
+
 const AR = BitCombiner({name: 'AR', inputs: 'ARL, ARR'});
 const BR = Reg({name: 'BR', bitWidth: 36, inputs: 'AR'});
 const BRX = Reg({name: 'BRX', bitWidth: 36, inputs: 'ARX'});
-const SC = Reg({name: 'SC', bitWidth: 10, inputs: 'SCM'});
 
-const SCM = Mux.methods({
-  get() {
-    return CR.SC | (+(CR.SPEC === CR.SPEC['SCM ALT']) << 1);
+const SC = LogicUnit.methods({
+
+  getInputs() {
+    const SCM_ALT = CR['SCM ALT'];
+    const SPEC = CR.SPEC.getInputs();
+
+    // Our complex operations are selected by SC/ and SPEC/SCM ALT
+    if (CR.SC.getInputs() === 0n) {      // Either recirculate or FE
+      return SPEC !== SCM_ALT ? this.latchedValue : FE.getInputs();
+    } else {
+
+      if (SPEC !== SCM_ALT) {
+        return SCAD.getInputs();
+      } else {
+        const ar = AR.getInputs();
+        const ar18filled = ((ar >> 18n) & 1n) ? 0o777777000000n : 0n;
+        return ar18filled | ar & 0o377n; // smear(AR18),,ar28-35
+      }
+    }
   },
-}) ({name: 'SCM', bitWidth: 10, inputs: 'SC, FE, SCAD, AR_SHIFT',
-     control: BitCombiner({name: 'SCMcontrol', bitWidth: 2,
-                           inputs: 'CR.SC, CR.SPEC'})});
+}) ({name: 'SC', bitWidth: 10, inputs: 'SC, FE, AR, SCAD'});
+
 
 const SCADA = Mux({name: 'SCADA', bitWidth: 10, control: CR.SCADA,
                    inputs: 'ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, MAGIC_NUMBER'});
@@ -831,11 +974,6 @@ const SCADA = Mux({name: 'SCADA', bitWidth: 10, control: CR.SCADA,
 const SCADB = Mux({name: 'SCADB', bitWidth: 10, control: CR.SCADB,
                    // XXX This input #3 is shown as "0,#" in p. 137
                    inputs: 'FE, AR_SIZE, AR_00_08, MAGIC_NUMBER'});
-
-SCAD.input = [SCADA, SCADB];
-
-const MQM = Mux({name: 'MQM', bitWidth: 36, control: CR.MQM,
-                 inputs: 'ZERO, ZERO, ZERO, ZERO, MQdiv4, SH, AD, ONES'});
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13, inputs: 'AR_00_12'});
 const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, inputs: 'ZERO' /* XXX */});
@@ -845,8 +983,8 @@ const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36,
                                     inputs: 'VMA_FLAGS, VMA_HELD'});
 
 const VMA_HELD_OR_PC = Mux.methods({
-  get() {
-    return +(CR.COND === CR.COND['VMA HELD']);
+  getInputs() {
+    return +(CR.COND.getInputs() === CR.COND['VMA HELD']);
   },
 }) ({name: 'VMA HELD OR PC', bitWidth: 36, inputs: 'PC, VMA_HELD', control: CR.COND});
 
@@ -914,9 +1052,10 @@ function defineBitFields(input, s, ignoreFields = []) {
 }
 
 
-// Transform `inputs` from comma separated string to array of Units.
-EBOX.fixupInputs();
-
+// Transform comma separated lists (strings) of Units and BitFields
+// into object references for the various Fixupable properties (e.g.,
+// `input`, `control`).
+Fixupable.fixup();
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, EBOX.units);
