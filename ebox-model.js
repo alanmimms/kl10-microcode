@@ -230,6 +230,11 @@ const EBOX = StampIt.compose(Named, {
       unit.clockEdge();
     });
   },
+
+  cycle() {
+    this.latch();
+    this.clockEdge();
+  },
   
 }) ({name: 'EBOX', serialNumber: 3210});
 module.exports.EBOX = EBOX;
@@ -318,11 +323,12 @@ const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
         this.constant = true;
         value = BigInt(value);
         this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
+        this.latchedValue = this.value;
         this.clock = NOCLOCK;
       }).methods({
         latch() {},
         clockEdge() {},
-        getInputs() {return this.value},
+        getInputs() {return this.latchedValue = this.value},
         get() {return this.value},
       });
 
@@ -361,16 +367,16 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
         this.nWords = nWords,
         this.fixups = fixups;
         this.control = control;
-        this.writeCycle = false;
         this.addrInput = addrInput;
         this.initValue = initValue;
-        this.latchedValue = this.value = initValue;
-        this.latchedAddr = 0;
         this.reset();
       }).methods({
 
         reset() {
           this.data = _.range(this.nWords).map(x => this.initValue);
+          this.latchedAddr = 0;
+          this.writeCycle = false;
+          this.latchedValue = this.value = this.initValue;
         },
 
         get() { return this.value },
@@ -383,14 +389,18 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
         },
 
         latch() {
-          this.writeCycle = !!this.control.getInputs();
+          this.writeCycle = this.isWriteCycle();
           this.latchedAddr = this.addrInput[0].getInputs();
 
           if (this.writeCycle) {
-            this.latchedValue = this.getInputs();
+            this.latchedValue = this.value = this.getInputs();
           } else {
             this.latchedValue = this.value = this.data[this.latchedAddr];
           }
+        },
+
+        isWriteCycle() {
+          return !!this.control.getInputs();
         },
       });
 module.exports.RAM = RAM;
@@ -495,6 +505,37 @@ const Adder = EBOXUnit.compose({name: 'Adder'})
 module.exports.ShiftDiv = ShiftDiv;
 
 
+// This is not really fully implemented, but it is probably enough for
+// the CRADR stack.
+const Stack = EBOXUnit.compose({name: 'Stack'}).init(function({nWords}) {
+  this.nWords = nWords;
+  this.reset();
+}).methods({
+
+  reset() {
+    this.data = [];
+  },
+
+  // Push input onto stack. Call during clockEdge() phase.
+  push() {
+    this.latchedValue = this.value = this.inputs[0].get();
+    this.data.push(this.latchedValue);
+  },
+
+  // Pop TOS to this.value/this.latchedValue and return it also.
+  // Call during clockEdge() phase.
+  pop() {
+    return this.latchedValue = this.value = this.data.pop();
+  },
+
+  // These are no-ops because we do our business directly via
+  // push()/pop() calls from our owner.
+  clockEdge() { },
+  latch() { },
+});
+
+
+
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 
@@ -504,20 +545,23 @@ module.exports.ShiftDiv = ShiftDiv;
 const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
                   fixups: 'inputs,addrInput',
-                  inputs: 'CRAM_IN', addrInput: 'CRA'});
+                  inputs: 'CRAM_IN', addrInput: 'CRADR'});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
 // Complex CRAM address calculation logic goes here...
-const CRA = ConstantUnit.methods({
+const CRADR = ConstantUnit.methods({
 
   reset() {
     this.value = 0n;
   },
 
   getInputs() {
-    return this.value = CR.J.get();       // XXX for now...
+    return this.latchedValue = CR.J.get();       // XXX for now...
   },
-}) ({name: 'CRA', bitWidth: 11});
+}) ({name: 'CRADR', bitWidth: 11});
+
+const CRA_STACK = Stack({name: 'CRA_STACK', nWords: 4, bitWidth: 11,
+     fixups: 'inputs', inputs: 'CRADR'});
 
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, defines.CRAM, excludeCRAMfields);
@@ -742,6 +786,28 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 const ADX = DataPathALU({name: 'ADX', bitWidth: 36, func: CR.AD,
                          inputs: 'ADXA, ADXB, ZERO'});
 
+// Note many DISP field values affect carry and LONG:
+//
+// DISP/=<67:71>D,10	;0-7 AND 30-37 ARE DISPATCHES (CRA1&CRA2)
+// 	DIAG=0
+// 	DRAM J=1
+//** 	DRAM A RD=2	;IMPLIES INH CRY18
+// 	RETURN=3	;POPJ return--may not coexist with CALL
+// 	PG FAIL=4	;PAGE FAIL TYPE DISP
+// 	SR=5		;16 WAYS ON STATE REGISTER
+// 	NICOND=6	;NEXT INSTRUCTION CONDITION (see NEXT for detail)
+// 	SH0-3=7,,1	;[337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
+//** 	MUL=30		;FE0*4 + MQ34*2 + MQ35; implies MQ SHIFT, AD LONG
+//** 	DIV=31,,1	;FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
+// 	SIGNS=32,1	;ARX0*8 + AR0*4 + BR0*2 + AD0
+// 	DRAM B=33	;8 WAYS ON DRAM B FIELD
+// 	BYTE=34,,1	;FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
+//** 	NORM=35,2	;See normalization for details. Implies AD LONG
+//**? 	EA MOD=36	;(ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
+// 			;ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
+// 			;is (ARX0 or -LONG EN) for second case.  If ARX18
+// 			;is 0, clear AR left; otherwise, poke ARL select
+// 			;to set bit 2 (usually gates AD left into ARL)
 const AD = DataPathALU({name: 'AD', bitWidth: 38, func: CR.AD,
                         inputs: 'ADB, ADA, ZERO'});
 
