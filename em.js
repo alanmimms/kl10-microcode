@@ -63,6 +63,10 @@ function main()
   // function.
   debugger;
 
+  // This exits the microcode HALT loop and allows instructions to
+  // execute.
+  EBOX.run = true;              // Run forever for now...
+
   while (true) {
     console.log(`upc=${octal4(CRADR.get())}`);
     EBOX.cycle();
