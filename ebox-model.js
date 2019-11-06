@@ -197,11 +197,13 @@ const EBOX = StampIt.compose(Named, {
   this.units = {};              // List of all EBOX Units
   this.unitArray = [];          // List of all EBOX Units as an array of objects
   this.clock = Clock({name: 'EBOXClock', control: 'ZERO'});
+  this.run = false;
 })
 .methods({
 
   reset() {
     this.resetActive = true;
+    this.run = false;
     this.unitArray = Object.keys(this.units)
       .map(name => this.units[name]);
 
@@ -505,37 +507,6 @@ const Adder = EBOXUnit.compose({name: 'Adder'})
 module.exports.ShiftDiv = ShiftDiv;
 
 
-// This is not really fully implemented, but it is probably enough for
-// the CRADR stack.
-const Stack = EBOXUnit.compose({name: 'Stack'}).init(function({nWords}) {
-  this.nWords = nWords;
-  this.reset();
-}).methods({
-
-  reset() {
-    this.data = [];
-  },
-
-  // Push input onto stack. Call during clockEdge() phase.
-  push() {
-    this.latchedValue = this.value = this.inputs[0].get();
-    this.data.push(this.latchedValue);
-  },
-
-  // Pop TOS to this.value/this.latchedValue and return it also.
-  // Call during clockEdge() phase.
-  pop() {
-    return this.latchedValue = this.value = this.data.pop();
-  },
-
-  // These are no-ops because we do our business directly via
-  // push()/pop() calls from our owner.
-  clockEdge() { },
-  latch() { },
-});
-
-
-
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 
@@ -548,20 +519,101 @@ const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
                   inputs: 'CRAM_IN', addrInput: 'CRADR'});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
+const CRA_STACK = Stack({name: 'CRA_STACK', nWords: 4, bitWidth: 11,
+     fixups: 'inputs', inputs: 'CRADR'});
+
 // Complex CRAM address calculation logic goes here...
-const CRADR = ConstantUnit.methods({
+const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
+  this.stackDepth = stackDepth;
+  this.reset();
+}).methods({
 
   reset() {
     this.value = 0n;
+    this.stack = [];
   },
 
   getInputs() {
-    return this.latchedValue = CR.J.get();       // XXX for now...
+
+    if (this.force1777) {
+      this.force1777 = false;
+
+      // Push return address from page fault handler.
+      this.stack.push(this.value);
+
+      return this.latchedValue = 0o1777n;
+    } else {
+      const skip = CR.SKIP.getInputs();
+      let orBits = 0n;
+
+      // Determine if LSB is forced to '1' by a skip test condition or
+      // If DISP/MUL finds sign(FE) == 0.
+      switch(skip) {
+      default:
+        break;
+
+      case CR.SKIP.RUN:
+        if (EBOX.run) orBits = 0o1n;
+        break;
+
+      case CR.SKIP.KERNEL:
+        orBits = 0o1n;          // XXX for now we are always in KERNEL mode
+        break;
+
+      case CR.SKIP['-START']:   // Needed?
+      case CR.SKIP.FETCH:       // Soon
+      case CR.SKIP.USER:
+      case CR.SKIP.PUBLIC:
+      case CR.SKIP['RPW REF']:
+      case CR.SKIP['PI CYCLE']:
+      case CR.SKIP['-EBUS GRANT']:
+      case CR.SKIP['-EBUS XFER']:
+      case CR.SKIP.INTRPT:
+      case CR.SKIP['IO LEGAL']:
+      case CR.SKIP['P!S XCT']:
+      case CR.SKIP['-VMA SEC0']:
+      case CR.SKIP['AC REF']:   // Soon
+      case CR.SKIP['-MTR REQ']:
+        break;                  // XXX these need to be implemented
+      }
+
+      const disp = CR.DISP.getInputs();
+
+      switch (disp) {
+
+      case CR.DISP.MUL:         // See schematics p. 344 and
+                                // EK-EBOX-all p. 256 for explanation.
+                                // FE0*4 + MQ34*2 + MQ35; implies MQ SHIFT, AD LONG
+        if (FE.getInputs() >= 0o1000n) orBits |= 0o04n;
+        orBits |= MQ.getInputs() & 3n;
+        break;
+
+      case CR.DISP['DIAG']:
+      case CR.DISP['DRAM J']:
+      case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
+      case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
+      case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
+      case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
+      case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
+      case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
+      case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
+      case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
+      case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
+      case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
+      case CR.DISP['NORM']:     // See normalization for details. Implies AD LONG
+      case CR.DISP['EA MOD']:	// (ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
+                                // ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
+                                // is (ARX0 or -LONG EN) for second case.  If ARX18
+                                // is 0, clear AR left; otherwise, poke ARL select
+                                // to set bit 2 (usually gates AD left into ARL)
+        break;
+
+      }
+
+      return this.latchedValue = orBits | CR.J.get();       // XXX for now...
+    }
   },
 }) ({name: 'CRADR', bitWidth: 11});
-
-const CRA_STACK = Stack({name: 'CRA_STACK', nWords: 4, bitWidth: 11,
-     fixups: 'inputs', inputs: 'CRADR'});
 
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, defines.CRAM, excludeCRAMfields);
