@@ -201,6 +201,7 @@ const EBOX = StampIt.compose(Named, {
 .methods({
 
   reset() {
+    this.resetActive = true;
     this.unitArray = Object.keys(this.units)
       .map(name => this.units[name]);
 
@@ -212,6 +213,8 @@ const EBOX = StampIt.compose(Named, {
       this.latch();
       this.clockEdge();
     });
+
+    this.resetActive = false;
   },
 
   latch() {
@@ -284,9 +287,14 @@ const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
         this.e = e;
         this.inputs = inputs;
         this.bitWidth = BigInt(e - s + 1);
-        this.shift = shiftForBit(e, this.inputs[0].bitWidth);
-        this.mask = (1n << BigInt(this.bitWidth)) - 1n;
+        this.reset();
       }).methods({
+
+        reset() {
+          this.wordWidth = Number(this.inputs[0].bitWidth);
+          this.shift = shiftForBit(this.e, this.inputs[0].bitWidth);
+          this.mask = (1n << BigInt(this.bitWidth)) - 1n;
+        },
 
         get() {
           return this.getInputs();
@@ -294,11 +302,7 @@ const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
 
         getInputs() {
           const v = this.inputs[0].getInputs();
-          const shifted = BigInt.asUintN(Number(this.bitWidth) + 1, v) >> this.shift;
-          console.log(`${this.name} \
-v=${octal4(v, 84)} \
-shifted=${octal4(shifted, 84)} \
-mask=${octal4(this.mask, 84)}`);
+          const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> this.shift;
           return shifted & this.mask;
         },
       });
@@ -511,9 +515,7 @@ const CRA = ConstantUnit.methods({
   },
 
   getInputs() {
-    const j = CR.J.get();       // XXX for now...
-    console.log(`CRA j=${octal4(j)}`);
-    return j;
+    return this.value = CR.J.get();       // XXX for now...
   },
 }) ({name: 'CRA', bitWidth: 11});
 
