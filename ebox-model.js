@@ -102,6 +102,8 @@ const Clock = Named.init(function({drives = []}) {
         },
       });
 
+// Used for non-clocked objects like ZERO and ONES
+const NOCLOCK = Clock({name: 'NOCLOCK'});
 
 ////////////////////////////////////////////////////////////////
 //
@@ -225,7 +227,7 @@ const EBOX = StampIt.compose(Named, {
     });
   },
   
-}) ({name: 'EBOX', serialNumber: 4042});
+}) ({name: 'EBOX', serialNumber: 3210});
 module.exports.EBOX = EBOX;
 
 
@@ -300,11 +302,13 @@ module.exports.BitField = BitField;
 ////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
 const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
-      .init(function ({name, value, bitWidth = 36n}) {
+      .init(function ({name, value = 0, bitWidth = 36n}) {
         this.name = name;
         this.inputs = [];       // To avoid "is not defined" messages from FixupableInputs
         this.constant = true;
-        this.value = value >= 0 ? value : BigInt.asUintN(Number(bitWidth), value);
+        value = BigInt(value);
+        this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
+        this.clock = NOCLOCK;
       }).methods({
         latch() {},
         clockEdge() {},
@@ -372,7 +376,7 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
 
         latch() {
           this.writeCycle = !!this.control.getInputs();
-          this.latchedAddr = this.addrInput.getInputs();
+          this.latchedAddr = this.addrInput[0].getInputs();
           if (this.writeCycle) this.latchedValue = this.getInputs();
         },
       });
@@ -483,28 +487,46 @@ module.exports.ShiftDiv = ShiftDiv;
 
 // RAMs
 
-// Complex CRAM address calculation logic goes here...
-const CRAM_ADDR = LogicUnit.methods({
-}) ({name: 'CRAM_ADDR', bitWidth: 11});
-
 // CRAM_IN is used to provide a uWord to CRAM when loading it.
 const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
-                  inputs: 'CRAM_IN', addrInput: CRAM_ADDR});
+                  fixups: 'inputs,addrInput',
+                  inputs: 'CRAM_IN', addrInput: 'CRA'});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
+
+// Complex CRAM address calculation logic goes here...
+const CRA = ConstantUnit.methods({
+
+  reset() {
+    this.value = 0n;
+  },
+
+  getInputs() {
+    return CR.J.get();          // XXX for now...
+  },
+}) ({name: 'CRA', bitWidth: 11});
 
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, defines.CRAM, excludeCRAMfields);
 
 // Complex DRAM address calculation logic goes here...
-const DRAM_ADDR = LogicUnit.methods({
+const DRA = ConstantUnit.methods({
+
+  reset() {
+    this.value = 0n;
+  },
+
+  getInputs() {
+    return 0n;                  // XXX for now...
+  },
   // XXX this needs to be defined
-}) ({name: 'DRAM_ADDR', bitWidth: 9});
+}) ({name: 'DRA', bitWidth: 9});
 
 // DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
 const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
-                  inputs: 'DRAM_IN', addrInput: DRAM_ADDR});
+                  fixups: 'inputs,addrInput',
+                  inputs: 'DRAM_IN', addrInput: 'DRA'});
 const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);

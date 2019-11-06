@@ -46,43 +46,36 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 
 const cpu = {
 
-  updateState(mpc) {
+  updateState() {
   },
 };               // XXX for now
 
 
 function main()
 {
-  const {EBOX, CRAM, DRAM, CR, DR} = EBOXmodel;
-
-  UCODE.initialize(EBOX);
-
-  // Load CRAM from our Microcode
-  _.range(0, CRAMwords.nWords).forEach((mw, addr) => {
-    CRAM.addr = addr;
-    CR.value = mw;
-    CRAM.latch();
-  });
-
-  // Load DRAM from our Microcode
-  _.range(0, DRAMwords.nWords).forEach((dw, addr) => {
-    DRAM.addr = addr;
-    DR.value = dw;
-    DRAM.latch();
-  });
+  const {EBOX, CRAM, DRAM} = EBOXmodel;
 
   // Reset
   EBOX.reset();
+
+  // Load CRAM from our Microcode
+  CRAMwords.forEach((mw, addr) => CRAM.data[addr] = mw);
+
+  // Load DRAM from our Microcode
+  DRAMwords.forEach((dw, addr) => DRAM.data[addr] = dw);
+
+  // Make all of our EBOX Unit names and stamps available in
+  // microcode.js as module-global symbols to make code generation
+  // less verbose.
+  UCODE.initialize(EBOX);
 
   // Launch the microcode by calling the first microinstruction
   // function.
   debugger;
 
-  let mpc = 0;
-
   while (true) {
-    cpu.updateState(mpc);
-    mpc = UCODE.ops[mpc](cpu);
+    cpu.updateState();
+    UCODE.ops[CRA.value](cpu);
   }
 }
 

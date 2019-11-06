@@ -276,26 +276,19 @@ function generateFunctions() {
 
     const specCode = handleSPEC(mw);
 
-    const returnCode = [];
+    const latchCode = [];
+    latchCode.push(`EBOX.latch();`);
 
-    if (1) {                    // Constant next CRAM address
-      // XXX This is temporary to show the concept, but it is also wrong.
-      const nextuPC = getField(mw, cramDefs, 'J');
-
-      returnCode.push(`return 0o${octal4(nextuPC)};`);
-    } else {                    // Compute next CRAM address
-      returnCode.push(`// XXX calculated tailCall not yet implemented!
-return 0;`);
-    }
+    const clockCode = [];
+    clockCode.push(`EBOX.clockEdge();`);
 
     return `\
 function cram_${octal4(ma)}(cpu) {
   ${[
     headerCode,
-    ``,
+    latchCode,
     specCode,
-    ``,
-    returnCode,
+    clockCode,
   ].flat().join('\n  ')
   }
 },
@@ -334,18 +327,27 @@ function generateMicrocode() {
   generateFile({filename: 'cram.js', code: generateXRAMArray(cram, 84)});
   generateFile({filename: 'dram.js', code: generateXRAMArray(dram, 24)});
 
+  const debugStart = 'console.log(`CRAM[0]: ${CRAM.data[0].toString(8)}`);'
+
   generateFile({filename: 'microcode.js', arrayName: 'const ops',
                 prefixCode: `\
 var ${Object.keys(EBOX).join(',')};
+
+
+module.exports.initialize = function initialize(e) {
+  EBOX = e;
+  ${Object.keys(EBOX.EBOX.units)
+    .map(n => `${n} = e.units.${n};`)
+    .join('\n  ')}
+
+  ${debugStart}
+};
+
 `,
                 code: generateFunctions(),
                 suffixCode: `\
 
 module.exports.ops = ops;
-
-module.exports.initialize = function initialize(e) {
-  var {${Object.keys(EBOX).join(',')}} = e;
-};
 `});
 }
 
