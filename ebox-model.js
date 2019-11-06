@@ -4,6 +4,7 @@ const fs = require('fs');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
+const {octal4} = require('./util');
 
 // EBOX notes:
 //
@@ -293,7 +294,12 @@ const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
 
         getInputs() {
           const v = this.inputs[0].getInputs();
-          return (BigInt.asUintN(Number(this.bitWidth) + 1, v) >> this.shift) & this.mask;
+          const shifted = BigInt.asUintN(Number(this.bitWidth) + 1, v) >> this.shift;
+          console.log(`${this.name} \
+v=${octal4(v, 84)} \
+shifted=${octal4(shifted, 84)} \
+mask=${octal4(this.mask, 84)}`);
+          return shifted & this.mask;
         },
       });
 module.exports.BitField = BitField;
@@ -369,15 +375,18 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
 
           if (this.writeCycle) {
             this.data[this.latchedAddr] = this.value = this.latchedValue;
-          } else {
-            this.latchedValue = this.value = this.data[this.latchedAddr];
           }
         },
 
         latch() {
           this.writeCycle = !!this.control.getInputs();
           this.latchedAddr = this.addrInput[0].getInputs();
-          if (this.writeCycle) this.latchedValue = this.getInputs();
+
+          if (this.writeCycle) {
+            this.latchedValue = this.getInputs();
+          } else {
+            this.latchedValue = this.value = this.data[this.latchedAddr];
+          }
         },
       });
 module.exports.RAM = RAM;
@@ -502,7 +511,9 @@ const CRA = ConstantUnit.methods({
   },
 
   getInputs() {
-    return CR.J.get();          // XXX for now...
+    const j = CR.J.get();       // XXX for now...
+    console.log(`CRA j=${octal4(j)}`);
+    return j;
   },
 }) ({name: 'CRA', bitWidth: 11});
 
@@ -588,9 +599,10 @@ const FM_BLOCK = LogicUnit.methods({
 }) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR,
      inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
 
-const FMA = BitCombiner({name: 'FMA', inputs: 'FM_BLOCK,FM_ADR'});
+const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'FM_BLOCK,FM_ADR'});
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
-                inputs: 'AR', addrInput: FMA});
+                fixups: 'inputs,addrInput',
+                inputs: 'AR', addrInput: 'FMA'});
 
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
