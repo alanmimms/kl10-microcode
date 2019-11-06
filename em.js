@@ -46,7 +46,7 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 
 const cpu = {
 
-  updateState(cra) {
+  updateState(mpc) {
   },
 };               // XXX for now
 
@@ -77,7 +77,13 @@ function main()
   // Launch the microcode by calling the first microinstruction
   // function.
   debugger;
-  UCODE.ops[0](cpu);
+
+  let mpc = 0;
+
+  while (true) {
+    cpu.updateState(mpc);
+    mpc = UCODE.ops[mpc](cpu);
+  }
 }
 
 
