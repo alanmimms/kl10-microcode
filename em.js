@@ -7,6 +7,8 @@ const _ = require('lodash');
 const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
+const {octal4} = require('./util');
+
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
 const DRAMwords = require('./dram.js');
@@ -44,16 +46,17 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 }
 
 
-const cpu = {
-
-  updateState() {
-  },
-};               // XXX for now
-
-
 function main()
 {
-  const {EBOX, CRAM, DRAM} = EBOXmodel;
+  const {EBOX, CRA, CRAM, DRAM} = EBOXmodel;
+
+  const cpu = {
+
+    updateState() {
+      console.log(`${octal4(CRA.value)}`);
+    },
+  };               // XXX for now
+
 
   // Reset
   EBOX.reset();

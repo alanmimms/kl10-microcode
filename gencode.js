@@ -10,7 +10,8 @@ const _ = require('lodash');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
-const EBOX = require('./ebox-model.js');
+const {octal4} = require('./util');
+const EBOX = require('./ebox-model');
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
@@ -43,22 +44,6 @@ function extract(w, s, e, wordSize) {
   // xFFFxxxxxx
   return (BigInt.asUintN(wordSize, w) >> BigInt(wordSize - e - 1)) &
     ((1n << BigInt(e - s + 1)) - 1n);
-}
-
-
-// For a BigInt parameter `n`, return its value decoded as groups of
-// four octal digits with leading zeroes. For Number `n`, just return
-// leading zero octal digits for the specified bits-per-word size
-// `bpw`.
-function octal4(n, bpw = 12) {
-
-  if (typeof n === 'bigint') {
-    const oneMore = 1n << BigInt(bpw);
-    return (n | oneMore).toString(8).slice(1).match(/(.{4})/g).join(' ');
-  } else {
-    const oneMore = 1 << bpw;
-    return (n | oneMore).toString(8).slice(1);
-  }
 }
 
 
@@ -327,8 +312,6 @@ function generateMicrocode() {
   generateFile({filename: 'cram.js', code: generateXRAMArray(cram, 84)});
   generateFile({filename: 'dram.js', code: generateXRAMArray(dram, 24)});
 
-  const debugStart = 'console.log(`CRAM[0]: ${CRAM.data[0].toString(8)}`);'
-
   generateFile({filename: 'microcode.js', arrayName: 'const ops',
                 prefixCode: `\
 var ${Object.keys(EBOX).join(',')};
@@ -339,8 +322,6 @@ module.exports.initialize = function initialize(e) {
   ${Object.keys(EBOX.EBOX.units)
     .map(n => `${n} = e.units.${n};`)
     .join('\n  ')}
-
-  ${debugStart}
 };
 
 `,
