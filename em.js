@@ -12,7 +12,6 @@ const {octal4} = require('./util');
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
 const DRAMwords = require('./dram.js');
-const UCODE = require('./microcode.js');
 
 
 const optionList =   {
@@ -29,7 +28,8 @@ function usage(msg) {
     {
       header: 'em',
       content: `\
-Emulate a DEC KL10PV CPU configured to run TOPS-20`,
+Emulate a DEC KL10PV CPU configured to run TOPS-20 by running its \
+microcode on simulated hardware`,
     },
     {
       header: 'Options',
@@ -48,15 +48,7 @@ Emulate a DEC KL10PV CPU configured to run TOPS-20`,
 
 function main()
 {
-  const {EBOX, CRA, CRAM, DRAM} = EBOXmodel;
-
-  const cpu = {
-
-    updateState() {
-      console.log(`${octal4(CRA.value)}`);
-    },
-  };               // XXX for now
-
+  const {EBOX, CRADR, CRAM, DRAM} = EBOXmodel;
 
   // Reset
   EBOX.reset();
@@ -67,18 +59,13 @@ function main()
   // Load DRAM from our Microcode
   DRAMwords.forEach((dw, addr) => DRAM.data[addr] = dw);
 
-  // Make all of our EBOX Unit names and stamps available in
-  // microcode.js as module-global symbols to make code generation
-  // less verbose.
-  UCODE.initialize(EBOX);
-
   // Launch the microcode by calling the first microinstruction
   // function.
   debugger;
 
   while (true) {
-    cpu.updateState();
-    UCODE.ops[CRA.value](cpu);
+    console.log(`upc=${octal4(CRADR.get())}`);
+    EBOX.cycle();
   }
 }
 
