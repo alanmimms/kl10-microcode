@@ -230,10 +230,12 @@ function handleSPEC(mw) {
   case 0o24:                    // FLAG CTL
     const func = getField(mw, cramDefs, '#');
 
+/*
     if (func === 0o20) {
       code.push(`SCD_FLAGS.input = AR_00_12;`);
     }
-
+*/
+    
     break;
   }
 
@@ -267,7 +269,6 @@ function generateFunctions() {
     const mw = cram[ma];
 
     const headerCode = [
-      `cpu.updateState(0o${octal4(ma)});`,
       `// uW = ${octal4(mw, cramDefs.bpw)}`,
       `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
@@ -275,15 +276,16 @@ function generateFunctions() {
 
     const specCode = handleSPEC(mw);
 
-    const tailCall = ['// Tail call recursion'];
+    const returnCode = [];
 
     if (1) {                    // Constant next CRAM address
       // XXX This is temporary to show the concept, but it is also wrong.
       const nextuPC = getField(mw, cramDefs, 'J');
 
-      tailCall.push(`cram_${octal4(nextuPC)}(cpu);`);
+      returnCode.push(`return 0o${octal4(nextuPC)};`);
     } else {                    // Compute next CRAM address
-      tailCall.push(`// XXX calculated tailCall not yet implemented!`);
+      returnCode.push(`// XXX calculated tailCall not yet implemented!
+return 0;`);
     }
 
     return `\
@@ -293,7 +295,7 @@ function cram_${octal4(ma)}(cpu) {
     ``,
     specCode,
     ``,
-    tailCall,
+    returnCode,
   ].flat().join('\n  ')
   }
 },
@@ -307,13 +309,17 @@ function generateXRAMArray(wordsArray, bitWidth) {
 }
 
 
-function generateFile({filename, prefixCode = '', code, suffixCode = '', arrayName = ''}) {
+function generateFile({filename, 
+                       prefixCode = '', 
+                       code, 
+                       suffixCode = '',
+                       arrayName = 'module.exports'}) {
   const allCode = `\
 'use strict';
 
 ${prefixCode}
 
-module.exports${arrayName} = [
+${arrayName} = [
 ${code}
 ];
 
@@ -328,15 +334,17 @@ function generateMicrocode() {
   generateFile({filename: 'cram.js', code: generateXRAMArray(cram, 84)});
   generateFile({filename: 'dram.js', code: generateXRAMArray(dram, 24)});
 
-  generateFile({filename: 'microcode.js', arrayName: '.ops',
+  generateFile({filename: 'microcode.js', arrayName: 'const ops',
                 prefixCode: `\
-var EBOX;
+var ${Object.keys(EBOX).join(',')};
 `,
                 code: generateFunctions(),
                 suffixCode: `\
 
+module.exports.ops = ops;
+
 module.exports.initialize = function initialize(e) {
-  EBOX = e;
+  var {${Object.keys(EBOX).join(',')}} = e;
 };
 `});
 }

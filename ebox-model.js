@@ -198,7 +198,8 @@ const EBOX = StampIt.compose(Named, {
 .methods({
 
   reset() {
-    this.unitArray = Object.keys(this.units).map(name => this.units[name]);
+    this.unitArray = Object.keys(this.units)
+      .map(name => this.units[name]);
 
     // Reset every Unit back to initial value.
     this.unitArray.forEach(unit => unit.reset());
@@ -232,7 +233,7 @@ const EBOXUnit = StampIt.compose(Fixupable, {
   name: 'EBOXUnit',
 }).init(function({name, bitWidth, inputs = '', clock = EBOX.clock}) {
   this.name = name;
-  EBOX.units[this.name] = this;
+  EBOX.units[this.name.replace(/[ .,]/g, '_')] = this;
   this.inputs = inputs;
   this.clock = clock;
   this.value = this.latchedValue = 0n;
