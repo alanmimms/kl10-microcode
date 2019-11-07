@@ -247,6 +247,7 @@ const EBOXUnit = StampIt.compose(Fixupable, {
   this.inputs = inputs;
   this.clock = clock;
   this.value = this.latchedValue = 0n;
+  this.debugTrace = false;
 
   // We remember if bitWidth needs to be fixed up after inputs are
   // transformed or if it was explicitly specified.
