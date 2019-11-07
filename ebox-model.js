@@ -5,7 +5,7 @@ const util = require('util');
 const StampIt = require('@stamp/it');
 
 const {
-  octal4,
+  octal,
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask
 } = require('./util');
@@ -430,6 +430,8 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
         latch() {
           this.value = this.latchedValue;
           this.latchedValue = this.inputs[0].getInputs();
+          if (this.debugTrace)
+            console.log(`${this.name} latch value=${octal(this.value)} latchedValue=${octal(this.latchedValue)}`);
         },
       });
 module.exports.Reg = Reg;
@@ -525,6 +527,7 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
 
   reset() {
     this.value = 0n;
+    this.force1777 = false;
     this.stack = [];
   },
 
@@ -536,6 +539,7 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
       // Push return address from page fault handler.
       this.stack.push(this.value);
 
+      if (this.debugTrace) console.log(`${this.name} force1777`);
       return this.latchedValue = 0o1777n;
     } else {
       const skip = CR.SKIP.getInputs();
@@ -617,7 +621,9 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
 
       }
 
-      return this.latchedValue = orBits | CR.J.get();       // XXX for now...
+      const result = this.latchedValue = orBits | CR.J.get();
+      if (this.debugTrace) console.log(`${this.name} getInputs = ${octal(result)}`);
+      return result;
     }
   },
 }) ({name: 'CRADR', bitWidth: 11});
@@ -670,7 +676,7 @@ const DRA = ConstantUnit.methods({
       a = fieldInsert(a, fieldExtract(ir, 7, 12, IR.bitWidth), 3, 8, addrWidth);
     }
 
-    if (!EBOX.resetActive) console.log(`DRA=${octal4(a)}`);
+    if (!EBOX.resetActive) console.log(`DRA=${octal(a)}`);
     return a;
   },
 }) ({name: 'DRA', bitWidth: 9});

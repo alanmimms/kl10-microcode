@@ -7,7 +7,7 @@ const _ = require('lodash');
 const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
-const {octal4} = require('./util');
+const {octal} = require('./util');
 
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
@@ -68,7 +68,7 @@ function main()
   EBOX.run = true;              // Run forever for now...
 
   while (true) {
-    console.log(`upc=${octal4(CRADR.get())}`);
+    console.log(`upc=${octal(CRADR.get())}`);
     EBOX.cycle();
   }
 }
