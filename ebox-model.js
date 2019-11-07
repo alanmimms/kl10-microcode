@@ -636,33 +636,18 @@ const DRA = ConstantUnit.methods({
     this.value = 0n;
   },
 
+  // From EK-EBOX--all-OCR p. 19: Figure 1-4 illustrates the
+  // organization of the DRAM. By sharing portions of the DRAM between
+  // even/odd instruction, the shared pieces become half the
+  // nonshared. Therefore, the A, B, and J7-10 portions consist of 10
+  // X 512 words and the P, J4, J1-3 portions consist of 5 X 256
+  // words. This saves essentially 5 X 256 words of DRAMstorage. In
+  // addition, for JRST DRAM COMMON, bit 4 is made zero and DRAM J7-10
+  // is replaced by IR 9-12, again yielding a savings. Here the
+  // savings is 5 X 16 words of DRAMstorage. The areas allocated by
+  // the DRAMare indicated in Figure 1-3.
   getInputs() {
-    return 0n;                  // XXX for now...
-  },
-  // XXX this needs to be defined
-}) ({name: 'DRA', bitWidth: 9});
-
-// DRAM_IN is used to provide a word to DRAM when loading it.
-const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
-const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
-                  fixups: 'inputs,addrInput',
-                  inputs: 'DRAM_IN', addrInput: 'DRA'});
-
-
-// From EK-EBOX--all-OCR p. 19: Figure 1-4 illustrates the
-// organization of the DRAM. By sharing portions of the DRAM between
-// even/odd instruction, the shared pieces become half the nonshared.
-// Therefore, the A, B, and J7-10 portions consist of 10 X 512 words
-// and the P, J4, J1-3 portions consist of 5 X 256 words. This saves
-// essentially 5 X 256 words of DRAMstorage. In addition, for JRST
-// DRAM COMMON, bit 4 is made zero and DRAM J7-10 is replaced by IR
-// 9-12, again yielding a savings. Here the savings is 5 X 16 words of
-// DRAMstorage. The areas allocated by the DRAMare indicated in Figure
-// 1-3.
-const DR = Reg.methods({
-
-  latch() {
-    // First, calculate the address to load.
+    const addrWidth = 11;
     //     +----OP----+-AC-+
     // IR: 0 123 456 789 abc
     const ir = IR.get();
@@ -671,16 +656,30 @@ const DR = Reg.methods({
     let a = op;
     
     // 012 345 678
-    if (op === 0o254) {                  // JRST
-      a = a & -0o27 | ac;                // Clear DRA4-10 replace with IRAC
-    } else if ((op & 0o774) === 0o700) { // I/O instruction to internal dev
-      a = a & -0o27 | ac;                // Clear DRA4-10 replace with IRAC
-    } else if ((op & 0o700) === 0o700) { // I/O instruction to external dev
-//XXX FINISH THIS      a = a & -0o74 | 0;                // Clear DRA4-10 replace with IR7-9
+    if (op === 0o254n) {                  // JRST
+      // Replace DRA4-10 with IRAC
+      a = fieldInsert(a, ac, 4, 10, addrWidth);
+    } else if ((op & 0o774n) === 0o700n) { // I/O instruction to internal dev
+      // DRA3-5 = 7 (x on Fig 1-4 p. 19)
+      a = fieldInsert(a, 7, 3, 5, addrWidth);
+      // DRA6-8 = IR10-12
+      a = fieldInsert(a, fieldExtract(ir, 10, 12, IR.bitWidth), 6, 8, addrWidth);
+    } else if ((op & 0o700n) === 0o700n) { // I/O instruction to external dev
+      // DRA3-5,6-8 = IR7-9,10-12 (x on Fig 1-4 p. 19)
+      a = fieldInsert(a, fieldExtract(ir, 7, 12, IR.bitWidth), 3, 8, addrWidth);
     }
-  },
-}) ({name: 'DR', bitWidth: 24, clock: DR_CLOCK, inputs: 'DRAM'});
 
+    if (!EBOX.resetActive) console.log(`DRA=${octal4(a)}`);
+    return a;
+  },
+}) ({name: 'DRA', bitWidth: 9});
+
+// DRAM_IN is used to provide a word to DRAM when loading it.
+const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
+const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
+                  fixups: 'inputs,addrInput',
+                  inputs: 'DRAM_IN', addrInput: 'DRA'});
+const DR = Reg.methods({name: 'DR', bitWidth: 24, clock: DR_CLOCK, inputs: 'DRAM'});
 defineBitFields(DR, defines.DRAM);
 
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
