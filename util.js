@@ -1,18 +1,17 @@
 'use strict';
+const _ = require('lodash');
 
-// For a BigInt parameter `n`, return its value decoded as groups of
-// four octal digits with leading zeroes. For Number `n`, just return
-// leading zero octal digits for the specified bits-per-word size
-// `bpw`.
-function octal(n, bpw = 12, digits = 4) {
+// Return octal string for `n` value decoded as groups of `groupSize`
+// with at least `minDigits` octal digits padded on left with leading
+// zeroes.
+function octal(n, minDigits = 4, groupSize = 4) {
+  const lzString = _.padStart(n.toString(8), minDigits, '0');
 
-  if (typeof n === 'bigint') {
-    const oneMore = 1n << BigInt(bpw);
-    const re = RegExp(`(.{${digits}})`, 'g');
-    return (n | oneMore).toString(8).slice(1).match(re).join(' ');
+  if (groupSize > 0) {
+    const re = RegExp(`(.{${groupSize}})`, 'g');
+    return lzString.match(re).join(' ');
   } else {
-    const oneMore = 1 << bpw;
-    return (n | oneMore).toString(8).slice(1);
+    return lzString;
   }
 }
 module.exports.octal = octal;
