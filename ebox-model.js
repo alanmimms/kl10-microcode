@@ -373,7 +373,7 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
       }).methods({
 
         reset() {
-          this.data = _.range(this.nWords).map(x => this.initValue);
+          this.data = _.range(Number(this.nWords)).map(x => this.initValue);
           this.latchedAddr = 0;
           this.writeCycle = false;
           this.latchedValue = this.value = this.initValue;
@@ -726,6 +726,7 @@ const IRAC = BitField({name: 'IRAC', s: 9, e: 12, inputs: 'IR'});
 const FM_ADR = LogicUnit.methods({
   
   getInputs() {
+    let acr;
     
     switch(this.control.getInputs()) {
     default:
@@ -738,7 +739,7 @@ const FM_ADR = LogicUnit.methods({
     case CR.FMADR.VMA:
       return VMA_32_35.getInputs();
     case CR.FMADR.AC2:
-      return (IRAC.getInputs() + 2) & 15n;
+      return  (IRAC.getInputs() + 2) & 15n;
     case CR.FMADR.AC3:
       return (IRAC.getInputs() + 3) & 15n;
     case CR.FMADR['AC+#']:
@@ -751,31 +752,9 @@ const FM_ADR = LogicUnit.methods({
 }) ({name: 'FM_ADR', bitWidth: 4, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
 
 
-const FM_BLOCK = LogicUnit.methods({
-  
-  getInputs() {
-    
-    switch(this.control.getInputs()) {
-    default:
-    case CR.FMADR.AC0:
-    case CR.FMADR.AC1:
-    case CR.FMADR.XR:
-    case CR.FMADR.VMA:
-    case CR.FMADR.AC2:
-    case CR.FMADR.AC3:
-    case CR.FMADR['AC+#']:
-      return CURRENT_BLOCK.getInputs();
-    case CR.FMADR['#B#']:
-      // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
-      return (MAGIC_NUMBER.getInputs() >> 4n) & 7n;
-    }
-  },
-}) ({name: 'FM_BLOCK', bitWidth: 3, control: CR.FMADR,
-     inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
-
-const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'FM_BLOCK,FM_ADR'});
+const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'CR.ACB,FM_ADR'});
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
-                fixups: 'inputs,addrInput',
+                fixups: 'inputs,addrInput', debugTrace: true,
                 inputs: 'AR', addrInput: 'FMA'});
 
 
@@ -1247,8 +1226,10 @@ const CACHE = ZERO;
 const ARMR = Mux({name: 'ARMR', bitWidth: 18, control: CR.AR,
                   inputs: 'SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4'});
 
-const ARML = Mux({name: 'ARML', bitWidth: 18, control: CR.AR,
-                  inputs: 'ARMM, CACHE, ADX, EBUS, SH, ADx2, ADdiv4'});
+// XXX This is wrong in many cases
+const ARML = Mux.methods({
+}) ({name: 'ARML', bitWidth: 18, control: CR.AR,
+     inputs: 'AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4'});
 
 const ARL = Reg({name: 'ARL', bitWidth: 18, inputs: 'ARML'});
 const ARR = Reg({name: 'ARR', bitWidth: 18, inputs: 'ARMR'});
@@ -1293,6 +1274,7 @@ const ARX = LogicUnit.methods({
      inputs: 'ARX, CACHE, AD, MQ, SH, ZERO, ADX, ZERO',
     });
 
+// E.g., AR_AR AND ADMSK	 "ADMSK,ADB/FM,ADA/AR,AD/AND,AR/AD"
 const AR = BitCombiner({name: 'AR', inputs: 'ARL, ARR'});
 const BR = Reg({name: 'BR', bitWidth: 36, inputs: 'AR'});
 const BRX = Reg({name: 'BRX', bitWidth: 36, inputs: 'ARX'});
@@ -1341,24 +1323,13 @@ const VMA_HELD_OR_PC = Mux.methods({
 }) ({name: 'VMA HELD OR PC', bitWidth: 36, inputs: 'PC, VMA_HELD', control: CR.COND});
 
 
-function computeCPUState(newCA) {
-  // First, get values from all of the LogicUnit instances based on
-  // their inputs from the previous cycle.
-  const SCADv = SCAD.get();
-  const ADv = AD.get();
-  const ADXv = ADX.get();
-  const SHv = SH.get();
-  const ARSIGN_SMEARv = ARSIGN_SMEAR.get();
+////////////////////////////////////////////////////////////////
+// System memory.
+const MBOX = RAM.methods({
+}) ({name: 'MBOX', nWords: 1024n * 1024n, bitWidth: 36, debugTrace: true,
+     inputs: 'MBUS,VMA'});
 
-  // Fetch new microinstruction
-  CRAM.addr = newCA;
-  CRAM.get();
-  CR.latch();
-  // XXX add a CRAM addr history ringlog here
-
-  // Update everything based on new CR (microinstruction).
-
-}
+const MBUS = Reg({name: 'MBUS', bitWidth: 36, debugTrace: true});
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
