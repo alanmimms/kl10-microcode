@@ -4,17 +4,18 @@
 // four octal digits with leading zeroes. For Number `n`, just return
 // leading zero octal digits for the specified bits-per-word size
 // `bpw`.
-function octal4(n, bpw = 12) {
+function octal(n, bpw = 12, digits = 4) {
 
   if (typeof n === 'bigint') {
     const oneMore = 1n << BigInt(bpw);
-    return (n | oneMore).toString(8).slice(1).match(/(.{4})/g).join(' ');
+    const re = RegExp(`(.{${digits}})`, 'g');
+    return (n | oneMore).toString(8).slice(1).match(re).join(' ');
   } else {
     const oneMore = 1 << bpw;
     return (n | oneMore).toString(8).slice(1);
   }
 }
-module.exports.octal4 = octal4;
+module.exports.octal = octal;
 
 
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of

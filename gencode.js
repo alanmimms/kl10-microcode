@@ -10,7 +10,7 @@ const _ = require('lodash');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
-const {octal4} = require('./util');
+const {octal} = require('./util');
 const EBOX = require('./ebox-model');
 
 const cramDefs = {bpw: 84};
@@ -204,7 +204,7 @@ function getField(mw, defs, field) {
 function handleSPEC(mw) {
   const SPEC = getField(mw, cramDefs, 'SPEC');
   const code = [
-    `// SPEC = ${octal4(SPEC)}`,
+    `// SPEC = ${octal(SPEC)}`,
   ];
 
   switch (SPEC) {
@@ -254,9 +254,9 @@ function generateFunctions() {
     const mw = cram[ma];
 
     const headerCode = [
-      `// uW = ${octal4(mw, cramDefs.bpw)}`,
-      `// J = ${octal4(getField(mw, cramDefs, 'J'))}`,
-      `// # = ${octal4(getField(mw, cramDefs, '#'))}`,
+      `// uW = ${octal(mw, cramDefs.bpw)}`,
+      `// J = ${octal(getField(mw, cramDefs, 'J'))}`,
+      `// # = ${octal(getField(mw, cramDefs, '#'))}`,
     ].join('\n  ');
 
     const specCode = handleSPEC(mw);
@@ -268,7 +268,7 @@ function generateFunctions() {
     clockCode.push(`EBOX.clockEdge();`);
 
     return `\
-function cram_${octal4(ma)}(cpu) {
+function cram_${octal(ma)}(cpu) {
   ${[
     headerCode,
     latchCode,
