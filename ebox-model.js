@@ -45,7 +45,10 @@ const defines = definesMatches.groups;
 // refs. This allows forward refernces to objects in more than one
 // property on our Stamps, resolving these foward references for all
 // Stamps that use this mixin facility after all Stamps that are
-// defined by calling Fixupable.fixup().
+// defined by calling Fixupable.fixup(). If you specify a fixup name
+// in square brackets (e.g., `[ARL]`) it will be fixed up as an array.
+// Otherwise singleton values (with no comma separated list) will be
+// object references without the array wrapper.
 const Fixupable = StampIt({name: 'Fixupable'})
       .statics({
         needsFixup: [],
@@ -55,10 +58,16 @@ const Fixupable = StampIt({name: 'Fixupable'})
         fixup() {
 
           Fixupable.needsFixup.forEach(fu => {
-            if (fu.fixupsDebug) debugger;
             if (!fu.fixups || typeof fu.fixups !== 'string') return;
 
-            fu.fixups.split(/,\s*/).forEach(fuName => {
+            // Check for fixups wrapped in `[]` in which case we force
+            // result to be an array even if it is a singleton.
+            const wrapped = fu.fixups.match(/^\[(?<fu>[^\]]+)]$/);
+            console.log(`wrapped=${util.inspect(wrapped)}`);
+
+            const toSplit = (wrapped) ? wrapped.groups.fu : fu.fixups;
+
+            toSplit.split(/,\s*/).forEach(fuName => {
               if (typeof fu[fuName] !== 'string') return;
 
               fu[fuName] = fu[fuName].split(/,\s*/)
@@ -68,24 +77,24 @@ const Fixupable = StampIt({name: 'Fixupable'})
                   if (typeof resolution === undefined) {
                     console.error(`Fixupable: ${fu.name}.${fuName} ${fi} is not defined`);
                   }
-                  
-                  return resolution;
+
+                  return (!wrapped || Array.isArray(resolution)) ? resolution : [resolution];
                 });
             });
           });
         },
-      }).init(function({fixups = 'inputs', fixupsDebug = false}) {
+      }).init(function({fixups = 'inputs'}) {
         this.fixups = fixups;
-        this.fixupsDebug = fixupsDebug;
         Fixupable.needsFixup.push(this);
       });
-
+module.exports.Fixupable = Fixupable;
 
 // All of our Units need to have a name for debugging and display.
 const Named = StampIt({name: 'Named'})
       .init(function({name}) {
         this.name = name;
       });
+module.exports.Named = Named;
 
 
 const Clock = Named.init(function({drives = []}) {
@@ -99,6 +108,7 @@ const Clock = Named.init(function({drives = []}) {
         clockEdge() {
         },
       });
+module.exports.Clock = Clock;
 
 // Used for non-clocked objects like ZERO and ONES
 const NOCLOCK = Clock({name: 'NOCLOCK'});
@@ -362,8 +372,8 @@ module.exports.BitCombiner = BitCombiner;
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, fixups = 'inputs,control', 
-                      control = ZERO, addrInput, initValue = 0n}) {
+      .init(function({nWords, fixups = 'inputs,control,addrInput',
+                      control = 'ZERO', addrInput, initValue = 0n}) {
         this.nWords = nWords,
         this.fixups = fixups;
         this.control = control;
@@ -400,11 +410,26 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
         },
 
         isWriteCycle() {
-          return !!this.control.getInputs();
+          console.log(`${this.name} getInputs control=${this.control[0].name}`);
+          return !!this.control[0].getInputs();
         },
       });
 module.exports.RAM = RAM;
 
+
+// Use this for example as a `control` for a RAM to write when
+// `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
+const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
+      .init(function({fixups = 'inputs,matchValue', inputs, matchValue}) {
+        this.matchValue = eval(matchValue); // Should be static
+        this.inputs = inputs;
+      }).methods({
+
+        getInputs() {
+          const v = this.inputs[0].getInputs();
+          return BigInt(+(v === this.matchValue));
+        },
+      });
 
 ////////////////////////////////////////////////////////////////
 // Given a control input and a series of selectable inputs, produce
@@ -416,7 +441,8 @@ const Mux = EBOXUnit.compose({name: 'Mux'})
       }).methods({
 
         getInputs() {
-          return this.inputs[this.control.getInputs()].getInputs();
+          console.log(`${this.name} getInputs control=${this.control.name}`);
+          return this.inputs[this.control[0].getInputs()].getInputs();
         }
       });
 module.exports.Mux = Mux;
@@ -460,9 +486,10 @@ module.exports.ShiftReg = ShiftReg;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const LogicUnit = EBOXUnit.compose({name: 'LogicUnit'})
-      .init(function({splitter, fixups = 'inputs,control', control, func}) {
+      .init(function({splitter, fixups = 'inputs,control', control, addrInput, func}) {
         this.splitter = splitter;
         this.control = control;
+        this.addrInput = addrInput;
         this.fixups = fixups;
         this.func = func;
       }).methods({
@@ -519,8 +546,7 @@ module.exports.ShiftDiv = ShiftDiv;
 // CRAM_IN is used to provide a uWord to CRAM when loading it.
 const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
-                  fixups: 'inputs,addrInput',
-                  inputs: 'CRAM_IN', addrInput: 'CRADR'});
+                  control: 'ZERO', inputs: 'CRAM_IN', addrInput: 'CRADR'});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
 // Complex CRAM address calculation logic goes here...
@@ -688,8 +714,7 @@ const DRA = ConstantUnit.methods({
 // DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
 const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
-                  fixups: 'inputs,addrInput',
-                  inputs: 'DRAM_IN', addrInput: 'DRA'});
+                  control: 'ZERO', inputs: 'DRAM_IN', addrInput: 'DRA'});
 const DR = Reg.methods({name: 'DR', bitWidth: 24, clock: DR_CLOCK, inputs: 'DRAM'});
 defineBitFields(DR, defines.DRAM);
 
@@ -728,7 +753,7 @@ const FM_ADR = LogicUnit.methods({
   getInputs() {
     let acr;
     
-    switch(this.control.getInputs()) {
+    switch(this.addrInput.getInputs()) {
     default:
     case CR.FMADR.AC0:
       return IRAC.getInputs();
@@ -749,13 +774,13 @@ const FM_ADR = LogicUnit.methods({
       return MAGIC_NUMBER.getInputs() & 15n;
     }
   },
-}) ({name: 'FM_ADR', bitWidth: 4, control: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
-
+}) ({name: 'FM_ADR', bitWidth: 4, addrInput: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
 
 const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'CR.ACB,FM_ADR'});
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36,
-                fixups: 'inputs,addrInput', debugTrace: true,
-                inputs: 'AR', addrInput: 'FMA'});
+const FM = RAM.methods({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true,
+                        control: FieldMatcher({name: 'FM_WRITE', inputs: 'CR.COND',
+                                               matchValue: 'CR.COND["FM WRITE"]'}),
+                        inputs: 'AR', addrInput: 'FMA'});
 
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
@@ -997,27 +1022,6 @@ const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1, inputs: 'VMA'});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, inputs: 'AD'});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1, inputs: 'AD_13_17'});
 
-const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
-      .methods({
-
-        // This takes the two CR fields we depend on for our
-        // control function and returns
-        // 0: LOAD
-        // 1: SHIFT RIGHT
-        // 2: SHIFT LEFT
-        // 3: HOLD
-        getInputs() {
-
-          if (CR.FE.getInputs()) 
-            return 0;
-          else if (CR.COND.getInputs() == CR.COND['FE SHRT']) 
-            return 1;
-          else
-            return 3;
-        },
-        
-      }) ({name: 'FEcontrol', bitWidth: 2, inputs: 'CR'});
-
 const MQ = LogicUnit.methods({
 
   getInputs() {
@@ -1129,6 +1133,27 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
     }
   },
 }) ({name: 'SCAD', bitWidth: 10, inputs: 'SCADA, SCADB', func: CR.SCAD});
+
+const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
+      .methods({
+
+        // This takes the two CR fields we depend on for our
+        // control function and returns
+        // 0: LOAD
+        // 1: SHIFT RIGHT
+        // 2: SHIFT LEFT
+        // 3: HOLD
+        getInputs() {
+
+          if (CR.FE.getInputs())
+            return 0;
+          else if (CR.COND.getInputs() == CR.COND['FE SHRT'])
+            return 1;
+          else
+            return 3;
+        },
+
+      }) ({name: 'FEcontrol', bitWidth: 2, inputs: 'CR'});
 
 const FE = ShiftReg({name: 'FE', control: FEcontrol, inputs: 'SCAD', bitWidth: 10});
 
@@ -1327,7 +1352,8 @@ const VMA_HELD_OR_PC = Mux.methods({
 // System memory.
 const MBOX = RAM.methods({
 }) ({name: 'MBOX', nWords: 1024n * 1024n, bitWidth: 36, debugTrace: true,
-     inputs: 'MBUS,VMA'});
+     fixups: 'inputs, addrInput',
+     inputs: 'MBUS', addrInput: 'VMA'});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36, debugTrace: true});
 
