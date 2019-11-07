@@ -254,7 +254,7 @@ function generateFunctions() {
     const mw = cram[ma];
 
     const headerCode = [
-      `// uW = ${octal(mw, cramDefs.bpw)}`,
+      `// uW = ${octal(mw, cramDefs.bpw/3)}`,
       `// J = ${octal(getField(mw, cramDefs, 'J'))}`,
       `// # = ${octal(getField(mw, cramDefs, '#'))}`,
     ].join('\n  ');
@@ -283,7 +283,7 @@ function cram_${octal(ma)}(cpu) {
 
 
 function generateXRAMArray(wordsArray, bitWidth) {
-  return wordsArray.map(mw => `${_.padStart(mw.toString(8), bitWidth/3, '0')}n`).join(',\n  ');
+  return wordsArray.map(mw => `${octal(mw, bitWidth/3, 0)}n`).join(',\n  ');
 }
 
 
@@ -298,7 +298,7 @@ function generateFile({filename,
 ${prefixCode}
 
 ${arrayName} = [
-${code}
+  ${code}
 ];
 
 ${suffixCode}

@@ -207,8 +207,8 @@ const EBOX = StampIt.compose(Named, {
     // Reset every Unit back to initial value.
     this.unitArray.forEach(unit => unit.reset());
 
-    // RESET always generates a bunch of clocks with zero CRAM and DRAM.
-    _.range(10).forEach(k => {
+    // RESET always generates several clocks with zero CRAM and DRAM.
+    _.range(4).forEach(k => {
       this.latch();
       this.clockEdge();
     });
@@ -241,13 +241,13 @@ module.exports.EBOX = EBOX;
 
 const EBOXUnit = StampIt.compose(Fixupable, {
   name: 'EBOXUnit',
-}).init(function({name, bitWidth, inputs = '', clock = EBOX.clock}) {
+}).init(function({name, bitWidth, inputs = '', clock = EBOX.clock, debugTrace = false}) {
   this.name = name;
   EBOX.units[this.name.replace(/[ .,]/g, '_')] = this;
   this.inputs = inputs;
   this.clock = clock;
   this.value = this.latchedValue = 0n;
-  this.debugTrace = false;
+  this.debugTrace = debugTrace;
 
   // We remember if bitWidth needs to be fixed up after inputs are
   // transformed or if it was explicitly specified.
@@ -329,7 +329,7 @@ const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
         latch() {},
         clockEdge() {},
         getInputs() {return this.latchedValue = this.value},
-        get() {return this.value},
+        get() {return this.getInputs()},
       });
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
@@ -430,8 +430,12 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
         latch() {
           this.value = this.latchedValue;
           this.latchedValue = this.inputs[0].getInputs();
-          if (this.debugTrace)
-            console.log(`${this.name} latch value=${octal(this.value)} latchedValue=${octal(this.latchedValue)}`);
+          if (this.debugTrace) {
+            const nd = Math.ceil(Number(this.bitWidth) / 3);
+            console.log(`${this.name} latch() value=${octal(this.value, nd)} \
+latchedValue=${octal(this.latchedValue, nd)}\
+`);
+          }
         },
       });
 module.exports.Reg = Reg;
@@ -679,7 +683,7 @@ const DRA = ConstantUnit.methods({
     if (!EBOX.resetActive) console.log(`DRA=${octal(a)}`);
     return a;
   },
-}) ({name: 'DRA', bitWidth: 9});
+}) ({name: 'DRA', bitWidth: 9, debugTrace: true});
 
 // DRAM_IN is used to provide a word to DRAM when loading it.
 const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
