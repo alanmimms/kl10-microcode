@@ -4,7 +4,11 @@ const fs = require('fs');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
-const {octal4} = require('./util');
+const {
+  octal4,
+  maskForBit, shiftForBit,
+  fieldInsert, fieldExtract, fieldMask
+} = require('./util');
 
 // EBOX notes:
 //
@@ -32,13 +36,6 @@ const definesMatches = define_mic
       .toString()
       .match(definesRE);
 const defines = definesMatches.groups;
-
-
-// Array containing the bit mask indexed by PDP-10 numbered bit number.
-const maskForBit = (n, width = 36) => BigInt(Math.pow(2, width - 1 - n));
-
-// The shift right count to get PDP10 bit #n into LSB.
-const shiftForBit = (n, width = 36) => BigInt(BigInt(width) - 1n - BigInt(n));
 
 
 // This is a mixin for anything with a `this.name` property and a
@@ -519,9 +516,6 @@ const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84,
                   inputs: 'CRAM_IN', addrInput: 'CRADR'});
 const CR = Reg({name: 'CR', bitWidth: 84, inputs: 'CRAM'});
 
-const CRA_STACK = Stack({name: 'CRA_STACK', nWords: 4, bitWidth: 11,
-     fixups: 'inputs', inputs: 'CRADR'});
-
 // Complex CRAM address calculation logic goes here...
 const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
   this.stackDepth = stackDepth;
@@ -581,31 +575,43 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
 
       switch (disp) {
 
-      case CR.DISP.MUL:         // See schematics p. 344 and
-                                // EK-EBOX-all p. 256 for explanation.
-                                // FE0*4 + MQ34*2 + MQ35; implies MQ SHIFT, AD LONG
+      // See schematics p. 344 and
+      // EK-EBOX-all p. 256 for explanation.
+      // FE0*4 + MQ34*2 + MQ35; implies MQ SHIFT, AD LONG
+      case CR.DISP.MUL:
         if (FE.getInputs() >= 0o1000n) orBits |= 0o04n;
         orBits |= MQ.getInputs() & 3n;
         break;
 
-      case CR.DISP['DIAG']:
       case CR.DISP['DRAM J']:
-      case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
+        orBits = DR.J.getInputs() & 0o17n;
+        break;
+
       case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
+        orBits = this.stack.pop();
+        break;
+
+      case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
+        orBits = DR.B.getInputs();
+        break;
+
+      case CR.DISP['EA MOD']:	// (ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
+                                // ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
+                                // is (ARX0 or -LONG EN) for second case.  If ARX18
+                                // is 0, clear AR left; otherwise, poke ARL select
+                                // to set bit 2 (usually gates AD left into ARL)
+        break;
+
+      case CR.DISP['DIAG']:
+      case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
       case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
       case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
       case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
       case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
       case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
       case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
-      case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
       case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
       case CR.DISP['NORM']:     // See normalization for details. Implies AD LONG
-      case CR.DISP['EA MOD']:	// (ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
-                                // ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
-                                // is (ARX0 or -LONG EN) for second case.  If ARX18
-                                // is 0, clear AR left; otherwise, poke ARL select
-                                // to set bit 2 (usually gates AD left into ARL)
         break;
 
       }
@@ -617,6 +623,11 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
 
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, defines.CRAM, excludeCRAMfields);
+
+
+// This clock is pulsed in next cycle after IR is stable but not on
+// prefetch.
+const DR_CLOCK = Clock({name: 'DR_CLOCK'});
 
 // Complex DRAM address calculation logic goes here...
 const DRA = ConstantUnit.methods({
@@ -636,7 +647,39 @@ const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
 const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24,
                   fixups: 'inputs,addrInput',
                   inputs: 'DRAM_IN', addrInput: 'DRA'});
-const DR = Reg({name: 'DR', bitWidth: 24, inputs: 'DRAM'});
+
+
+// From EK-EBOX--all-OCR p. 19: Figure 1-4 illustrates the
+// organization of the DRAM. By sharing portions of the DRAM between
+// even/odd instruction, the shared pieces become half the nonshared.
+// Therefore, the A, B, and J7-10 portions consist of 10 X 512 words
+// and the P, J4, J1-3 portions consist of 5 X 256 words. This saves
+// essentially 5 X 256 words of DRAMstorage. In addition, for JRST
+// DRAM COMMON, bit 4 is made zero and DRAM J7-10 is replaced by IR
+// 9-12, again yielding a savings. Here the savings is 5 X 16 words of
+// DRAMstorage. The areas allocated by the DRAMare indicated in Figure
+// 1-3.
+const DR = Reg.methods({
+
+  latch() {
+    // First, calculate the address to load.
+    //     +----OP----+-AC-+
+    // IR: 0 123 456 789 abc
+    const ir = IR.get();
+    const op = ir >> 4n;
+    const ac = IRAC.get();
+    let a = op;
+    
+    // 012 345 678
+    if (op === 0o254) {                  // JRST
+      a = a & -0o27 | ac;                // Clear DRA4-10 replace with IRAC
+    } else if ((op & 0o774) === 0o700) { // I/O instruction to internal dev
+      a = a & -0o27 | ac;                // Clear DRA4-10 replace with IRAC
+    } else if ((op & 0o700) === 0o700) { // I/O instruction to external dev
+//XXX FINISH THIS      a = a & -0o74 | 0;                // Clear DRA4-10 replace with IR7-9
+    }
+  },
+}) ({name: 'DR', bitWidth: 24, clock: DR_CLOCK, inputs: 'DRAM'});
 
 defineBitFields(DR, defines.DRAM);
 
@@ -646,6 +689,29 @@ const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, clock: LOAD_AC_BL
 
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, inputs: 'ARX'});
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, inputs: 'VMA'});
+
+
+// This clock is pulsed when an instruction is on AD, ready for IR to
+// latch it for decoding and execution.
+const IR_CLOCK = Clock({name: 'IR_CLOCK'});
+
+// Instruction register. This flows from CACHE (eventually) and AD.
+// This is ECL 10173 with flow through input to output while !HOLD
+// (HOLD DRAM B) whose rising edge latches inputs.
+const IR = Reg.methods({
+
+  latch() {
+    const cond = CR.COND.getInputs();
+
+    if (cond == CR.COND['LOAD IR']) {
+      this.latchedValue = this.inputs[0].getInputs();
+    }
+  },
+}) ({name: 'IR', bitWidth: 12, clock: IR_CLOCK, inputs: 'AD'});
+
+// AC subfield of IR.
+const IRAC = BitField({name: 'IRAC', s: 9, e: 12, inputs: 'IR'});
+
 
 const FM_ADR = LogicUnit.methods({
   
@@ -863,15 +929,6 @@ const ADX = DataPathALU({name: 'ADX', bitWidth: 36, func: CR.AD,
 const AD = DataPathALU({name: 'AD', bitWidth: 38, func: CR.AD,
                         inputs: 'ADB, ADA, ZERO'});
 
-
-// Instruction register. This flows from CACHE (eventually) and AD.
-const IR = Reg({name: 'IR', bitWidth: 12, inputs: 'AD'});
-
-// AC field of IR.
-// This is ECL 10173 with flow through input to output while !HOLD
-// (HOLD DRAM B) whose rising edge latches inputs.
-const IR_09_12 = BitField({name: 'IR_09_12', s: 9, e: 12, inputs: 'IR'});
-const IRAC = Reg({name:'IRAC', bitWidth: 4, inputs: 'IR_09_12'});
 
 const VMA = Reg.compose({name: 'VMA'})
       .methods({
