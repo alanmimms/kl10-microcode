@@ -57,29 +57,35 @@ const Fixupable = StampIt({name: 'Fixupable'})
         // string of comma-separated names into an array of real objects.
         fixup() {
 
-          Fixupable.needsFixup.forEach(fu => {
-            if (!fu.fixups || typeof fu.fixups !== 'string') return;
+          Fixupable.needsFixup.forEach(o => { // Loop for each object needing fixup
+            if (typeof o.fixups !== 'string') return;
 
-            // Check for fixups wrapped in `[]` in which case we force
-            // result to be an array even if it is a singleton.
-            const wrapped = fu.fixups.match(/^\[(?<fu>[^\]]+)]$/);
-            console.log(`wrapped=${util.inspect(wrapped)}`);
+            o.fixups.split(/,\s*/).forEach(fuItem => {
 
-            const toSplit = (wrapped) ? wrapped.groups.fu : fu.fixups;
+              // Check for fixup item wrapped in `[]` in which case we
+              // force the result to be an array even if it is a
+              // singleton. Otherwise, singletons are not array-wrapped.
+              const wrapped = fuItem.match(/^\[(?<unwrapped>[^\]]+)]$/);
+              console.log(`fuItem='${fuItem}' wrapped=${util.inspect(wrapped)}`);
 
-            toSplit.split(/,\s*/).forEach(fuName => {
-              if (typeof fu[fuName] !== 'string') return;
+              if (wrapped) fuItem = wrapped.groups.unwrapped;
 
-              fu[fuName] = fu[fuName].split(/,\s*/)
+              // Do nothing if fixup is not a string - already fixed up?
+              if (typeof o[fuItem] !== 'string') return;
+
+              o[fuItem] = o[fuItem].split(/,\s*/)
                 .map(fi => {
                   const resolution = eval(fi);
 
                   if (typeof resolution === undefined) {
-                    console.error(`Fixupable: ${fu.name}.${fuName} ${fi} is not defined`);
+                    console.error(`Fixupable: ${o.name}.${fuItem} ${fi} is not defined`);
                   }
 
-                  return (!wrapped || Array.isArray(resolution)) ? resolution : [resolution];
+                  return resolution;
                 });
+
+              // Unwrap singletons unless otherwise requested.
+              if (!wrapped && o[fuItem].length === 1) o[fuItem] = o[fuItem][0];
             });
           });
         },
