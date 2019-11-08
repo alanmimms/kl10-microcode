@@ -1374,7 +1374,7 @@ const MBOX = RAM.methods({
   getInputs() {
     const op = this.control.getInputs(); // MEM/op
     let v = 0n;
-    
+
     switch(op) {
     default:
     case CR.MEM['NOP']:		// DEFAULT
@@ -1392,7 +1392,7 @@ const MBOX = RAM.methods({
     case CR.MEM['RPW']:		// READ-PAUSE-WRITE
     case CR.MEM['WRITE']:	// FROM AR TO MEMORY
       break;
-      
+
     case CR.MEM['IFET']:	// UNCONDITIONAL instruction FETCH
       break;
 
@@ -1403,7 +1403,7 @@ const MBOX = RAM.methods({
     return v;
   },
 }) ({name: 'MBOX', nWords: 4 * 1024n * 1024n, bitWidth: 36, debugTrace: true,
-     inputs: 'MBUS', addrInput: 'VMA', control: 'CR.MEM'}); 
+     inputs: 'MBUS', addrInput: 'VMA', control: 'CR.MEM'});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36, inputs: 'ZERO', debugTrace: true});
 
