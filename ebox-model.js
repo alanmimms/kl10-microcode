@@ -66,7 +66,6 @@ const Fixupable = StampIt({name: 'Fixupable'})
               // force the result to be an array even if it is a
               // singleton. Otherwise, singletons are not array-wrapped.
               const wrapped = fuItem.match(/^\[(?<unwrapped>[^\]]+)]$/);
-              console.log(`fuItem='${fuItem}' wrapped=${util.inspect(wrapped)}`);
 
               if (wrapped) fuItem = wrapped.groups.unwrapped;
 
