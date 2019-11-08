@@ -301,7 +301,7 @@ module.exports.EBOXUnit = EBOXUnit;
 // rightmost bit in field. So number of bits is `e-s+1`.
 // Not an EBOXUnit, just a useful stamp.
 const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
-      .init(function({name, s, e, inputs = ''}) {
+      .init(function({name, s, e, inputs}) {
         this.name = name;
         this.s = s;
         this.e = e;
@@ -311,8 +311,8 @@ const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
       }).methods({
 
         reset() {
-          this.wordWidth = Number(this.inputs[0].bitWidth);
-          this.shift = shiftForBit(this.e, this.inputs[0].bitWidth);
+          this.wordWidth = Number(this.inputs.bitWidth);
+          this.shift = shiftForBit(this.e, this.inputs.bitWidth);
           this.mask = (1n << BigInt(this.bitWidth)) - 1n;
         },
 
@@ -321,7 +321,7 @@ const BitField = StampIt.compose(Fixupable, {name: 'BitField'})
         },
 
         getInputs() {
-          const v = this.inputs[0].getInputs();
+          const v = this.inputs.getInputs();
           const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> this.shift;
           return shifted & this.mask;
         },
@@ -405,7 +405,7 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
 
         latch() {
           this.writeCycle = this.isWriteCycle();
-          this.latchedAddr = this.addrInput[0].getInputs();
+          this.latchedAddr = this.addrInput.getInputs();
 
           if (this.writeCycle) {
             this.latchedValue = this.value = this.getInputs();
@@ -415,8 +415,8 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
         },
 
         isWriteCycle() {
-          console.log(`${this.name} getInputs control=${this.control[0].name}`);
-          return !!this.control[0].getInputs();
+          console.log(`${this.name} getInputs control=${this.control.name}`);
+          return !!this.control.getInputs();
         },
       });
 module.exports.RAM = RAM;
@@ -431,7 +431,7 @@ const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
       }).methods({
 
         getInputs() {
-          const v = this.inputs[0].getInputs();
+          const v = this.inputs.getInputs();
           return BigInt(+(v === this.matchValue));
         },
       });
@@ -440,14 +440,15 @@ const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
 // Given a control input and a series of selectable inputs, produce
 // the value of the selected input on the output.
 const Mux = EBOXUnit.compose({name: 'Mux'})
-      .init(function({fixups = 'inputs,control', control}) {
+      .init(function({fixups = '[inputs],control', control}) {
         this.control = control;
         this.fixups = fixups;
       }).methods({
 
         getInputs() {
-          console.log(`${this.name} getInputs control=${this.control.name}`);
-          return this.inputs[this.control[0].getInputs()].getInputs();
+          console.log(`${this.name} getInputs control=${this.control.name} \
+value=${this.control.getInputs()}`);
+          return this.inputs[this.control.getInputs()].getInputs();
         }
       });
 module.exports.Mux = Mux;
@@ -460,7 +461,7 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
 
         latch() {
           this.value = this.latchedValue;
-          this.latchedValue = this.inputs[0].getInputs();
+          this.latchedValue = this.inputs.getInputs();
           if (this.debugTrace) {
             const nd = Math.ceil(Number(this.bitWidth) / 3);
             console.log(`${this.name} latch() value=${octal(this.value, nd)} \
@@ -514,7 +515,7 @@ const ShiftMult = EBOXUnit.compose({name: 'ShiftMult'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
-        getInputs() {return this.inputs[0].getInputs() << this.shift },
+        getInputs() {return this.inputs.getInputs() << this.shift },
       });
 module.exports.ShiftMult = ShiftMult;
 
@@ -526,7 +527,7 @@ const ShiftDiv = EBOXUnit.compose({name: 'ShiftDiv'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
-        getInputs() {return this.inputs[0].getInputs() >> this.shift },
+        getInputs() {return this.inputs.getInputs() >> this.shift },
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -538,7 +539,7 @@ const Adder = EBOXUnit.compose({name: 'Adder'})
       .init(function({k = 1}) {
         this.k = k;
       }).methods({
-        getInputs() {return this.inputs[0].getInputs() + this.k},
+        getInputs() {return this.inputs.getInputs() + this.k},
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -744,7 +745,7 @@ const IR = Reg.methods({
     const cond = CR.COND.getInputs();
 
     if (cond == CR.COND['LOAD IR']) {
-      this.latchedValue = this.inputs[0].getInputs();
+      this.latchedValue = this.inputs.getInputs();
     }
   },
 }) ({name: 'IR', bitWidth: 12, clock: IR_CLOCK, inputs: 'AD'});
@@ -782,10 +783,10 @@ const FM_ADR = LogicUnit.methods({
 }) ({name: 'FM_ADR', bitWidth: 4, addrInput: CR.FMADR, inputs: 'IRAC,ARX,VMA,MAGIC_NUMBER'});
 
 const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'CR.ACB,FM_ADR'});
-const FM = RAM.methods({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true,
-                        control: FieldMatcher({name: 'FM_WRITE', inputs: 'CR.COND',
-                                               matchValue: 'CR.COND["FM WRITE"]'}),
-                        inputs: 'AR', addrInput: 'FMA'});
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true,
+                control: FieldMatcher({name: 'FM_WRITE', inputs: 'CR.COND',
+                                       matchValue: 'CR.COND["FM WRITE"]'}),
+                inputs: 'AR', addrInput: 'FMA'});
 
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
@@ -921,6 +922,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 });
 
 const ADX = DataPathALU({name: 'ADX', bitWidth: 36, func: CR.AD,
+                         fixups: '[inputs],func',
                          inputs: 'ADXA, ADXB, ZERO'});
 
 // Note many DISP field values affect carry and LONG:
@@ -1357,17 +1359,16 @@ const VMA_HELD_OR_PC = Mux.methods({
 // System memory.
 const MBOX = RAM.methods({
 }) ({name: 'MBOX', nWords: 1024n * 1024n, bitWidth: 36, debugTrace: true,
-     fixups: 'inputs, addrInput',
-     inputs: 'MBUS', addrInput: 'VMA'});
+     inputs: 'MBUS', addrInput: 'VMA', control: 'ZERO'}); // XXX readonly for now
 
-const MBUS = Reg({name: 'MBUS', bitWidth: 36, debugTrace: true});
+const MBUS = Reg({name: 'MBUS', bitWidth: 36, inputs: 'ZERO', debugTrace: true});
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
 // examples) and return BitField stamps for each of the fields.
 // Pass an array of field names to ignore (for CRAM unused fields).
 function defineBitFields(input, s, ignoreFields = []) {
-  const inputs = [input];       // BitField does not get input transformation
+  const inputs = input;         // BitField does not get input transformation
   let curField = undefined;
 
   return s.split(/\n/).forEach(line => {
