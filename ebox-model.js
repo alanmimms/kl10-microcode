@@ -415,7 +415,6 @@ const RAM = EBOXUnit.compose({name: 'RAM'})
         },
 
         isWriteCycle() {
-          console.log(`${this.name} getInputs control=${this.control.name}`);
           return !!this.control.getInputs();
         },
       });
@@ -425,14 +424,17 @@ module.exports.RAM = RAM;
 // Use this for example as a `control` for a RAM to write when
 // `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
 const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
-      .init(function({fixups = 'inputs,matchValue', inputs, matchValue}) {
+      .init(function({fixups = 'inputs,matchValue', inputs, matchValue, debugTrace = false}) {
         this.matchValue = eval(matchValue); // Should be static
         this.inputs = inputs;
+        this.debugTrace = debugTrace;
       }).methods({
 
         getInputs() {
           const v = this.inputs.getInputs();
-          return BigInt(+(v === this.matchValue));
+          const result = BigInt(+(v === this.matchValue));
+          if (this.debugTrace) console.log(`${this.name} getInputs value=${result}`);
+          return result;
         },
       });
 
@@ -658,7 +660,10 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
       }
 
       const result = this.latchedValue = orBits | CR.J.get();
-      if (this.debugTrace) console.log(`${this.name} getInputs = ${octal(result)}`);
+
+      if (!EBOX.resetActive && this.debugTrace)
+        console.log(`${this.name} getInputs = ${octal(result)}`);
+
       return result;
     }
   },
@@ -785,6 +790,7 @@ const FM_ADR = LogicUnit.methods({
 const FMA = BitCombiner({name: 'FMA', bitWidth: 7, inputs: 'CR.ACB,FM_ADR'});
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true,
                 control: FieldMatcher({name: 'FM_WRITE', inputs: 'CR.COND',
+                                       debugTrace: true,
                                        matchValue: 'CR.COND["FM WRITE"]'}),
                 inputs: 'AR', addrInput: 'FMA'});
 
@@ -1306,7 +1312,10 @@ const ARX = LogicUnit.methods({
      inputs: 'ARX, CACHE, AD, MQ, SH, ZERO, ADX, ZERO',
     });
 
-// E.g., AR_AR AND ADMSK	 "ADMSK,ADB/FM,ADA/AR,AD/AND,AR/AD"
+// E.g.
+// AR_AR AND ADMSK	"ADMSK,ADB/FM,ADA/AR,AD/AND,AR/AD"
+// FETCH		"MEM/IFET"
+// U 1072: VMA_AR AND ADMSK,FETCH,J/NOP
 const AR = BitCombiner({name: 'AR', inputs: 'ARL, ARR'});
 const BR = Reg({name: 'BR', bitWidth: 36, inputs: 'AR'});
 const BRX = Reg({name: 'BRX', bitWidth: 36, inputs: 'ARX'});
@@ -1357,9 +1366,44 @@ const VMA_HELD_OR_PC = Mux.methods({
 
 ////////////////////////////////////////////////////////////////
 // System memory.
+//
+// The `control` input is the EBOX request type, directly accessed out
+// of the CR.MEM field.
 const MBOX = RAM.methods({
-}) ({name: 'MBOX', nWords: 1024n * 1024n, bitWidth: 36, debugTrace: true,
-     inputs: 'MBUS', addrInput: 'VMA', control: 'ZERO'}); // XXX readonly for now
+
+  getInputs() {
+    const op = this.control.getInputs(); // MEM/op
+    let v = 0n;
+    
+    switch(op) {
+    default:
+    case CR.MEM['NOP']:		// DEFAULT
+    case CR.MEM['ARL IND']:	// CONTROL AR LEFT MUX FROM # FIELD
+    case CR.MEM['MB WAIT']:	// WAIT FOR MBOX RESP IF PENDING
+    case CR.MEM['RESTORE VMA']:	// AD FUNC WITHOUT GENERATING A REQUEST
+    case CR.MEM['A RD']:	// OPERAND READ and load PXCT bits
+    case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
+    case CR.MEM['REG FUNC']:	// MBOX REGISTER FUNCTIONS
+    case CR.MEM['AD FUNC']:	// FUNCTION LOADED FROM AD LEFT
+    case CR.MEM['EA CALC']:	// FUNCTION DECODED FROM # FIELD
+    case CR.MEM['LOAD AR']:
+    case CR.MEM['LOAD ARX']:
+    case CR.MEM['RW']:		// READ, TEST WRITABILITY
+    case CR.MEM['RPW']:		// READ-PAUSE-WRITE
+    case CR.MEM['WRITE']:	// FROM AR TO MEMORY
+      break;
+      
+    case CR.MEM['IFET']:	// UNCONDITIONAL instruction FETCH
+      break;
+
+    case CR.MEM['FETCH']:	// LOAD NEXT INSTR TO ARX (CONTROL BY #)
+      break;
+    }
+
+    return v;
+  },
+}) ({name: 'MBOX', nWords: 4 * 1024n * 1024n, bitWidth: 36, debugTrace: true,
+     inputs: 'MBUS', addrInput: 'VMA', control: 'CR.MEM'}); 
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36, inputs: 'ZERO', debugTrace: true});
 
