@@ -1402,7 +1402,7 @@ const MBOX = RAM.methods({
 
     return v;
   },
-}) ({name: 'MBOX', nWords: 4 * 1024n * 1024n, bitWidth: 36, debugTrace: true,
+}) ({name: 'MBOX', nWords: 4n * 1024n * 1024n, bitWidth: 36, debugTrace: true,
      inputs: 'MBUS', addrInput: 'VMA', control: 'CR.MEM'});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36, inputs: 'ZERO', debugTrace: true});
