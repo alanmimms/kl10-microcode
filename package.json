@@ -17,7 +17,7 @@
     "lodash": "^4.7.0"
   },
   "devDependencies": {
-    "expect.js": "^0.3.1",
+    "chai": "^4.2.0",
     "mocha": "^6.2.2"
   }
 }
