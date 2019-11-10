@@ -110,7 +110,23 @@ const Clock = Named.init(function({drives = []}) {
           this.drives.push(unit);
         },
 
+        latch() {
+          this.drives.forEach(unit => {
+            //      console.log(`${unit.name}.latch()`);
+            unit.latch();
+          });
+        },
+
         clockEdge() {
+          this.drives.forEach(unit => {
+            //      console.log(`${unit.name}.clockEdge()`);
+            unit.clockEdge();
+          });
+        },
+
+        cycle() {
+          this.latch();
+          this.clockEdge();
         },
       });
 module.exports.Clock = Clock;
@@ -223,31 +239,13 @@ const EBOX = StampIt.compose(Named, {
     this.unitArray.forEach(unit => unit.reset());
 
     // RESET always generates several clocks with zero CRAM and DRAM.
-    _.range(4).forEach(k => {
-      this.latch();
-      this.clockEdge();
-    });
+    _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
   },
 
-  latch() {
-    this.clock.drives.forEach(unit => {
-//      console.log(`${unit.name}.latch()`);
-      unit.latch();
-    });
-  },
-
-  clockEdge() {
-    this.clock.drives.forEach(unit => {
-//      console.log(`${unit.name}.clockEdge()`);
-      unit.clockEdge();
-    });
-  },
-
   cycle() {
-    this.latch();
-    this.clockEdge();
+    this.clock.cycle();
   },
   
 }) ({name: 'EBOX', serialNumber: 3210});
@@ -276,9 +274,6 @@ const EBOXUnit = StampIt.compose(Fixupable, {
   get() {return this.value},
   latch() {this.latchedValue = this.getInputs()},
   clockEdge() {this.value = this.latchedValue},
-
-  // NEARLY ALWAYS should be overridden in derivative stamps
-  getInputs() {return this.value},
 
   getLH() {
     return BigInt.asUintN(18, this.value >> 18n);
@@ -346,6 +341,7 @@ const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
         getInputs() {return this.latchedValue = this.value},
         get() {return this.getInputs()},
       });
+module.exports.ConstantUnit = ConstantUnit;
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
 const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: -1n});
