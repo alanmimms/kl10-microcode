@@ -3,7 +3,7 @@ const _ = require('lodash');
 const expect = require('chai').expect;
 
 const e = require('../ebox-model');
-const {EBOXUnit, Fixupable, Clock, Named} = e;
+const {EBOXUnit, Fixupable, Clock, Named, ConstantUnit, Reg, Mux} = e;
 
 
 describe('Fixupable', () => {
@@ -58,6 +58,23 @@ describe('Clock', () => {
 });
 
 
-describe('EBOXUnit', () => {
+describe('Mux+Reg', () => {
+  global.CLK = Clock({name: 'CLK'});
+  global.R = Reg({name: 'R', bitWidth: 36, clock: global.CLK, inputs: 'M'});
+  global.M = Mux({name: 'M', bitWidth: 36, clock: global.CLK,
+                  inputs: 'A,B,C,D,E', control: 'Mcontrol'});
+  global.A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
+  global.B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
+  global.C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
+  global.D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
+  global.E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
+  global.Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
 
+  Fixupable.fixup();
+
+  _.range(5).forEach(k => {
+    global.Mcontrol.value = BigInt(k);
+    global.CLK.latch();
+    console.log(`${k}: R=${global.R.get()} M=${global.M.get()}`);
+  });
 });
