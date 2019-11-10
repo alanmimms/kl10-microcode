@@ -444,8 +444,11 @@ const Mux = EBOXUnit.compose({name: 'Mux'})
       }).methods({
 
         getInputs() {
-          console.log(`${this.name} getInputs control=${this.control.name} \
-value=${this.control.getInputs()}`);
+
+          if (this.debugTrace) 
+            console.log(`${this.name} getInputs control=${this.control.name} \
+input=${this.inputs[this.control.getInputs()].name} value=${this.control.getInputs()}`);
+
           return this.inputs[this.control.getInputs()].getInputs();
         }
       });
@@ -465,6 +468,8 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
 latchedValue=${octal(this.latchedValue, nd)}\
 `);
           }
+
+          return this.latchedValue;
         },
       });
 module.exports.Reg = Reg;
