@@ -60,8 +60,9 @@ describe('Clock', () => {
 
 describe('Mux+Reg', () => {
   global.CLK = Clock({name: 'CLK'});
-  global.R = Reg({name: 'R', bitWidth: 36, clock: global.CLK, inputs: 'M'});
-  global.M = Mux({name: 'M', bitWidth: 36, clock: global.CLK,
+  global.R = Reg({name: 'R', bitWidth: 36, clock: global.CLK, //debugTrace: true,
+                  inputs: 'M'});
+  global.M = Mux({name: 'M', bitWidth: 36, clock: global.CLK, //debugTrace: true,
                   inputs: 'A,B,C,D,E', control: 'Mcontrol'});
   global.A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
   global.B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
@@ -75,7 +76,10 @@ describe('Mux+Reg', () => {
   _.range(5).forEach(k => {
     global.Mcontrol.value = BigInt(k);
     global.CLK.latch();
-    console.log(`${k}: R=${global.R.get()} M=${global.M.get()}`);
-    expect(global.R.value).to.equal(BigInt(k - 1 < 0 ? 0 : k + 64));
+//    console.log(`↓ ${k}: R=${global.R.get()} M=${global.M.get()}`);
+    global.CLK.clockEdge();
+//    console.log(`↑ ${k}: R=${global.R.get()} M=${global.M.get()}`);
+
+    expect(global.R.value).to.equal(BigInt(k + 65));
   });
 });
