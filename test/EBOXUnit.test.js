@@ -76,5 +76,6 @@ describe('Mux+Reg', () => {
     global.Mcontrol.value = BigInt(k);
     global.CLK.latch();
     console.log(`${k}: R=${global.R.get()} M=${global.M.get()}`);
+    expect(global.R.value).to.equal(BigInt(k - 1 < 0 ? 0 : k + 64));
   });
 });

@@ -458,7 +458,6 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
       .methods({
 
         latch() {
-          this.value = this.latchedValue;
           this.latchedValue = this.inputs.getInputs();
           if (this.debugTrace) {
             const nd = Math.ceil(Number(this.bitWidth) / 3);
