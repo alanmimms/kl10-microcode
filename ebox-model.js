@@ -48,14 +48,15 @@ const defines = definesMatches.groups;
 // defined by calling Fixupable.fixup(). If you specify a fixup name
 // in square brackets (e.g., `[ARL]`) it will be fixed up as an array.
 // Otherwise singleton values (with no comma separated list) will be
-// object references without the array wrapper.
+// object references without the array wrapper. Pass an `evaluator`
+// to have strings evaluated in a remote scope.
 const Fixupable = StampIt({name: 'Fixupable'})
       .statics({
         needsFixup: [],
 
         // Called at end of declarations to transform the `inputs`
         // string of comma-separated names into an array of real objects.
-        fixup() {
+        fixup(evaluator = x => eval(x)) {
 
           Fixupable.needsFixup.forEach(o => { // Loop for each object needing fixup
             if (typeof o.fixups !== 'string') return;
@@ -74,7 +75,7 @@ const Fixupable = StampIt({name: 'Fixupable'})
 
               o[fuItem] = o[fuItem].split(/,\s*/)
                 .map(fi => {
-                  const resolution = eval(fi);
+                  const resolution = evaluator(fi);
 
                   if (typeof resolution === undefined) {
                     console.error(`Fixupable: ${o.name}.${fuItem} ${fi} is not defined`);

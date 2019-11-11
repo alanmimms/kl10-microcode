@@ -8,8 +8,8 @@ const {EBOXUnit, Fixupable, Clock, Named, ConstantUnit, Reg, Mux} = e;
 
 describe('Fixupable', () => {
   it(`should wrap singletons marked as such explicitly and leave others unwrapped`, () => {
-    global.obj1ToRef = {a: 'this is the first singleton object we refer to'};
-    global.obj2ToRef = {a: 'this is the second singleton object we refer to'};
+    const obj1ToRef = {a: 'this is the first singleton object we refer to'};
+    const obj2ToRef = {a: 'this is the second singleton object we refer to'};
 
     var q = Fixupable.init(function({wrapped, notWrapped}) {
       this.wrapped = wrapped;
@@ -19,7 +19,7 @@ describe('Fixupable', () => {
          wrapped: 'obj1ToRef',
          notWrapped: 'obj2ToRef'});
 
-    Fixupable.fixup();
+    Fixupable.fixup(x => eval(x));
 
 
     // {
@@ -59,27 +59,41 @@ describe('Clock', () => {
 
 
 describe('Mux+Reg', () => {
-  global.CLK = Clock({name: 'CLK'});
-  global.R = Reg({name: 'R', bitWidth: 36, clock: global.CLK, //debugTrace: true,
-                  inputs: 'M'});
-  global.M = Mux({name: 'M', bitWidth: 36, clock: global.CLK, //debugTrace: true,
-                  inputs: 'A,B,C,D,E', control: 'Mcontrol'});
-  global.A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
-  global.B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
-  global.C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
-  global.D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
-  global.E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
-  global.Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
+  const CLK = Clock({name: 'CLK'});
+  let M, A, B, C, D, E, Mcontrol, R;
 
-  Fixupable.fixup();
+  describe('Mux', () => {
+    M = Mux({name: 'M', bitWidth: 36, clock: CLK, //debugTrace: true,
+             inputs: 'A,B,C,D,E', control: 'Mcontrol'});
+    A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
+    B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
+    C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
+    D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
+    E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
+    Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
+    Fixupable.fixup(x => eval(x));
 
-  _.range(5).forEach(k => {
-    global.Mcontrol.value = BigInt(k);
-    global.CLK.latch();
-//    console.log(`↓ ${k}: R=${global.R.get()} M=${global.M.get()}`);
-    global.CLK.clockEdge();
-//    console.log(`↑ ${k}: R=${global.R.get()} M=${global.M.get()}`);
+    _.range(5).forEach(k => {
+      Mcontrol.value = BigInt(k);
+      CLK.latch();
+      expect(M.getInputs()).to.equal(BigInt(k + 65));
+      CLK.clockEdge();
+      expect(M.get()).to.equal(BigInt(k + 65));
+    });
+  });
 
-    expect(global.R.value).to.equal(BigInt(k + 65));
+  describe('Reg', () => {
+    const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: 'M'});
+    Fixupable.fixup(x => eval(x));
+
+    _.range(5).forEach(k => {
+      Mcontrol.value = BigInt(k);
+      CLK.latch();
+      //    console.log(`↓ ${k}: R=${R.get()} M=${M.get()}`);
+      expect(R.latchedValue).to.equal(BigInt(k + 65));
+      CLK.clockEdge();
+      //    console.log(`↑ ${k}: R=${R.get()} M=${M.get()}`);
+      expect(R.get()).to.equal(BigInt(k + 65));
+    });
   });
 });
