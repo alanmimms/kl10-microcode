@@ -245,6 +245,10 @@ const EBOX = StampIt.compose(Named, {
     this.resetActive = false;
   },
 
+  run() {
+    this.run = true;
+  },
+
   cycle() {
     this.clock.cycle();
   },
@@ -273,6 +277,7 @@ const EBOXUnit = StampIt.compose(Fixupable, {
 }).methods({
   reset() {this.latchedValue = this.value = 0n},
   get() {return this.value},
+  getInputs() {return this.inputs.getInputs()},
   latch() {this.latchedValue = this.getInputs()},
   clockEdge() {this.value = this.latchedValue},
 
@@ -462,7 +467,8 @@ const Reg = EBOXUnit.compose({name: 'Reg'})
       .methods({
 
         latch() {
-          this.latchedValue = this.inputs.getInputs();
+          this.latchedValue = this.getInputs();
+
           if (this.debugTrace) {
             const nd = Math.ceil(Number(this.bitWidth) / 3);
             console.log(`${this.name} latch() value=${octal(this.value, nd)} \
@@ -1254,7 +1260,7 @@ const SERIAL_NUMBER = ConstantUnit.methods({
     this.value = BigInt(EBOX.serialNumber);
   },
 }) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18});
-
+module.exports.SERIAL_NUMBER = SERIAL_NUMBER;
 
 // XXX very temporary. Needs implementation.
 const EBUS = ZERO;

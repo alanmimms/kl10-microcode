@@ -2,8 +2,10 @@
 const _ = require('lodash');
 const expect = require('chai').expect;
 
-const e = require('../ebox-model');
-const {EBOXUnit, Fixupable, Clock, Named, ConstantUnit, Reg, Mux} = e;
+const {
+  EBOXUnit, Fixupable, Clock, Named, ConstantUnit, Reg, Mux, SERIAL_NUMBER,
+  EBOX, CRAM, CRADR, DRAM, IR, PC,
+} = require('../ebox-model');
 
 
 describe('Fixupable', () => {
@@ -73,12 +75,14 @@ describe('Mux+Reg', () => {
     Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
     Fixupable.fixup(x => eval(x));
 
-    _.range(5).forEach(k => {
-      Mcontrol.value = BigInt(k);
-      CLK.latch();
-      expect(M.getInputs()).to.equal(BigInt(k + 65));
-      CLK.clockEdge();
-      expect(M.get()).to.equal(BigInt(k + 65));
+    it(`should select Mux inputs A-E (65-69 decimal) in turn`, () => {
+      _.range(5).forEach(k => {
+        Mcontrol.value = BigInt(k);
+        CLK.latch();
+        expect(M.getInputs()).to.equal(BigInt(k + 65));
+        CLK.clockEdge();
+        expect(M.get()).to.equal(BigInt(k + 65));
+      });
     });
   });
 
@@ -86,14 +90,39 @@ describe('Mux+Reg', () => {
     const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: 'M'});
     Fixupable.fixup(x => eval(x));
 
-    _.range(5).forEach(k => {
-      Mcontrol.value = BigInt(k);
-      CLK.latch();
-      //    console.log(`↓ ${k}: R=${R.get()} M=${M.get()}`);
-      expect(R.latchedValue).to.equal(BigInt(k + 65));
-      CLK.clockEdge();
-      //    console.log(`↑ ${k}: R=${R.get()} M=${M.get()}`);
-      expect(R.get()).to.equal(BigInt(k + 65));
+    it(`should latch Mux output selected to A-E (65-69 decimal) in turn`, () => {
+      _.range(5).forEach(k => {
+        Mcontrol.value = BigInt(k);
+        CLK.latch();
+        //    console.log(`↓ ${k}: R=${R.get()} M=${M.get()}`);
+        expect(R.latchedValue).to.equal(BigInt(k + 65));
+        CLK.clockEdge();
+        //    console.log(`↑ ${k}: R=${R.get()} M=${M.get()}`);
+        expect(R.get()).to.equal(BigInt(k + 65));
+      });
     });
+  });
+});
+
+
+describe('EBOX', () => {
+
+  it(`should reset itself and all EBOXUnits`, () => {
+    CRADR.stack = [1, 2, 3];    // Fill up a few things with state
+    CRADR.value = 0o1234;
+    _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
+    expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
+    IR.value = (0o123456n << 18n) | 0o765432n;
+    PC.value = 0o123456n;
+    EBOX.reset();
+    expect(CRAM.data[123]).to.equal(0n);
+    expect(CRADR.value).to.equal(0n);
+    expect(CRADR.stack.length).to.equal(0);
+    expect(IR.value).to.equal(0n);
+    expect(PC.value).to.equal(0n);
+  });
+
+  it(`should reflect its serial number`, () => {
+    expect(EBOX.SERIAL_NUMBER.value).to.equal(EBOX.serialNumber);
   });
 });
