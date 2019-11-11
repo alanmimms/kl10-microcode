@@ -223,12 +223,12 @@ const NOCLOCK = Clock({name: 'NOCLOCK'});
 const EBOX = StampIt.compose(Named, {
 }).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
-  this.units = {};              // List of all EBOX Units
-  this.unitArray = [];          // List of all EBOX Units as an array of objects
-  this.clock = Clock({name: 'EBOXClock', control: 'ZERO'});
-  this.run = false;
-})
-.methods({
+}).props({
+  units: {},          // List of all EBOX Units
+  unitArray: [],      // List of all EBOX Units as an array of objects
+  clock: Clock({name: 'EBOXClock', control: 'ZERO'}),
+  run: false,
+}).methods({
 
   reset() {
     this.resetActive = true;
@@ -264,7 +264,6 @@ const EBOXUnit = StampIt.compose(Fixupable, {
   EBOX.units[this.name.replace(/[ .,]/g, '_')] = this;
   this.inputs = inputs;
   this.clock = clock;
-  this.value = this.latchedValue = 0n;
   this.debugTrace = debugTrace;
 
   // We remember if bitWidth needs to be fixed up after inputs are
@@ -274,6 +273,9 @@ const EBOXUnit = StampIt.compose(Fixupable, {
 
   clock.addUnit(this);
   this.reset();
+}).props({
+  value: 0n,
+  latchedValue: 0n,
 }).methods({
   reset() {this.latchedValue = this.value = 0n},
   get() {return this.value},
@@ -335,12 +337,13 @@ module.exports.BitField = BitField;
 const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
       .init(function ({name, value = 0, bitWidth = 36n}) {
         this.name = name;
-        this.inputs = [];       // To avoid "is not defined" messages from FixupableInputs
-        this.constant = true;
         value = BigInt(value);
         this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
         this.latchedValue = this.value;
-        this.clock = NOCLOCK;
+      }).props({
+        inputs: [],             // To avoid "is not defined" messages from FixupableInputs
+        constant: true,
+        clock: NOCLOCK,
       }).methods({
         latch() {},
         clockEdge() {},
@@ -805,7 +808,8 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true,
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
   this.bitWidth = bitWidth = BigInt(bitWidth);
   this.ONES = (1n << bitWidth) - 1n;
-  this.name = 'ALU10181';
+}).props({
+  name: 'ALU10181',
 }).methods({
 
   add(a, b, cin = 0n) {
