@@ -63,3 +63,26 @@
   references to EBOXUnits. Make this a more generally applicable
   Stamp?
 
+
+## Clocking latch --> clock
+
+* X: J/Y
+* Y: J/Z
+* Z: J/X
+
+       CRADR     CR
+* 0↓:   X     ?: J/X
+
+* 0↑:   X     X: J/Y
+
+* 1↓:   Y     X: J/Y
+
+* 1↑:   Y     Y: J/Z
+
+* 2↓:   Z     Y: J/Z
+
+* 2↑:   Z     Z: J/X
+
+* 3↓:   X     Z: J/X
+
+* 3↑:   X     X: J/Y
