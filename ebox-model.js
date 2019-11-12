@@ -1,6 +1,5 @@
 'use strict';
 const _ = require('lodash');
-const fs = require('fs');
 const util = require('util');
 const StampIt = require('@stamp/it');
 
@@ -10,6 +9,11 @@ const {
   fieldInsert, fieldExtract, fieldMask
 } = require('./util');
 
+// Read our defines.mic and gobble definitions for fields and
+// constants for CRAM and DRAM.
+const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
+
+
 // EBOX notes:
 //
 // M8539 APR module is replaced by M8545 in KL10 model B.
@@ -18,29 +22,8 @@ const {
 var EBOX;                       // Forward references are a pain.
 
 
-// Split `define.mic` file to retrieve CRAM definitions section and
-// DRAM definitions sections so we can parse them into definitions we
-// can use.
-const definesRE = new RegExp([
-  /^.*\.TOC\s+"CONTROL RAM DEFINITIONS -- J, AD"\s+/,
-  /(?<CRAM>.*?)(?=\.DCODE\s+)/,
-  /(?<DRAM>.*?)(?=\s+\.UCODE\s+)/,
-].map(re => re.source).join(''), 'ms');
-
-const define_mic = fs.readFileSync('./define.mic');
-
-if (!define_mic) {
-  console.error(`ERROR: Missing 'define.mic' file which is required for ebox-model`);
-  process.exit(-1);
-}
-
-const definesMatches = define_mic
-      .toString()
-      .match(definesRE);
-const defines = definesMatches.groups;
-
-
-// All of our Units need to have a name for debugging and display.
+// Most of our instances need to have a name for debugging and
+// display.
 const Named = StampIt({name: 'Named'})
       .init(function({name}) {
         this.name = name;
@@ -455,10 +438,11 @@ module.exports.ShiftDiv = ShiftDiv;
 
 // RAMs
 
-// CRAM_IN is used to provide a uWord to CRAM when loading it.
-const CRAM_IN = ConstantUnit({name: 'CRAM_IN', bitWidth: 84, value: 0n});
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84});
 const CR = Reg({name: 'CR', bitWidth: 84});
+const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
+defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
+
 
 // Complex CRAM address calculation logic goes here...
 const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
@@ -572,10 +556,6 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
   },
 }) ({name: 'CRADR', bitWidth: 11});
 
-const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
-defineBitFields(CR, defines.CRAM, excludeCRAMfields);
-
-
 // This clock is pulsed in next cycle after IR is stable but not on
 // prefetch.
 const DR_CLOCK = Clock({name: 'DR_CLOCK'});
@@ -625,11 +605,10 @@ const DRA = ConstantUnit.methods({
   },
 }) ({name: 'DRA', bitWidth: 9, debugTrace: true});
 
-// DRAM_IN is used to provide a word to DRAM when loading it.
-const DRAM_IN = ConstantUnit({name: 'DRAM_IN', bitWidth: 24, value: 0n});
 const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24});
 const DR = Reg.methods({name: 'DR', bitWidth: 24, clock: DR_CLOCK});
-defineBitFields(DR, defines.DRAM);
+defineBitFields(DR, DRAMdefinitions);
+
 
 ////////////////////////////////////////////////////////////////
 // The EBOX.
@@ -1367,11 +1346,9 @@ function defineBitFields(input, s, ignoreFields = []) {
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 CRAM.addrInput = CRADR;
-CRAM.inputs = CRAM_IN;
 CR.inputs = CRAM;
 
 DRAM.addrInput = DRA;
-DRAM.inputs = DRAM_IN;
 DR.inputs = DRAM;
 
 CURRENT_BLOCK.inputs = EBUS;
