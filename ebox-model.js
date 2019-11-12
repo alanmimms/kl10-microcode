@@ -193,7 +193,7 @@ const NOCLOCK = Clock({name: 'NOCLOCK'});
 //   |                     | 
 //   |                     +-- `clockEdge()` copies `latchedValue` to `value`
 //   |
-//   +-- `latch()`, saves `getInputs()` value to `latchedValue`
+//   +-- `latch()`, saves `getInputs()` to `latchedValue`
 //
 
 ////////////////////////////////////////////////////////////////
@@ -205,8 +205,7 @@ const NOCLOCK = Clock({name: 'NOCLOCK'});
 // The convention is that each EBOXUnit has a `getInputs()` method
 // that retrieves the unit's value based on its current inputs and
 // configuration. EBOXUnit uses `getInputs()` method to retrieve
-// inputs and aggregates them to save what would be saved on the clock
-// edge.
+// inputs to save what would be saved on the latching clock edge.
 //
 // The combinational logic in the KL10 does not really transition
 // piecemeal like our implementation would do if we simply allowed
@@ -1420,8 +1419,12 @@ const MBUS = Reg({name: 'MBUS', bitWidth: 36, inputs: 'ZERO', debugTrace: true})
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
-// examples) and return BitField stamps for each of the fields.
-// Pass an array of field names to ignore (for CRAM unused fields).
+// examples) and return BitField stamps for each of the fields. Pass
+// an array of field names to ignore (for CRAM unused fields). This
+// uses Object.defineProperty() `set` handler to allow things like
+// `CR.AD = CR.AD['A+B']` where `CR.AD['A+B']` is a constant to select
+// the adder A+B function and assigning to `CR.AD` is meant to set the
+// `AD` field of the `CR` microcode word to that selector value.
 function defineBitFields(input, s, ignoreFields = []) {
   const inputs = input;         // BitField does not get input transformation
   let curField = undefined;
@@ -1438,7 +1441,15 @@ function defineBitFields(input, s, ignoreFields = []) {
         const e = parseInt(es);
         const bitWidth = e - s + 1;
         curField = BitField({name: `${input.name}['${name}']`, s, e, inputs, bitWidth});
-        input[name] = curField;
+        const thisField = curField; // Create closure variable for getter
+
+        Object.defineProperty(input, name, {
+          configurable: true,
+          enumerable: true,
+          get() {return thisField},
+          set(v) {input.latchedValue = fieldInsert(input.latchedValue, v,
+                                                   s, e, input.bitWidth)},
+        });
       }
     } else {                    // Define a constant name for this subfield
       const m = line.match(/^\s+(?<name>[^=;]+)=(?<value>\d+).*/);
@@ -1450,6 +1461,7 @@ function defineBitFields(input, s, ignoreFields = []) {
 
           if (curField) {
             curField[name] = BigInt(parseInt(value, 8));
+            console.log(`Define ${curField.name}.${name} = ${value}`);
           } else {
             console.log(`ERROR: no field context for value definition in "${line}"`);
           }
