@@ -139,17 +139,25 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 // configuration. EBOXUnit uses `getInputs()` method to retrieve
 // inputs to save what would be saved on the latching clock edge.
 //
-// The combinational logic in the KL10 does not really transition
-// piecemeal like our implementation would do if we simply allowed
-// each Unit's output to change as we walk through and recalculate
-// each Unit's state during each clock. So we have to effectively
-// treat EVERY Unit as being clocked and apply the latch --> clock
-// discipline because we do not have hardware paralellism. So every
-// Unit actually is composed from EBOXUnit.
+// There is also a `get()` method to retrieve the current _output_ of
+// the Unit.
 //
-// * `latch()` copies `getInputs()` result into `latchedValue`.
-// * `clockEdge()` copies `latchedValue` to `value`.
-// * `get()` returns `value`.
+// Combinatorial (not clocked) logic units will simply implement
+// `get()` as directly returning the value from `getInputs()`. Since
+// these are not clocked, they implement a no-op for `latch()`.
+// Registered and RAMs (clocked) will return the currently addressed
+// or latched value in `get()` while using `getInputs()` to determine
+// what value to latch and, in the case of RAMs, what address. The act
+// of latching is done through a call to the `latch()` method.
+//
+// * `getInputs()` and `getControl()` and `getAddress()` retrieve the
+//   inputs to the unit from the units that drive their input pins.
+//
+// * `latch()` uses `getInputs()` and `getAddress()` to latch a
+//   register or RAM's value and is a no-op for combinatorial units.
+//
+// * `get()` returns currently latched value or direct value from
+//   `getInputs()` for combinatorial units.
 const EBOXUnit = StampIt({
   name: 'EBOXUnit',
 }).statics({
@@ -168,20 +176,22 @@ const EBOXUnit = StampIt({
   clock.addUnit(this);
 }).props({
   value: 0n,
-  latchedValue: 0n,
 }).methods({
-  reset() {this.latchedValue = this.value = 0n},
-  get() {return this.value},
-  getInputs() {return this.inputs.getInputs()},
-  latch() {this.latchedValue = this.getInputs()},
-  clockEdge() {this.value = this.latchedValue},
+  reset() {this.value = 0n},
 
-  getLH() {
-    return BigInt.asUintN(18, this.value >> 18n);
+  get() {return this.value},
+  getAddress() { return this.addrInput.get() },
+  getFunc() { return this.func.get() },
+  getControl() { return this.control.get() },
+
+  latch() {this.value = this.getInputs()},
+
+  getLH(v = this.value) {
+    return BigInt.asUintN(18, v >> 18n);
   },
 
-  getRH() {
-    return BigInt.asUintN(18, this.value);
+  getRH(v = this.value) {
+    return BigInt.asUintN(18, v);
   },
 
   joinHalves(lh, rh) {
@@ -273,25 +283,26 @@ module.exports.BitCombiner = BitCombiner;
 
 ////////////////////////////////////////////////////////////////
 // Given an address, retrieve the stored word. Can also store new
-// words for diagnostic purposes. This is meant for CRAM and DRAM, not
-// FM. Elements are BigInt by default. The one element in `inputs` is
-// the EBOXUnit that provides a value for calls to `latch()` or write
-// data. A nonzero value on `control` means the clock cycle is a
-// WRITE, otherwise it is a read.
+// words for diagnostic purposes. Elements are BigInt by default. The
+// one element in `inputs` is the unit that provides a value for calls
+// to `latch()` or write data. A zero value on `control` means the
+// clock cycle is a WRITE, otherwise it is a read.
 const RAM = EBOXUnit.compose(NotedRegister, {name: 'RAM'})
       .init(function({nWords, initValue = 0n}) {
-        this.nWords = nWords,
+        this.nWords = nWords;
         this.initValue = initValue;
       }).methods({
 
         reset() {
-          this.data = _.range(Number(this.nWords)).map(x => this.initValue);
-          this.latchedAddr = 0;
-          this.writeCycle = false;
-          this.latchedValue = this.value = this.initValue;
-        },
 
-        get() { return this.value },
+          if (this.bitWidth <= 64 && this.initValue === 0n) {
+            this.data = new BigUint64Array(this.nWords);
+          } else {
+            this.data = _.range(Number(this.nWords)).map(x => this.initValue);
+          }
+
+          this.value = this.initValue;
+        },
 
         clockEdge() {
 
@@ -301,18 +312,17 @@ const RAM = EBOXUnit.compose(NotedRegister, {name: 'RAM'})
         },
 
         latch() {
-          this.writeCycle = this.isWriteCycle();
-          this.latchedAddr = this.addrInput.getInputs();
+          this.value = this.getInputs();
+          this.latchedAddr = this.getAddress();
+          this.writeCycle = this.getControl();
 
           if (this.writeCycle) {
-            this.latchedValue = this.value = this.getInputs();
-          } else {
-            this.latchedValue = this.value = this.data[this.latchedAddr];
+            this.data[this.latchedAddr] = this.value;
           }
         },
 
         isWriteCycle() {
-          return !!this.control.getInputs();
+          return !!this.getControl();
         },
       });
 module.exports.RAM = RAM;
