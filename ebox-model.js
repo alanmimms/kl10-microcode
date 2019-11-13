@@ -22,6 +22,11 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 var EBOX;                       // Forward references are a pain.
 
 
+// List of names of tiers of logic that must be executed each clock
+// cycle in lowest to highest order. This allows the inputs of a tier
+// to settle before the tier begins to use them.
+const logicTiers = `CRAM,DRAM,FM,AR,CRADR,DP1,DP2,DP3,DP4,VMA`.split(/,\s*/);
+
 // Most of our instances need to have a name for debugging and
 // display.
 const Named = StampIt({name: 'Named'})
@@ -166,7 +171,6 @@ const EBOXUnit = StampIt({
     typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
 
   clock.addUnit(this);
-  this.reset();
 }).props({
   value: 0n,
   latchedValue: 0n,
@@ -190,6 +194,20 @@ const EBOXUnit = StampIt({
   },
 });
 module.exports.EBOXUnit = EBOXUnit;
+
+
+// Mix this in if the unit instance represents combinatorial (non
+// clocked) logic.
+const NotedCombinatorial = StampIt.init(function() {
+  EBOX.addCombinatorial(this);
+});
+
+
+// Mix this in if the unit instance represents registered (clocked)
+// logic.
+const NotedRegister = StampIt.init(function() {
+  EBOX.addRegister(this);
+});
 
 
 ////////////////////////////////////////////////////////////////
@@ -226,20 +244,13 @@ module.exports.BitField = BitField;
 
 ////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
-const ConstantUnit = EBOXUnit.compose({name: 'ConstantUnit'})
-      .init(function ({name, value = 0, bitWidth = 36n}) {
-        this.name = name;
+const ConstantUnit = EBOXUnit.compose(Named, {name: 'ConstantUnit'})
+      .init(function ({value = 0, bitWidth}) {
         value = BigInt(value);
+        this.bitWidth = BigInt(bitWidth);
         this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
-        this.latchedValue = this.value;
-      }).props({
-        constant: true,
-        clock: NOCLOCK,
       }).methods({
-        latch() {},
-        clockEdge() {},
-        getInputs() {return this.latchedValue = this.value},
-        get() {return this.getInputs()},
+        get() {return this.value},
       });
 module.exports.ConstantUnit = ConstantUnit;
 
@@ -255,7 +266,7 @@ module.exports.ONES = ONES;
 const BitCombiner = EBOXUnit.compose({name: 'BitCombiner'})
       .methods({
 
-        getInputs() {
+        get() {
           return this.inputs.reduce((v, i) => {
             v = (v << i.bitWidth) | i.getInputs();
             return v;
@@ -272,13 +283,10 @@ module.exports.BitCombiner = BitCombiner;
 // the EBOXUnit that provides a value for calls to `latch()` or write
 // data. A nonzero value on `control` means the clock cycle is a
 // WRITE, otherwise it is a read.
-const RAM = EBOXUnit.compose({name: 'RAM'})
-      .init(function({nWords, control = 'ZERO', addrInput, initValue = 0n}) {
+const RAM = EBOXUnit.compose(NotedRegister, {name: 'RAM'})
+      .init(function({nWords, initValue = 0n}) {
         this.nWords = nWords,
-        this.control = control;
-        this.addrInput = addrInput;
         this.initValue = initValue;
-        this.reset();
       }).methods({
 
         reset() {
@@ -317,7 +325,7 @@ module.exports.RAM = RAM;
 
 // Use this for example as a `control` for a RAM to write when
 // `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
-const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
+const FieldMatcher = EBOXUnit.compose(NotedCombinatorial, {name: 'FieldMatcher'})
       .init(function({matchValue, debugTrace = false}) {
         this.matchValue = eval(matchValue); // Should be static
         this.debugTrace = debugTrace;
@@ -334,41 +342,37 @@ const FieldMatcher = EBOXUnit.compose({name: 'FieldMatcher'})
 ////////////////////////////////////////////////////////////////
 // Given a control input and a series of selectable inputs, produce
 // the value of the selected input on the output.
-const Mux = EBOXUnit.compose({name: 'Mux'})
-      .init(function({control}) {
-        this.control = control;
-      }).methods({
+const Mux = EBOXUnit.compose(NotedCombinatorial, {name: 'Mux'}).methods({
 
-        getInputs() {
+  getInputs() {
 
-          if (this.debugTrace) 
-            console.log(`${this.name} getInputs control=${this.control.name} \
+    if (this.debugTrace) 
+      console.log(`${this.name} getInputs control=${this.control.name} \
 input=${this.inputs[this.control.getInputs()].name} value=${this.control.getInputs()}`);
 
-          return this.inputs[this.control.getInputs()].getInputs();
-        }
-      });
+    return this.inputs[this.control.getInputs()].getInputs();
+  }
+});
 module.exports.Mux = Mux;
 
 
 ////////////////////////////////////////////////////////////////
 // Latch inputs for later retrieval.
-const Reg = EBOXUnit.compose({name: 'Reg'})
-      .methods({
+const Reg = EBOXUnit.compose(NotedRegister, {name: 'Reg'}).methods({
 
-        latch() {
-          this.latchedValue = this.getInputs();
+  latch() {
+    this.latchedValue = this.getInputs();
 
-          if (this.debugTrace) {
-            const nd = Math.ceil(Number(this.bitWidth) / 3);
-            console.log(`${this.name} latch() value=${octal(this.value, nd)} \
+    if (this.debugTrace) {
+      const nd = Math.ceil(Number(this.bitWidth) / 3);
+      console.log(`${this.name} latch() value=${octal(this.value, nd)} \
 latchedValue=${octal(this.latchedValue, nd)}\
 `);
-          }
+    }
 
-          return this.latchedValue;
-        },
-      });
+    return this.latchedValue;
+  },
+});
 module.exports.Reg = Reg;
 
 
@@ -379,31 +383,28 @@ module.exports.Reg = Reg;
 // 1: SHIFT RIGHT
 // 2: SHIFT LEFT
 // 3: HOLD
-const ShiftReg = EBOXUnit.compose({name: 'ShiftReg'})
-      .init(function({control}) {
-        this.control = control;
-      });
+// XXX needs implementation
+const ShiftReg = EBOXUnit.compose(NotedRegister, {name: 'ShiftReg'});
 module.exports.ShiftReg = ShiftReg;
 
 
 ////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
-const LogicUnit = EBOXUnit.compose({name: 'LogicUnit'})
-      .methods({
+const LogicUnit = EBOXUnit.compose(NotedCombinatorial, {name: 'LogicUnit'}).methods({
 
-        get() {
-          console.log(`${this.name} needs a 'get()' implementation`);
-          return 0n;
-        },
-      });
+  get() {
+    console.log(`${this.name} needs a 'get()' implementation`);
+    return 0n;
+  },
+});
 module.exports.LogicUnit = LogicUnit;
 
 
 ////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
-const ShiftMult = EBOXUnit.compose({name: 'ShiftMult'})
+const ShiftMult = EBOXUnit.compose(NotedCombinatorial, {name: 'ShiftMult'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
@@ -415,7 +416,7 @@ module.exports.ShiftMult = ShiftMult;
 ////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
-const ShiftDiv = EBOXUnit.compose({name: 'ShiftDiv'})
+const ShiftDiv = EBOXUnit.compose(NotedCombinatorial, {name: 'ShiftDiv'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
@@ -427,7 +428,7 @@ module.exports.ShiftDiv = ShiftDiv;
 ////////////////////////////////////////////////////////////////
 // Compute N+k for a given input. Can be used to subtract using
 // negative k.
-const Adder = EBOXUnit.compose({name: 'Adder'})
+const Adder = EBOXUnit.compose(NotedCombinatorial, {name: 'Adder'})
       .init(function({k = 1}) {
         this.k = k;
       }).methods({
@@ -437,7 +438,6 @@ module.exports.ShiftDiv = ShiftDiv;
 
 
 // RAMs
-
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84});
 const CR = Reg({name: 'CR', bitWidth: 84});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
@@ -447,7 +447,6 @@ defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
 // Complex CRAM address calculation logic goes here...
 const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
   this.stackDepth = stackDepth;
-  this.reset();
 }).methods({
 
   reset() {
