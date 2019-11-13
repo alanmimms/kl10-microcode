@@ -22,11 +22,6 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 var EBOX;                       // Forward references are a pain.
 
 
-// List of names of tiers of logic that must be executed each clock
-// cycle in lowest to highest order. This allows the inputs of a tier
-// to settle before the tier begins to use them.
-const logicTiers = `CRAM,DRAM,FM,AR,CRADR,DP1,DP2,DP3,DP4,VMA`.split(/,\s*/);
-
 // Most of our instances need to have a name for debugging and
 // display.
 const Named = StampIt({name: 'Named'})
