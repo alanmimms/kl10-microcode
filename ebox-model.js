@@ -152,17 +152,18 @@ const EBOXUnit = StampIt({
   name: 'EBOXUnit',
 }).statics({
   units: {},                    // Dictionary of all units derived from this
-}).init(function({name, bitWidth, clock = EBOXClock, debugTrace = false}) {
+}).init(function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock,
+                  debugTrace = false}) {
   this.name = name;
-  EBOXUnit.units[this.name.replace(/[ .,]/g, '_')] = this;
+  this.propName = this.name.replace(/[ .,]/g, '_');
+  EBOXUnit.units[this.propName] = this;
   this.clock = clock;
   this.debugTrace = debugTrace;
-
-  // We remember if bitWidth needs to be fixed up after inputs are
-  // transformed or if it was explicitly specified.
-  this.specifiedBitWidth = this.bitWidth = 
-    typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
-
+  this.inputs = inputs;
+  this.func = func;
+  this.control = control;
+  this.addr = addr;
+  this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
   clock.addUnit(this);
 }).props({
   value: 0n,
@@ -173,6 +174,7 @@ const EBOXUnit = StampIt({
   getAddress() { return this.addr.get() },
   getFunc() { return this.func.get() },
   getControl() { return this.control.get() },
+  getInputs() { return this.inputs.get() },
 
   getLH(v = this.value) {
     return BigInt.asUintN(18, v >> 18n);
@@ -224,7 +226,7 @@ const BitField = Combinatorial.compose({name: 'BitField'})
 
         getInputs() {
           const v = this.inputs.get();
-          const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> this.shift;
+          const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> BigInt(this.shift);
           return shifted & this.mask;
         },
       });
@@ -238,6 +240,11 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
         value = BigInt(value);
         this.bitWidth = BigInt(bitWidth);
         this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
+      }).methods({
+        getInputs() {return this.value},
+        get() {return this.value},
+        reset() {},
+        latch() {},
       });
 module.exports.ConstantUnit = ConstantUnit;
 
@@ -367,11 +374,7 @@ module.exports.ShiftReg = ShiftReg;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const LogicUnit = Combinatorial.compose({name: 'LogicUnit'}).methods({
-
-  get() {
-    console.log(`${this.name} needs a 'get()' implementation`);
-    return 0n;
-  },
+//  get() { return this.getInputs() },
 });
 module.exports.LogicUnit = LogicUnit;
 
@@ -590,7 +593,6 @@ EBOX = StampIt.compose(Named, {
 }).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
 }).props({
-  units: {},          // List of all EBOX Units
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
   run: false,
@@ -599,8 +601,7 @@ EBOX = StampIt.compose(Named, {
   reset() {
     this.resetActive = true;
     this.run = false;
-    this.unitArray = Object.keys(this.units)
-      .map(name => this.units[name]);
+    this.unitArray = Object.values(EBOXUnit.units);
 
     // Reset every Unit back to initial value.
     this.unitArray.forEach(unit => unit.reset());
@@ -656,7 +657,7 @@ const FM_ADR = LogicUnit.methods({
   getInputs() {
     let acr;
     
-    switch(this.getAddr()) {
+    switch(CR.FMADR.get()) {
     default:
     case CR.FMADR.AC0:
       return IRAC.get();
@@ -1258,7 +1259,7 @@ const MBOX = RAM.methods({
 
     return v;
   },
-}) ({name: 'MBOX', nWords: 4n * 1024n * 1024n, bitWidth: 36, debugTrace: true});
+}) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36, debugTrace: true});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36, debugTrace: true});
 
@@ -1285,8 +1286,8 @@ function defineBitFields(input, s, ignoreFields = []) {
         const e = parseInt(es);
         const bitWidth = e - s + 1;
         const bfName = `${input.name}['${fieldName}']`;
-        curField = BitField({name: bfName, s, e, inputs: input, bitWidth});
-        console.log(`define Bitfield ${bfName} inputs=${input.name}`);
+        const inputs = input;   // Create closure variable
+        curField = BitField({name: bfName, s, e, inputs, bitWidth});
         const thisField = curField; // Create closure variable for getter
 
         Object.defineProperty(input, fieldName, {
@@ -1321,9 +1322,11 @@ function defineBitFields(input, s, ignoreFields = []) {
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 CRAM.addr = CRADR;
+CRAM.control = ZERO;
 CR.inputs = CRAM;
 
 DRAM.addr = DRA;
+DRAM.control = ZERO;
 DR.inputs = DRAM;
 
 CURRENT_BLOCK.inputs = EBUS;
@@ -1426,8 +1429,7 @@ VMA_FLAGS.inputs = ZERO;        // XXX VERY temporary
 PC_PLUS_FLAGS.inputs = [SCD_FLAGS, PC];
 VMA_PLUS_FLAGS.inputs = [VMA_FLAGS, VMA_HELD];
 VMA_HELD_OR_PC.inputs = [PC, VMA_HELD];
-VMA_HELD_OR_PC.control = FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL',
-                                       inputs: 'CR.COND',
+VMA_HELD_OR_PC.control = FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', inputs: 'CR.COND',
                                        matchValue: 'CR.COND["LD VMA HELD"]'});
 MBOX.inputs = MBUS;
 MBOX.addr = VMA;
