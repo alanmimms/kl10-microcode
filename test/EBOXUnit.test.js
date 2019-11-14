@@ -11,6 +11,7 @@ const {
   DRAM, DRADR, DR,
   PC, IR,
   BR, MQ,
+  ZERO, ONES,
 } = require('../ebox-model');
 
 
@@ -38,36 +39,33 @@ describe('Mux+Reg', () => {
   let M, A, B, C, D, E, Mcontrol, R;
 
   describe('Mux', () => {
-    M = Mux({name: 'M', bitWidth: 36, clock: CLK, //debugTrace: true,
-             inputs: 'A,B,C,D,E', control: 'Mcontrol'});
+    Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
     A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
     B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
     C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
     D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
     E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
-    Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
+    M = Mux({name: 'M', bitWidth: 36, clock: CLK,
+             inputs: [A,B,C,D,E], control: Mcontrol});
 
     it(`should select Mux inputs A-E (65-69 decimal) in turn`, () => {
       _.range(5).forEach(k => {
         Mcontrol.value = BigInt(k);
-        expect(M.getInputs()).to.equal(BigInt(k + 65));
-        CLK.latch();
+        expect(M.get()).to.equal(BigInt(k + 65));
+        CLK.cycle();
         expect(M.get()).to.equal(BigInt(k + 65));
       });
     });
   });
 
   describe('Reg', () => {
-    const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: 'M'});
+    const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: M, control: ONES});
 
     it(`should latch Mux output selected to A-E (65-69 decimal) in turn`, () => {
       _.range(5).forEach(k => {
         Mcontrol.value = BigInt(k);
-        //    console.log(`↓ ${k}: R=${R.get()} M=${M.get()}`);
-        expect(R.value).to.equal(BigInt(k + 65));
-        CLK.latch();
-        //    console.log(`↑ ${k}: R=${R.get()} M=${M.get()}`);
-        expect(R.get()).to.equal(BigInt(k + 65));
+        CLK.cycle();
+        expect(R.get().toString()).to.equal(BigInt(k + 65).toString());
       });
     });
   });

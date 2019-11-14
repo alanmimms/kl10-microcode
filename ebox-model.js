@@ -14,6 +14,20 @@ const {
 const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 
 
+// Enable debug output for each method type by setting appropriate
+// property value to `console.log` or similar debug output function.
+const nop = () => {};
+
+const D = {
+  getInputs: nop,
+  get: nop,
+  latch: nop,
+  reset: nop,
+  addr: nop,
+  control: nop,
+  func: nop,
+};
+
 // EBOX notes:
 //
 // M8539 APR module is replaced by M8545 in KL10 model B.
@@ -43,7 +57,6 @@ const Clock = Named.init(function({drives = []}) {
 
         cycle() {
           this.drives.forEach(unit => {
-            //      console.log(`${unit.name}.latch()`);
             unit.latch();
           });
         },
@@ -152,17 +165,15 @@ const EBOXUnit = StampIt({
   name: 'EBOXUnit',
 }).statics({
   units: {},                    // Dictionary of all units derived from this
-}).init(function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock,
-                  debugTrace = false}) {
+}).init(function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock}) {
   this.name = name;
   this.propName = this.name.replace(/[ .,]/g, '_');
   EBOXUnit.units[this.propName] = this;
   this.clock = clock;
-  this.debugTrace = debugTrace;
   this.inputs = inputs;
-  this.func = func;
-  this.control = control;
-  this.addr = addr;
+  this.funcInput = func;
+  this.controlInput = control;
+  this.addrInput = addr;
   this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
   clock.addUnit(this);
 }).props({
@@ -171,10 +182,25 @@ const EBOXUnit = StampIt({
   reset() {this.value = 0n},
 
   // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
-  getAddress() { return this.addr.get() },
-  getFunc() { return this.func.get() },
-  getControl() { return this.control.get() },
-  getInputs() { return this.inputs.get() },
+  getAddress() {
+    D.addr(`EBOXUnit:${this.name} getAddress()`);
+    return this.addrInput.get();
+  },
+
+  getFunc() {
+    D.func(`EBOXUnit:${this.name} getFunc()`);
+    return this.funcInput.get();
+  },
+
+  getControl() {
+    D.control(`EBOXUnit:${this.name} getControl()`);
+    return this.controlInput.get();
+  },
+
+  getInputs() {
+    D.getInputs(`EBOXUnit:${this.name} getInputs()`);
+    return this.inputs.get();
+  },
 
   getLH(v = this.value) {
     return BigInt.asUintN(18, v >> 18n);
@@ -194,14 +220,25 @@ module.exports.EBOXUnit = EBOXUnit;
 // Use this mixin to define a Combinatorial unit that is unclocked.
 const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
   latch() { },
-  get() {return this.value = this.getInputs()},
+
+  get() {
+    D.get(`Combinatorial:${this.name} get()`);
+    return this.value = this.getInputs();
+  },
 });
 
 
 // Use this mixin to define a Clocked unit.
 const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
-  latch() {this.value = this.getInputs()},
-  get() {return this.value},
+  latch() {
+    D.latch(`Clocked:${this.name} latch()`);
+    this.value = this.getInputs();
+  },
+
+  get() {
+    D.get(`Clocked:${this.name} get()`);
+    return this.value;
+  },
 });
 
 
@@ -225,6 +262,7 @@ const BitField = Combinatorial.compose({name: 'BitField'})
         },
 
         getInputs() {
+          D.getInputs(`BitField:${this.name} getInputs()`);
           const v = this.inputs.get();
           const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> BigInt(this.shift);
           return shifted & this.mask;
@@ -261,6 +299,7 @@ const BitCombiner = Combinatorial.compose({name: 'BitCombiner'})
       .methods({
 
         get() {
+          D.get(`BitCombiner:${this.name} get()`);
           return this.inputs.reduce((v, i) => v = (v << i.bitWidth) | i.get(), 0n);
         },
       });
@@ -291,6 +330,7 @@ const RAM = Clocked.compose({name: 'RAM'})
         },
 
         latch() {
+          D.latch(`RAM:${this.name} latch()`);
           this.addr = this.getAddress();
 
           if (!this.getControl()) { // Active-low /WRITE control
@@ -307,15 +347,14 @@ module.exports.RAM = RAM;
 // Use this for example as a `control` for a RAM to write when
 // `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
 const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
-      .init(function({matchValue, debugTrace = false}) {
+      .init(function({matchValue}) {
         this.matchValue = eval(matchValue); // Should be static
-        this.debugTrace = debugTrace;
       }).methods({
 
         getInputs() {
+          D.getInputs(`FieldMatcher:${this.name} getInputs()`);
           const cur = this.inputs.get();
           this.value = BigInt(+(cur === this.matchValue));
-          if (this.debugTrace) console.log(`${this.name} value=${this.value}`);
           return this.value;
         },
       });
@@ -326,14 +365,9 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 const Mux = Combinatorial.compose({name: 'Mux'}).methods({
 
   getInputs() {
+    D.getInputs(`Mux:${this.name} getInputs()`);
     const control = this.getControl();
     const input = this.inputs[control];
-
-    if (this.debugTrace) {
-      console.log(`${this.name} getInputs control=${control.name} \
-input=${input.name} value=${input.get()}`);
-    }
-
     return input.get();
   },
 });
@@ -345,13 +379,8 @@ module.exports.Mux = Mux;
 const Reg = Clocked.compose({name: 'Reg'}).methods({
 
   latch() {
+    D.latch(`Reg:${this.name} latch()`);
     this.value = this.getInputs();
-
-    if (this.debugTrace) {
-      const nd = Math.ceil(Number(this.bitWidth) / 3);
-      console.log(`${this.name} latch() value=${octal(this.value, nd)}`);
-    }
-
     return this.value;
   },
 });
@@ -386,7 +415,11 @@ const ShiftMult = Combinatorial.compose({name: 'ShiftMult'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
-        getInputs() {return this.inputs.get() << this.shift },
+
+        getInputs() {
+          D.getInputs(`ShiftMult:${this.name} getInputs()`);
+          return this.inputs.get() << this.shift;
+        },
       });
 module.exports.ShiftMult = ShiftMult;
 
@@ -398,7 +431,11 @@ const ShiftDiv = Combinatorial.compose({name: 'ShiftDiv'})
       .init(function({shift = 1}) {
         this.shift = BigInt(shift);
       }).methods({
-        getInputs() {return this.inputs.get() >> this.shift },
+
+        getInputs() {
+          D.getInputs(`ShiftDiv:${this.name} getInputs()`);
+          return this.inputs.get() >> this.shift;
+        },
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -410,7 +447,11 @@ const Adder = Combinatorial.compose({name: 'Adder'})
       .init(function({k = 1}) {
         this.k = k;
       }).methods({
-        getInputs() {return this.inputs.get() + this.k},
+
+        getInputs() {
+          D.getInputs(`Adder:${this.name} getInputs()`);
+          return this.inputs.get() + this.k;
+        },
       });
 module.exports.ShiftDiv = ShiftDiv;
 
@@ -434,15 +475,13 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
   },
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
 
     if (this.force1777) {
       this.force1777 = false;
 
       // Push return address from page fault handler.
       this.stack.push(this.value);
-
-      if (this.debugTrace) console.log(`${this.name} force1777`);
-      return this.value = this.value & 0o6000n | 0o1777n;
     } else {
       const skip = CR.SKIP.get();
       let orBits = 0n;
@@ -524,10 +563,6 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
       }
 
       this.value = orBits | CR.J.get();
-
-      if (!EBOX.resetActive && this.debugTrace)
-        console.log(`${this.name} get = ${octal(this.value)}`);
-
       return this.value;
     }
   },
@@ -555,6 +590,7 @@ const DRA = ConstantUnit.methods({
   // savings is 5 X 16 words of DRAMstorage. The areas allocated by
   // the DRAMare indicated in Figure 1-3.
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const addrWidth = 11;
     //     +----OP----+-AC-+
     // IR: 0 123 456 789 abc
@@ -577,10 +613,9 @@ const DRA = ConstantUnit.methods({
       a = fieldInsert(a, fieldExtract(ir, 7, 12, IR.bitWidth), 3, 8, addrWidth);
     }
 
-    if (!EBOX.resetActive) console.log(`DRA=${octal(a)}`);
     return a;
   },
-}) ({name: 'DRA', bitWidth: 9, debugTrace: true});
+}) ({name: 'DRA', bitWidth: 9});
 
 const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24});
 const DR = Reg.methods({name: 'DR', bitWidth: 24, clock: DR_CLOCK});
@@ -641,6 +676,7 @@ const IR_CLOCK = Clock({name: 'IR_CLOCK'});
 const IR = Reg.methods({
 
   latch() {
+    D.latch(`${this.name} latch()`);
     if (this.getControl()) this.value = this.getInputs();
   },
 }) ({name: 'IR', bitWidth: 12, clock: IR_CLOCK,
@@ -655,6 +691,7 @@ const IRAC = BitField({name: 'IRAC', s: 9, e: 12});
 const FM_ADR = LogicUnit.methods({
   
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     let acr;
     
     switch(CR.FMADR.get()) {
@@ -681,7 +718,7 @@ const FM_ADR = LogicUnit.methods({
 }) ({name: 'FM_ADR', bitWidth: 4});
 
 const FMA = BitCombiner({name: 'FMA', bitWidth: 7});
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36, debugTrace: true});
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
@@ -765,6 +802,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
   }).methods({
 
     getInputs() {
+      D.getInputs(`Combinatorial:${this.name} getInputs()`);
       return this.parentALU.cout;
     },
     }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
@@ -777,6 +815,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
   },
 
   getInputs() {
+    D.getInputs(`DataPathALU:${this.name} getInputs()`);
     const func = Number(this.getFunc());
     const f = func & 0o37;
     const a = this.inputs[0].get();
@@ -851,6 +890,7 @@ const VMA = Reg.compose({name: 'VMA'})
       .methods({
 
         latch() {
+          D.latch(`${this.name} latch()`);
           // XXX this needs to implement the load/inc/dec/hold. It is
           // probably going to have to take the Addr+Data Paths VMA
           // architecture completely into account. The good news is
@@ -928,6 +968,7 @@ const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 const MQ = LogicUnit.methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
 
     // Our complex operations are selected by COND/REG CTL
     if (CR.COND.get() === CR.COND['REG CTL']) {
@@ -1015,6 +1056,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
 }).methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const func = Number(this.getFunc());
     const a = this.inputs[0].get();
     const b = this.inputs[1].get();
@@ -1043,6 +1085,7 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
         // 2: SHIFT LEFT
         // 3: HOLD
         getInputs() {
+          D.getInputs(`${this.name} getInputs()`);
 
           if (CR.FE.get())
             return 0;
@@ -1059,6 +1102,7 @@ const FE = ShiftReg({name: 'FE', bitWidth: 10});
 const SH = LogicUnit.methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const count = SC.get();
     const func = this.getFunc();
 
@@ -1091,7 +1135,9 @@ const ADXA = Mux({name: 'ADXA', bitWidth: 36});
 const ADXB = Mux({name: 'ADXB', bitWidth: 36});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
+
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     return BigInt(+!!(AR.get() & maskForBit(0, 9)));
   },
 }) ({name: 'ARSIGN_SMEAR', bitWidth: 9});
@@ -1106,7 +1152,9 @@ const MAGIC_NUMBER = CR['#'];
 const ARMML = Mux({name: 'ARMML', bitWidth: 9});
 
 const ARMMR = Mux.methods({
+
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     return BigInt(+!!(CR.VMAX.get() & CR.VMAX['PREV SEC']));
   },
 }) ({name: 'ARMMR', bitWidth: 17 - 13 + 1});
@@ -1142,6 +1190,7 @@ const ARR = Reg({name: 'ARR', bitWidth: 18});
 const ARX = LogicUnit.methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const ARX = CR.ARX;
 
     // Our complex operations are selected by ARX/
@@ -1186,6 +1235,7 @@ const BRX = Reg({name: 'BRX', bitWidth: 36});
 const SC = LogicUnit.methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const SCM_ALT = CR['SCM ALT'];
     const SPEC = CR.SPEC.get();
 
@@ -1215,7 +1265,11 @@ const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36});
 const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36});
 
 const VMA_HELD_OR_PC = Mux.methods({
-  getInputs() {return BigInt(+this.getControl())},
+
+  getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
+    return BigInt(+this.getControl());
+  },
 }) ({name: 'VMA HELD OR PC', bitWidth: 36,
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', inputs: 'CR.COND',
                             matchValue: 'CR.COND["VMA HELD"]'})});
@@ -1229,6 +1283,7 @@ const VMA_HELD_OR_PC = Mux.methods({
 const MBOX = RAM.methods({
 
   getInputs() {
+    D.getInputs(`${this.name} getInputs()`);
     const op = this.getControl(); // MEM/op
     let v = 0n;
 
@@ -1259,9 +1314,9 @@ const MBOX = RAM.methods({
 
     return v;
   },
-}) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36, debugTrace: true});
+}) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36});
 
-const MBUS = Reg({name: 'MBUS', bitWidth: 36, debugTrace: true});
+const MBUS = Reg({name: 'MBUS', bitWidth: 36});
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
@@ -1307,7 +1362,6 @@ function defineBitFields(input, s, ignoreFields = []) {
 
           if (curField) {
             curField[defName] = BigInt(parseInt(value, 8));
-//            console.log(`Define ${curField.name}.${defName} = ${value}`);
           } else {
             console.log(`ERROR: no field context for value definition in "${line}"`);
           }
@@ -1321,12 +1375,12 @@ function defineBitFields(input, s, ignoreFields = []) {
 
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
-CRAM.addr = CRADR;
-CRAM.control = ZERO;
+CRAM.addrInput = CRADR;
+CRAM.controlInput = ZERO;
 CR.inputs = CRAM;
 
-DRAM.addr = DRA;
-DRAM.control = ZERO;
+DRAM.addrInput = DRA;
+DRAM.controlInput = ZERO;
 DR.inputs = DRAM;
 
 CURRENT_BLOCK.inputs = EBUS;
@@ -1336,21 +1390,21 @@ IRAC.inputs = IR;
 
 FM_ADR.inputs = [IRAC, ARX, VMA, MAGIC_NUMBER];
 FMA.inputs = [CR.ACB, FM_ADR];
-FM.addr = FMA;
+FM.addrInput = FMA;
 FM.inputs = AR;
-FM.control = FieldMatcher({name: 'FM_WRITE', inputs: 'CR.COND',
-                           matchValue: 'CR.COND["FM WRITE"]'});
+FM.controlInput = FieldMatcher({name: 'FM_WRITE', inputs: CR.COND,
+                                matchValue: CR.COND['FM WRITE']});
 
 AD.inputs = [ADB, ADA, ZERO];
-AD.func = CR.AD;
+AD.funcInput = CR.AD;
 AD_13_35.inputs = AD;
 AD_13_17.inputs = AD;
 ADX.inputs = [ADXB, ADXA, ZERO];
-ADX.func = CR.AD;
+ADX.funcInput = CR.AD;
 
 PC.inputs = VMA;
-PC.control = FieldMatcher({name: 'LOAD_PC', inputs: 'CR.SPEC',
-                           matchValue: 'CR.SPEC["LOAD PC"]'});
+PC.controlInput = FieldMatcher({name: 'LOAD_PC', inputs: CR.SPEC,
+                                matchValue: CR.SPEC['LOAD PC']});
 PC_13_17.inputs = PC;
 //VMA.inputs = [CR['#'], ];
 VMA_32_35.inputs = VMA;
@@ -1362,22 +1416,22 @@ VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 MQ.inputs = [ZERO, SH, ONES, AD];
 
 ADA.inputs = [ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC];
-ADA.control = CR.ADA;
+ADA.controlInput = CR.ADA;
 
 ADB.inputs = [FM, BRx2, BR, ARx4];
-ADB.control = CR.ADB;
+ADB.controlInput = CR.ADB;
 
 ADXA.inputs = [ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX];
-ADXA.control = CR.ADA;
+ADXA.controlInput = CR.ADA;
 
 ADXB.inputs = [ZERO, BRXx2, BRX, ARXx4];
-ADXB.control = CR.ADB;
+ADXB.controlInput = CR.ADB;
 
 ARMML.inputs = [MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS];
-ARMML.control = CR.ARMM;
+ARMML.controlInput = CR.ARMM;
 
 ARMMR.inputs = [PC_13_17, VMA_PREV_SECT_13_17];
-ARMMR.control = CR.VMAX;
+ARMMR.controlInput = CR.VMAX;
 
 ARMM.inputs = [ARMML, ARMMR];
 
@@ -1385,16 +1439,16 @@ ADx2.inputs = AD;
 ADdiv4.inputs = AD;
 
 ARMR.inputs = [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4];
-ARMR.control = CR.AR;
+ARMR.controlInput = CR.AR;
 
 ARML.inputs = [AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4];
-ARML.control = CR.AR;
+ARML.controlInput = CR.AR;
 
 ARL.inputs = ARML;
 ARR.inputs = ARMR;
 
 ARX.inputs = [ARX, CACHE, AD, MQ, SH, ZERO, ADX, ZERO];
-ARX.control = CR.ARX;
+ARX.controlInput = CR.ARX;
 ARX_14_17.inputs = ARX;
 
 AR.inputs = [ARL, ARR];
@@ -1409,31 +1463,31 @@ BR.inputs = AR;
 BRX.inputs = ARX;
 
 FE.inputs = SCAD;
-FE.control = FEcontrol;
+FE.controlInput = FEcontrol;
 
 SH.inputs = [AR, ARX];
-SH.control = CR.SH;
+SH.controlInput = CR.SH;
 
 SCAD.inputs = [SCADA, SCADB];
-SCAD.func = CR.SCAD;
+SCAD.funcInput = CR.SCAD;
 SCAD_EXP.inputs = SCAD;
 SCAD_POS.inputs = SCAD;
 SC.inputs = [SC, FE, AR, SCAD];
 SCADA.inputs = [ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, MAGIC_NUMBER];
-SCADA.control = CR.SCADA;
+SCADA.controlInput = CR.SCADA;
 SCADB.inputs = [FE, AR_SIZE, AR_00_08, MAGIC_NUMBER];
-SCADB.control = CR.SCADB;
+SCADB.controlInput = CR.SCADB;
 
 SCD_FLAGS.inputs = AR_00_12;
 VMA_FLAGS.inputs = ZERO;        // XXX VERY temporary
 PC_PLUS_FLAGS.inputs = [SCD_FLAGS, PC];
 VMA_PLUS_FLAGS.inputs = [VMA_FLAGS, VMA_HELD];
 VMA_HELD_OR_PC.inputs = [PC, VMA_HELD];
-VMA_HELD_OR_PC.control = FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', inputs: 'CR.COND',
-                                       matchValue: 'CR.COND["LD VMA HELD"]'});
+VMA_HELD_OR_PC.controlInput = FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', inputs: CR.COND,
+                                            matchValue: CR.COND['LD VMA HELD']});
 MBOX.inputs = MBUS;
-MBOX.addr = VMA;
-MBOX.control = CR.MEM;
+MBOX.addrInput = VMA;
+MBOX.controlInput = CR.MEM;
 MBUS.inputs = ZERO;             // XXX temporary
 
 // Export every EBOXUnit
