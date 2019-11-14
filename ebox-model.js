@@ -310,9 +310,9 @@ module.exports.ONES = ONES;
 const BitCombiner = Combinatorial.compose({name: 'BitCombiner'})
       .methods({
 
-        get() {
+        getInputs() {
           const result = this.inputs.reduce((v, i) => v = (v << i.bitWidth) | i.get(), 0n);
-          return D.get(this, 'BitCombiner', 'get', result);
+          return log(this, 'BitCombiner', 'getInputs', result);
         },
       });
 module.exports.BitCombiner = BitCombiner;
@@ -379,8 +379,8 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 const Mux = Combinatorial.compose({name: 'Mux'}).methods({
 
   getInputs() {
-    const control = this.getControl();
-    const input = this.inputs[control];
+    const controlValue = this.getControl();
+    const input = this.inputs[controlValue];
     return D.getInputs(this, 'Mux', 'getInputs', input.get());
   },
 });
@@ -746,13 +746,16 @@ const ALU10181 = StampIt.init(function({bitWidth = 36}) {
 }).methods({
 
   add(a, b, cin = 0n) {
-    const sum = (a + b + cin);
+    if (typeof a !== 'bigint') debugger;
+    if (typeof b !== 'bigint') debugger;
+    if (typeof cin !== 'bigint') debugger;
+    const sum = a + b + cin;
     this.cout = sum > this.ONES ? 1n : 0n;
     return sum & this.ONES;
   },
 
   sub(a, b, cin = 0n) {
-    const diff = (a - b - cin);
+    const diff = a - b - cin;
     this.cout = diff > this.ONES ? 1n : 0n;
     return diff & this.ONES;
   },
@@ -845,7 +848,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     //
     // Also note the schematic symbols XXX CRY 36 mean the carry INTO
     // the LSB of the adder for XXX (i.e., from a bit to the right).
-    let result = 0;
+    let result = 0n;
 
     switch(func) {
     case CR.AD['A+1']:      result = this.do(f, a, cin);        break;
@@ -986,7 +989,7 @@ const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 const MQ = LogicUnit.methods({
 
   getInputs() {
-    let result = 0;
+    let result = 0n;
 
     // Our complex operations are selected by COND/REG CTL
     if (CR.COND.get() === CR.COND['REG CTL']) {
@@ -1195,7 +1198,7 @@ const ARMMR = Mux.methods({
 }) ({name: 'ARMMR', bitWidth: 17 - 13 + 1});
 
 
-const ARMM = BitCombiner({name: 'ARMM', bitWidth: 9 + 5});
+const ARMM = BitCombiner({name: 'ARMM', bitWidth: 18});
 const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36});
 const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36});
 
@@ -1214,11 +1217,10 @@ const EBUS = ZERO;
 // XXX very temporary. Needs implementation.
 const CACHE = ZERO;
 
-const ARMR = Mux({name: 'ARMR', bitWidth: 18});
-
 // XXX This is wrong in many cases
-const ARML = Mux.methods({
-}) ({name: 'ARML', bitWidth: 18});
+const ARML = Mux({name: 'ARML', bitWidth: 18});
+
+const ARMR = Mux({name: 'ARMR', bitWidth: 18});
 
 const ARL = Reg({name: 'ARL', bitWidth: 18});
 const ARR = Reg({name: 'ARR', bitWidth: 18});
@@ -1275,7 +1277,7 @@ const ARX = LogicUnit.methods({
 // AR_AR AND ADMSK	"ADMSK,ADB/FM,ADA/AR,AD/AND,AR/AD"
 // FETCH		"MEM/IFET"
 // U 1072: VMA_AR AND ADMSK,FETCH,J/NOP
-const AR = BitCombiner({name: 'AR'});
+const AR = BitCombiner({name: 'AR', bitWidth: 36});
 const BR = Reg({name: 'BR', bitWidth: 36});
 const BRX = Reg({name: 'BRX', bitWidth: 36});
 
@@ -1469,13 +1471,13 @@ VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 
 MQ.inputs = [ZERO, SH, ONES, AD];
 
-ADA.inputs = [ZERO, ZERO, ZERO, ZERO, AR, ARX, MQ, PC];
+ADA.inputs = [AR, ARX, MQ, PC];
 ADA.controlInput = CR.ADA;
 
 ADB.inputs = [FM, BRx2, BR, ARx4];
 ADB.controlInput = CR.ADB;
 
-ADXA.inputs = [ZERO, ZERO, ZERO, ZERO, ARX, ARX, ARX, ARX];
+ADXA.inputs = [ARX, ARX, ARX, ARX];
 ADXA.controlInput = CR.ADA;
 
 ADXB.inputs = [ZERO, BRXx2, BRX, ARXx4];
