@@ -9,8 +9,8 @@ const {
   SERIAL_NUMBER, EBOX,
   CRAM, CRADR, CR,
   DRAM, DRADR, DR,
-  PC, IR,
-  BR, MQ,
+  VMA, PC, IR,
+  BR, MQ, AD,
   ZERO, ONES,
 } = require('../ebox-model');
 
@@ -83,7 +83,7 @@ describe('Clocking/latching', () => {
 
     // Setup stable state so AD can perform an ADD in first cycle.
     EBOX.reset();
-    PC.value = 0o123456n;
+    VMA.value = PC.value = 0o123456n;
     BR.value = 0o600100n;
     MQ.value = 0o000010n;
 
@@ -120,7 +120,7 @@ describe('Clocking/latching', () => {
     CRADR.value = X;
     CRAM.latch();
 
-    it(`should cycle through X, Y, Z and then repeat`, () => {
+    it(`should cycle through X, Y, Z and then repeat while doing muxing and logic`, () => {
       doCycle(Xcode);
       expect(CRADR.get().toString()).to.equal(Y.toString());
       doCycle(Ycode);
@@ -146,7 +146,7 @@ EXECUTE:`);
     function CL(pre) {
       console.log(`\
 ${pre} ; CRADR=${octal(CRADR.value)} \
-PC=${octal(PC.value)} BR=${octal(BR.value)} MQ=${octal(MQ.value)}`);
+PC=${octal(PC.value, 6)} BR=${octal(BR.value, 6)}=0x${BR.value.toString(16)} MQ=${octal(MQ.value, 6)} AD=${octal(AD.value, 6)}`);
     }
 
     function CD(code) {
@@ -160,8 +160,8 @@ ${octal(CR.value, 84/3)}`);
 if (0) {describe('EBOX', () => {
 
   it(`should reset itself and all EBOXUnits`, () => {
-    CRADR.stack = [1, 2, 3];    // Fill up a few things with state
-    CRADR.value = 0o1234;
+    CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
+    CRADR.value = 0o1234n;
     _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
     expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
     IR.value = (0o123456n << 18n) | 0o765432n;
