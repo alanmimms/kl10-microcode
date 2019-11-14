@@ -17,25 +17,25 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 // Enable debug output for each method type by setting appropriate
 // property value to `log()` or similar debug output function.
 const D = {
-  CRADR: console.log,
-  CRADRskip: console.log,
-  getInputs: log,
-  get: log,
-  latch: log,
+  CRADR: nop,
+  getInputs: nop,
+  get: nop,
+  latch: nop,
+  write: nop,
   reset: nop,
-  addr: log,
-  control: log,
-  func: log,
+  addr: nop,
+  control: nop,
+  func: nop,
 };
 
 
-function nop(x) {return x}
+function nop(T, P, F, x) {return x}
 
 // Log unit T of parent class P function F returning value x.
 function log(T, P, F, x) {
   const name = `${T.name}@${P || ''}`;
-  if (x == null) debugger;
-  console.log(`${name} ${F}=${octal(x, OW(T))}`);
+  const xString = x == null ? '' : `=${octal(x, OW(T))}`;
+  console.log(`${name} ${F}${xString}`);
   return x;
 }
 
@@ -191,7 +191,11 @@ const EBOXUnit = StampIt({
 }).props({
   value: 0n,
 }).methods({
-  reset() {this.value = 0n},
+
+  reset() {
+    D.reset(this, 'EBOXUnit', 'reset');
+    this.value = 0n;
+  },
 
   // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
   getAddress() {
@@ -263,6 +267,7 @@ const BitField = Combinatorial.compose({name: 'BitField'})
       }).methods({
 
         reset() {
+          D.reset(this, 'BitField', 'reset');
           this.wordWidth = Number(this.inputs.bitWidth);
           this.shift = shiftForBit(this.e, this.inputs.bitWidth);
           this.mask = (1n << BigInt(this.bitWidth)) - 1n;
@@ -326,6 +331,7 @@ const RAM = Clocked.compose({name: 'RAM'})
       }).methods({
 
         reset() {
+          D.reset(this, 'RAM', 'reset');
 
           if (this.bitWidth <= 64 && this.initValue === 0n) {
             this.data = new BigUint64Array(this.nWords);
@@ -341,6 +347,7 @@ const RAM = Clocked.compose({name: 'RAM'})
 
           if (!this.getControl()) { // Active-low /WRITE control
             this.value = this.get();
+            D.write(this, 'RAM', `write@${octal(this.addr)}`, this.value);
             this.data[this.addr] = this.value;
           } else {
             this.value = this.data[this.addr];
@@ -469,17 +476,20 @@ defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
 
 
 // Complex CRAM address calculation logic goes here...
-const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
+const CRADR = Clocked.init(function({stackDepth = 4}) {
   this.stackDepth = stackDepth;
 }).methods({
 
   reset() {
+    D.reset(this, null, 'reset');
     this.value = 0n;
     this.force1777 = false;
     this.stack = [];
+    D.CRADR(`CRADR reset`);
   },
 
   getInputs() {
+    D.CRADR(`CRADR getInputs start`);
 
     if (this.force1777) {
       this.force1777 = false;
@@ -489,8 +499,6 @@ const CRADR = ConstantUnit.init(function({stackDepth = 4}) {
     } else {
       const skip = CR.SKIP.get();
       let orBits = 0n;
-
-      D.CRADRskip(`CR.SKIP=${octal(CR.SKIP.get())}`);
 
       // Determine if LSB is forced to '1' by a skip test condition or
       // If DISP/MUL finds sign(FE) == 0.
@@ -583,6 +591,7 @@ const DR_CLOCK = Clock({name: 'DR_CLOCK'});
 const DRADR = ConstantUnit.methods({
 
   reset() {
+    D.reset(this, null, 'reset');
     this.value = 0n;
   },
 
@@ -640,6 +649,7 @@ EBOX = StampIt.compose(Named, {
 }).methods({
 
   reset() {
+    D.reset(this, null, 'reset');
     this.resetActive = true;
     this.run = false;
     this.unitArray = Object.values(EBOXUnit.units);
@@ -1192,6 +1202,7 @@ const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36});
 const SERIAL_NUMBER = ConstantUnit.methods({
 
   reset() {
+    D.reset(this, null, 'reset');
     this.value = BigInt(EBOX.serialNumber);
   },
 }) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18});
@@ -1419,11 +1430,11 @@ function defineBitFields(input, s, ignoreFields = []) {
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 CRAM.addrInput = CRADR;
-CRAM.controlInput = ZERO;
+CRAM.controlInput = ONES;       // Readonly by default
 CR.inputs = CRAM;
 
 DRAM.addrInput = DRADR;
-DRAM.controlInput = ZERO;
+DRAM.controlInput = ONES;       // Readonly by default
 DR.inputs = DRAM;
 
 CURRENT_BLOCK.inputs = EBUS;
@@ -1478,9 +1489,6 @@ ARMMR.controlInput = CR.VMAX;
 
 ARMM.inputs = [ARMML, ARMMR];
 
-ADx2.inputs = AD;
-ADdiv4.inputs = AD;
-
 ARMR.inputs = [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4];
 ARMR.controlInput = CR.AR;
 
@@ -1520,6 +1528,13 @@ SCADA.inputs = [ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, MAGIC_NUMBER];
 SCADA.controlInput = CR.SCADA;
 SCADB.inputs = [FE, AR_SIZE, AR_00_08, MAGIC_NUMBER];
 SCADB.controlInput = CR.SCADB;
+
+ADx2.inputs = AD;
+ADdiv4.inputs = AD;
+BRx2.inputs = BR;
+ARx4.inputs = AR;
+BRXx2.inputs = BRX;
+ARXx4.inputs = ARX;
 
 SCD_FLAGS.inputs = AR_00_12;
 VMA_FLAGS.inputs = ZERO;        // XXX VERY temporary
