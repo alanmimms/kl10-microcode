@@ -116,33 +116,20 @@ describe('Clocking/latching', () => {
     CD(Zcode);
 
     CRADR.value = X;
-    CL(Xcode);
-    EBOX.cycle();
-    CL(`   after`);
 
-    CL(Ycode);
-    EBOX.cycle();
-    CL(`   after`);
+    doCycle(Xcode);
+    doCycle(Ycode);
+    doCycle(Zcode);
+    doCycle(Xcode);
+    doCycle(Ycode);
+    doCycle(Zcode);
 
-    CL(Zcode);
-    EBOX.cycle();
-    CL(`   after`);
-
-    CL(Xcode);
-    EBOX.cycle();
-    CL(`   after`);
-
-    CL(Ycode);
-    EBOX.cycle();
-    CL(`   after`);
-
-    CL(Zcode);
-    EBOX.cycle();
-    CL(`   after`);
-
-    CL(Xcode);
-    EBOX.cycle();
-    CL(`   after`);
+    function doCycle(code) {
+      console.log('');
+      CL(code);
+      EBOX.cycle();
+      CL(`   after`);
+    }
 
     function CL(pre) {
       console.log(`\
