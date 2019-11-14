@@ -5,46 +5,13 @@ const expect = require('chai').expect;
 const {octal} = require('../util');
 
 const {
-  EBOXUnit, Fixupable, Clock, Named, ConstantUnit, Reg, Mux,
+  EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
   SERIAL_NUMBER, EBOX,
   CRAM, CRADR, CR,
   DRAM, DRADR, DR,
   PC, IR,
   BR, MQ,
 } = require('../ebox-model');
-
-
-describe('Fixupable', () => {
-  it(`should wrap singletons marked as such explicitly and leave others unwrapped`, () => {
-    const obj1ToRef = {a: 'this is the first singleton object we refer to'};
-    const obj2ToRef = {a: 'this is the second singleton object we refer to'};
-
-    var q = Fixupable.init(function({wrapped, notWrapped}) {
-      this.wrapped = wrapped;
-      this.notWrapped = notWrapped;
-    }) ({name: 'qq',
-         fixups: '[wrapped],notWrapped',
-         wrapped: 'obj1ToRef',
-         notWrapped: 'obj2ToRef'});
-
-    Fixupable.fixup(x => eval(x));
-
-
-    // {
-    //   fixups: '[wrapped],notWrapped',
-    //   wrapped: [ { a: 'this is the first singleton object we refer to' } ],
-    //   notWrapped: { a: 'this is the second singleton object we refer to' }
-    // });
-
-    expect(q.wrapped).to.be.an('array');
-    expect(q.wrapped[0]).to.have.key('a');
-    expect(q.wrapped[0].a).to.equal('this is the first singleton object we refer to');
-
-    expect(q.notWrapped).to.be.an('object');
-    expect(q.notWrapped).to.have.key('a');
-    expect(q.notWrapped.a).to.equal('this is the second singleton object we refer to');
-  });
-});
 
 
 describe('Named', () => {
@@ -79,14 +46,12 @@ describe('Mux+Reg', () => {
     D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
     E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
     Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
-    Fixupable.fixup(x => eval(x));
 
     it(`should select Mux inputs A-E (65-69 decimal) in turn`, () => {
       _.range(5).forEach(k => {
         Mcontrol.value = BigInt(k);
-        CLK.latch();
         expect(M.getInputs()).to.equal(BigInt(k + 65));
-        CLK.clockEdge();
+        CLK.latch();
         expect(M.get()).to.equal(BigInt(k + 65));
       });
     });
@@ -94,15 +59,13 @@ describe('Mux+Reg', () => {
 
   describe('Reg', () => {
     const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: 'M'});
-    Fixupable.fixup(x => eval(x));
 
     it(`should latch Mux output selected to A-E (65-69 decimal) in turn`, () => {
       _.range(5).forEach(k => {
         Mcontrol.value = BigInt(k);
-        CLK.latch();
         //    console.log(`↓ ${k}: R=${R.get()} M=${M.get()}`);
-        expect(R.latchedValue).to.equal(BigInt(k + 65));
-        CLK.clockEdge();
+        expect(R.value).to.equal(BigInt(k + 65));
+        CLK.latch();
         //    console.log(`↑ ${k}: R=${R.get()} M=${M.get()}`);
         expect(R.get()).to.equal(BigInt(k + 65));
       });
@@ -119,41 +82,42 @@ describe('Clocking/latching', () => {
     const Z = 300n;
 
     // Setup stable state so AD can perform an ADD in first cycle.
-    PC.latchedValue = 0o123456n;
-    BR.latchedValue = 0o600100n;
-    MQ.latchedValue = 0o000010n;
+    EBOX.reset();
+    PC.value = 0o123456n;
+    BR.value = 0o600100n;
+    MQ.value = 0o000010n;
 
     const Xcode = `X: AD/A+B, ADA/PC ADB/BR, J/Y`;
-    CRADR.latchedValue = X;
-    CR.latchedValue = 0n;
+    CRADR.value = X;
+    CR.value = 0n;
     CR.AD = CR.AD['A+B'];
     CR.ADA = CR.ADA.PC;
     CR.ADB = CR.ADB.BR;
     CR.J = Y;
-    CRAM.data[CRADR.latchedValue] = CR.latchedValue;
+    CRAM.data[CRADR.value] = CR.value;
     CD(Xcode);
 
     const Ycode = `Y: AD/A+B, ADA/MQ, ADB/AR*4`;
-    CRADR.latchedValue = Y;
-    CR.latchedValue = 0n;
+    CRADR.value = Y;
+    CR.value = 0n;
     CR.AD = CR.AD['A+B'];
     CR.ADA = CR.ADA.MQ;
     CR.ADB = CR.ADB['AR*4'];
     CR.J = Z;
-    CRAM.data[CRADR.latchedValue] = CR.latchedValue;
+    CRAM.data[CRADR.value] = CR.value;
     CD(Ycode);
 
     const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2`;
-    CRADR.latchedValue = Z;
-    CR.latchedValue = 0n;
+    CRADR.value = Z;
+    CR.value = 0n;
     CR.AD = CR.AD['A+B'];
     CR.ADA = CR.ADA.AR;
     CR.ADB = CR.ADB['BR*2'];
     CR.J = X;
-    CRAM.data[CRADR.latchedValue] = CR.latchedValue;
+    CRAM.data[CRADR.value] = CR.value;
     CD(Zcode);
 
-    CRADR.latchedValue = X;
+    CRADR.value = X;
     CL(Xcode);
     EBOX.cycle();
     CL(`   after`);
@@ -184,13 +148,13 @@ describe('Clocking/latching', () => {
 
     function CL(pre) {
       console.log(`\
-${pre} ; CRADR=${octal(CRADR.latchedValue)} \
-PC=${octal(PC.latchedValue)} BR=${octal(BR.latchedValue)} MQ=${octal(MQ.latchedValue)}`);
+${pre} ; CRADR=${octal(CRADR.value)} \
+PC=${octal(PC.value)} BR=${octal(BR.value)} MQ=${octal(MQ.value)}`);
     }
 
     function CD(code) {
       console.log(`${code}
-${octal(CRADR.latchedValue)}: ${octal(CR.latchedValue, 84/3)}`);
+${octal(CRADR.value)}: ${octal(CR.value, 84/3)}`);
     }
   });
 });
@@ -200,21 +164,20 @@ if (0) {describe('EBOX', () => {
 
   it(`should reset itself and all EBOXUnits`, () => {
     CRADR.stack = [1, 2, 3];    // Fill up a few things with state
-    CRADR.latchedValue = 0o1234;
+    CRADR.value = 0o1234;
     _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
     expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
-    IR.latchedValue = (0o123456n << 18n) | 0o765432n;
-    PC.latchedValue = 0o123456n;
+    IR.value = (0o123456n << 18n) | 0o765432n;
+    PC.value = 0o123456n;
     EBOX.reset();
     expect(CRAM.data[123]).to.equal(0n);
-    expect(CRADR.latchedValue).to.equal(0n);
+    expect(CRADR.value).to.equal(0n);
     expect(CRADR.stack.length).to.equal(0);
-    expect(IR.latchedValue).to.equal(0n);
-    expect(PC.latchedValue).to.equal(0n);
+    expect(IR.value).to.equal(0n);
+    expect(PC.value).to.equal(0n);
   });
 
   it(`should reflect its serial number`, () => {
-    expect(EBOX.SERIAL_NUMBER.latchedValue).to.equal(EBOX.serialNumber);
+    expect(EBOX.SERIAL_NUMBER.value).to.equal(EBOX.serialNumber);
   });
 });}
-
