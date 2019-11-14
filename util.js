@@ -4,12 +4,12 @@ const _ = require('lodash');
 // Return octal string for `n` value decoded as groups of `groupSize`
 // with at least `minDigits` octal digits padded on left with leading
 // zeroes.
-function octal(n, minDigits = 4, groupSize = 4) {
+function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0) ? 6 : 4) {
   const lzString = _.padStart(n.toString(8), minDigits, '0');
 
   if (groupSize > 0) {
     const re = RegExp(`(.{${groupSize}})`, 'g');
-    return lzString.match(re).join(' ');
+    return lzString.match(re).join('.');
   } else {
     return lzString;
   }
