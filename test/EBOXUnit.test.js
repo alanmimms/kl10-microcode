@@ -119,8 +119,8 @@ describe('Clocking/latching', () => {
 
     it(`should cycle through X, Y, Z and then repeat`, () => {
       doCycle(Xcode);
-      expect(CRADR.get().toString()).to.equal(Y.toString());
       doCycle(Ycode);
+      expect(CRADR.get().toString()).to.equal(Y.toString());
       expect(CRADR.get().toString()).to.equal(Z.toString());
       doCycle(Zcode);
       expect(CRADR.get().toString()).to.equal(X.toString());
