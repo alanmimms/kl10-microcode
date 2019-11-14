@@ -117,12 +117,20 @@ describe('Clocking/latching', () => {
 
     CRADR.value = X;
 
-    doCycle(Xcode);
-    doCycle(Ycode);
-    doCycle(Zcode);
-    doCycle(Xcode);
-    doCycle(Ycode);
-    doCycle(Zcode);
+    it(`should cycle through X, Y, Z and then repeat`, () => {
+      doCycle(Xcode);
+      expect(CRADR.get().toString()).to.equal(Y.toString());
+      doCycle(Ycode);
+      expect(CRADR.get().toString()).to.equal(Z.toString());
+      doCycle(Zcode);
+      expect(CRADR.get().toString()).to.equal(X.toString());
+      doCycle(Xcode);
+      expect(CRADR.get().toString()).to.equal(Y.toString());
+      doCycle(Ycode);
+      expect(CRADR.get().toString()).to.equal(Z.toString());
+      doCycle(Zcode);
+      expect(CRADR.get().toString()).to.equal(X.toString());
+    });
 
     function doCycle(code) {
       console.log('');
