@@ -39,6 +39,8 @@ describe('Mux+Reg', () => {
   let M, A, B, C, D, E, Mcontrol, R;
 
   describe('Mux', () => {
+    EBOX.reset();
+
     Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
     A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
     B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
@@ -116,11 +118,12 @@ describe('Clocking/latching', () => {
     CD(Zcode);
 
     CRADR.value = X;
+    CRAM.latch();
 
     it(`should cycle through X, Y, Z and then repeat`, () => {
       doCycle(Xcode);
-      doCycle(Ycode);
       expect(CRADR.get().toString()).to.equal(Y.toString());
+      doCycle(Ycode);
       expect(CRADR.get().toString()).to.equal(Z.toString());
       doCycle(Zcode);
       expect(CRADR.get().toString()).to.equal(X.toString());
@@ -133,7 +136,8 @@ describe('Clocking/latching', () => {
     });
 
     function doCycle(code) {
-      console.log('');
+      console.log(`
+EXECUTE:`);
       CL(code);
       EBOX.cycle();
       CL(`   after`);
@@ -146,8 +150,8 @@ PC=${octal(PC.value)} BR=${octal(BR.value)} MQ=${octal(MQ.value)}`);
     }
 
     function CD(code) {
-      console.log(`${code}
-${octal(CRADR.value)}: ${octal(CR.value, 84/3)}`);
+      console.log(`CRAM[${octal(CRADR.value)}] put ${code}
+${octal(CR.value, 84/3)}`);
     }
   });
 });
