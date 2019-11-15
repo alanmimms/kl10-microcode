@@ -2,7 +2,7 @@
 const _ = require('lodash');
 const expect = require('chai').expect;
 
-const {octal} = require('../util');
+const {octal, oct6} = require('../util');
 
 const {
   EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
@@ -10,7 +10,7 @@ const {
   CRAM, CRADR, CR,
   DRAM, DRADR, DR,
   VMA, PC, IR,
-  BR, MQ, AD,
+  AR, ARX, BR, BRX, MQ, AD, SH,
   ZERO, ONES,
 } = require('../ebox-model');
 
@@ -39,7 +39,7 @@ describe('Mux+Reg', () => {
   let M, A, B, C, D, E, Mcontrol, R;
 
   describe('Mux', () => {
-    EBOX.reset();
+    describe(`RESET EBOX`, () => EBOX.reset());
 
     Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
     A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
@@ -77,50 +77,58 @@ describe('Mux+Reg', () => {
 describe('Clocking/latching', () => {
 
   describe('Fill CRAM with test microcode', () => {
-    const X = 100n;
-    const Y = 200n;
-    const Z = 300n;
-
-    // Setup stable state so AD can perform an ADD in first cycle.
-    EBOX.reset();
-    VMA.value = PC.value = 0o123456n;
-    BR.value = 0o600100n;
-    MQ.value = 0o000010n;
-
-    const Xcode = `X: AD/A+B, ADA/PC ADB/BR, J/Y`;
-    CRADR.value = X;
-    CR.value = 0n;
-    CR.AD = CR.AD['A+B'];
-    CR.ADA = CR.ADA.PC;
-    CR.ADB = CR.ADB.BR;
-    CR.J = Y;
-    CRAM.data[CRADR.value] = CR.value;
-    CD(Xcode);
-
-    const Ycode = `Y: AD/A+B, ADA/MQ, ADB/AR*4`;
-    CRADR.value = Y;
-    CR.value = 0n;
-    CR.AD = CR.AD['A+B'];
-    CR.ADA = CR.ADA.MQ;
-    CR.ADB = CR.ADB['AR*4'];
-    CR.J = Z;
-    CRAM.data[CRADR.value] = CR.value;
-    CD(Ycode);
-
-    const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2`;
-    CRADR.value = Z;
-    CR.value = 0n;
-    CR.AD = CR.AD['A+B'];
-    CR.ADA = CR.ADA.AR;
-    CR.ADB = CR.ADB['BR*2'];
-    CR.J = X;
-    CRAM.data[CRADR.value] = CR.value;
-    CD(Zcode);
-
-    CRADR.value = X;
-    CRAM.latch();
 
     it(`should cycle through X, Y, Z and then repeat while doing muxing and logic`, () => {
+      const X = 100n;
+      const Y = 200n;
+      const Z = 300n;
+
+      // Setup stable state so AD can perform an ADD in first cycle.
+      EBOX.reset();
+      console.log(`\n\n= = = = EBOX was RESET = = = =\n`);
+      VMA.value = PC.value = 0o123456n;
+      BR.value = 0o600100n;
+      MQ.value = 0o000010n;
+
+      const Xcode = `X: AD/A+B, ADA/PC ADB/BR, AR/AR, AR CTL/ARR LOAD, J/Y`;
+      CRADR.value = X;
+      CR.value = 0n;
+      CR.AD = CR.AD['A+B'];
+      CR.ADA = CR.ADA.PC;
+      CR.ADB = CR.ADB.BR;
+
+      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
+      CR.J = Y;
+      CRAM.data[CRADR.value] = CR.value;
+
+      // Select serial number into ARR to prep for next cycle
+      CR.AR = CR.AR.AR;
+
+      CD(Xcode);
+
+      const Ycode = `Y: AD/A+B, ADA/MQ, ADB/AR*4`;
+      CRADR.value = Y;
+      CR.value = 0n;
+      CR.AD = CR.AD['A+B'];
+      CR.ADA = CR.ADA.MQ;
+      CR.ADB = CR.ADB['AR*4'];
+      CR.J = Z;
+      CRAM.data[CRADR.value] = CR.value;
+      CD(Ycode);
+
+      const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2`;
+      CRADR.value = Z;
+      CR.value = 0n;
+      CR.AD = CR.AD['A+B'];
+      CR.ADA = CR.ADA.AR;
+      CR.ADB = CR.ADB['BR*2'];
+      CR.J = X;
+      CRAM.data[CRADR.value] = CR.value;
+      CD(Zcode);
+
+      CRADR.value = X;
+      CRAM.latch();
+
       doCycle(Xcode);
       expect(CRADR.get().toString()).to.equal(Y.toString());
       doCycle(Ycode);
@@ -146,7 +154,8 @@ EXECUTE:`);
     function CL(pre) {
       console.log(`\
 ${pre} ; CRADR=${octal(CRADR.value)} \
-PC=${octal(PC.value, 6)} BR=${octal(BR.value, 6)}=0x${BR.value.toString(16)} MQ=${octal(MQ.value, 6)} AD=${octal(AD.value, 6)}`);
+PC=${oct6(PC.value)} BR=${oct6(BR.value)} \
+MQ=${oct6(MQ.value)} AD=${oct6(AD.value)} AR=${octal(AR.value, 12)}`);
     }
 
     function CD(code) {
@@ -166,7 +175,7 @@ if (0) {describe('EBOX', () => {
     expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
     IR.value = (0o123456n << 18n) | 0o765432n;
     PC.value = 0o123456n;
-    EBOX.reset();
+    describe(`RESET EBOX`, () => EBOX.reset());
     expect(CRAM.data[123]).to.equal(0n);
     expect(CRADR.value).to.equal(0n);
     expect(CRADR.stack.length).to.equal(0);
