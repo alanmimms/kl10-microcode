@@ -336,16 +336,16 @@ const RAM = Clocked.compose({name: 'RAM'})
 
         latch() {
           this.addr = this.getAddress();
+          const isWrite = !this.getControl(); // Active-low /WRITE control
 
-          if (!this.getControl()) { // Active-low /WRITE control
+          if (isWrite) {
             this.value = this.get();
-            D.write(this, 'RAM', `write@${octal(this.addr)}`, this.value);
             this.data[this.addr] = this.value;
           } else {
             this.value = this.data[this.addr];
           }
 
-          return D.latch(this, 'RAM', 'latch', this.value);
+          return D.latch(this, 'RAM', isWrite ? 'write' : 'read', this.value);
         },
       });
 module.exports.RAM = RAM;
@@ -1155,8 +1155,9 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
 
       }) ({name: 'FEcontrol', bitWidth: 2});
 
-const FE = ShiftReg({name: 'FE', bitWidth: 10});
-
+const FE = ShiftReg({name: 'FE', bitWidth: 10,
+                     clock: FieldMatchClock({name: 'FE_CLOCK',
+                                             inputs: CR.FE, matchValue: CR.FE.SCAD})});
 const SH = LogicUnit.methods({
 
   getInputs() {
@@ -1308,8 +1309,12 @@ const ARX = LogicUnit.methods({
 // FETCH		"MEM/IFET"
 // U 1072: VMA_AR AND ADMSK,FETCH,J/NOP
 const AR = BitCombiner({name: 'AR', bitWidth: 36});
-const BR = Reg({name: 'BR', bitWidth: 36});
-const BRX = Reg({name: 'BRX', bitWidth: 36});
+const BR = Reg({name: 'BR', bitWidth: 36,
+                clock: FieldMatchClock({name: 'BR_CLOCK',
+                                        inputs: CR.BR, matchValue: CR.BR.AR})});
+const BRX = Reg({name: 'BRX', bitWidth: 36,
+                 clock: FieldMatchClock({name: 'BRX_CLOCK',
+                                         inputs: CR.BRX, matchValue: CR.BRX.ARX})});
 
 const SC = LogicUnit.methods({
 
