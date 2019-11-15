@@ -15,12 +15,11 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 
 
 // Enable debug output for each method type by setting appropriate
-// property value to `log()` or similar debug output function.
+// property value to `LOG()` or similar debug output function.
 const D = {
-  CRADR: nop,
   getInputs: nop,
   get: nop,
-  latch: nop,
+  latch: LOG,
   write: nop,
   reset: nop,
   addr: nop,
@@ -32,9 +31,10 @@ const D = {
 function nop(T, P, F, x) {return x}
 
 // Log unit T of parent class P function F returning value x.
-function log(T, P, F, x) {
+function LOG(T, P, F, x) {
   const name = `${T.name}@${P || ''}`;
-  const xString = x == null ? '' : `=${octal(x, OW(T))}`;
+  const bw = Number(T.bitWidth || 36);
+  const xString = x == null ? '' : `=${octal(x, Math.ceil(bw/3))}`;
   console.log(`${name} ${F}${xString}`);
   return x;
 }
@@ -62,16 +62,8 @@ module.exports.Named = Named;
 const Clock = Named.init(function({drives = []}) {
         this.drives = drives;
       }).methods({
-
-        addUnit(unit) {
-          this.drives.push(unit);
-        },
-
-        cycle() {
-          this.drives.forEach(unit => {
-            unit.latch();
-          });
-        },
+        addUnit(unit) { this.drives.push(unit) },
+        cycle() { this.drives.forEach(unit => unit.latch()) },
       });
 module.exports.Clock = Clock;
 
@@ -193,7 +185,6 @@ const EBOXUnit = StampIt({
 }).methods({
 
   reset() {
-    D.reset(this, 'EBOXUnit', 'reset');
     this.value = 0n;
   },
 
@@ -242,6 +233,7 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
 
 // Use this mixin to define a Clocked unit.
 const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
+
   latch() {
     this.value = this.getInputs();
     return D.latch(this, 'Clocked', 'latch', this.value);
@@ -311,8 +303,8 @@ const BitCombiner = Combinatorial.compose({name: 'BitCombiner'})
       .methods({
 
         getInputs() {
-          const result = this.inputs.reduce((v, i) => v = (v << i.bitWidth) | i.get(), 0n);
-          return log(this, 'BitCombiner', 'getInputs', result);
+          this.value = this.inputs.reduce((v, i) => (v << i.bitWidth) | i.get(), 0n);
+          return D.getInputs(this, 'BitCombiner', 'getInputs', this.value);
         },
       });
 module.exports.BitCombiner = BitCombiner;
@@ -359,17 +351,46 @@ const RAM = Clocked.compose({name: 'RAM'})
 module.exports.RAM = RAM;
 
 
-// Use this for example as a `control` for a RAM to write when
-// `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
+// Use this for example as a `control` for a RAM (e.g., FM) to write
+// when `COND/FM WRITE` with:
+//      inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"
 const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
-      .init(function({matchValue}) {
+      .init(function({matchValue, matchF = (cur => BigInt(+(cur === this.matchValue)))}) {
         this.matchValue = eval(matchValue); // Should be static
+        this.matchF = matchF;
       }).methods({
 
         getInputs() {
           const cur = this.inputs.get();
-          this.value = BigInt(+(cur === this.matchValue));
+          this.value = this.matchF(cur);
           return D.getInputs(this, 'FieldMatcher', 'getInputs', this.value);
+        },
+      });
+
+// Use this for example as a `control` for a RAM to write when
+// `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
+const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
+      .init(function({inputs, matchValue, matchF}) {
+        this.inputs = inputs;
+        this.matchValue = eval(matchValue); // Should be static
+        this.matchF = matchF || (cur => BigInt(+(cur === this.matchValue)));
+        EBOXClock.addUnit(this);
+      }).methods({
+
+        reset() {
+          this.value = this.prevValue = 0n;
+        },
+
+        latch() {
+          const cur = this.inputs.get();
+          this.value = this.matchF(cur);
+
+          if (this.value && !this.prevValue) { // Do on rising edge only
+            D.latch(this, 'FieldMatchClock', 'latch', this.value);
+            this.drives.forEach(unit => unit.latch());
+          }
+
+          this.prevValue = this.value;
         },
       });
 
@@ -381,7 +402,7 @@ const Mux = Combinatorial.compose({name: 'Mux'}).methods({
   getInputs() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    return D.getInputs(this, 'Mux', 'getInputs', input.get());
+    return D.getInputs(this, `Mux control=${controlValue}`, 'getInputs', input.get());
   },
 });
 module.exports.Mux = Mux;
@@ -485,11 +506,9 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     this.value = 0n;
     this.force1777 = false;
     this.stack = [];
-    D.CRADR(`CRADR reset`);
   },
 
   getInputs() {
-    D.CRADR(`CRADR getInputs start`);
 
     if (this.force1777) {
       this.force1777 = false;
@@ -577,7 +596,6 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
       }
 
       this.value = orBits | CR.J.get();
-      D.CRADR(`CRADR orBits=${octal(orBits)} CR.J.get=${octal(CR.J.get())}`);
       return D.getInputs(this, null, 'getInputs', this.value);
     }
   },
@@ -979,7 +997,15 @@ const VMA = Reg.compose({name: 'VMA'})
 const PC = Reg({name: 'PC', bitWidth: 35 - 13 + 1});
 
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35});
-const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1});
+
+const DATAO_APR = CR['DIAG FUNC']['DATAO APR'];
+const DIAG_FUNC = CR.COND['DIAG FUNC'];
+const ADR_BREAK_matchF = cur => cur === DIAG_FUNC && CR['DIAG FUNC'] === DATAO_APR;
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1,
+                       clock: FieldMatchClock({name: 'ADR_BREAK_CLOCK',
+                                               inputs: CR['DIAG FUNC'],
+                                               matchF: ADR_BREAK_matchF,
+                                               matchValue: DATAO_APR})});
 
 const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
 
@@ -1222,8 +1248,12 @@ const ARML = Mux({name: 'ARML', bitWidth: 18});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18});
 
-const ARL = Reg({name: 'ARL', bitWidth: 18});
-const ARR = Reg({name: 'ARR', bitWidth: 18});
+const ARL = Reg({name: 'ARL', bitWidth: 18,
+                 clock: FieldMatchClock({name: 'ARL_CLOCK', inputs: CR['AR CTL'],
+                                         matchValue: CR['AR CTL']['ARL LOAD']})});
+const ARR = Reg({name: 'ARR', bitWidth: 18,
+                 clock: FieldMatchClock({name: 'ARR_CLOCK', inputs: CR['AR CTL'],
+                                         matchValue: CR['AR CTL']['ARR LOAD']})});
 
 const ARX = LogicUnit.methods({
 
@@ -1366,13 +1396,6 @@ const MBOX = RAM.methods({
 }) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36});
-
-
-// Return the number of octal digits necessary to hold the bitWidth of
-// the unit.
-function OW(u) {
-  Math.floor(Number(u.bitWidth) + 2 / 3);
-}
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
