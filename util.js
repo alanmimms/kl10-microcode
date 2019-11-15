@@ -9,12 +9,13 @@ function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0) ? 6 : 4) {
 
   if (groupSize > 0) {
     const re = RegExp(`(.{${groupSize}})`, 'g');
-    return lzString.match(re).join('.');
+    return (lzString.match(re) || [lzString]).join('.');
   } else {
     return lzString;
   }
 }
 module.exports.octal = octal;
+module.exports.oct6 = n => octal(n, 6);
 
 
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of
