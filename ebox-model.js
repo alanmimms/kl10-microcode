@@ -20,6 +20,7 @@ const D = {
   getInputs: nop,
   get: nop,
   DPAget: LOG,
+  MUXget: LOG,
   latch: LOG,
   write: nop,
   reset: nop,
@@ -292,7 +293,7 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
 module.exports.ConstantUnit = ConstantUnit;
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
-const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: -1n});
+const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: 0o777777777777n});
 module.exports.ZERO = ZERO;
 module.exports.ONES = ONES;
 
@@ -400,10 +401,10 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
 // the value of the selected input on the output.
 const Mux = Combinatorial.compose({name: 'Mux'}).methods({
 
-  getInputs() {
+  get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    return D.getInputs(this, `Mux control=${controlValue}`, 'getInputs', input.get());
+    return D.MUXget(this, `Mux control=${controlValue}`, 'get', input.get());
   },
 });
 module.exports.Mux = Mux;
@@ -450,9 +451,10 @@ const ShiftMult = Combinatorial.compose({name: 'ShiftMult'})
         this.shift = BigInt(shift);
       }).methods({
 
-        getInputs() {
-          const result = this.inputs.get() << this.shift;
-          return D.getInputs(this, 'ShiftMult', 'getInputs', result);
+        get() {
+          const inp = this.inputs.get();
+          const result = inp << this.shift;
+          return D.get(this, 'ShiftMult', `get in=${octW(inp)} result=`, result);
         },
       });
 module.exports.ShiftMult = ShiftMult;
@@ -892,7 +894,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     }
 
     return D.DPAget(this, 'DataPathALU',
-                    `get a=${oct6(a)} b=${oct6(b)} cin=${cin} result=`, result);
+                    `get a=${octW(a)} b=${octW(b)} cin=${cin} result=`, result);
   },
 });
 
@@ -1015,64 +1017,109 @@ const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 
 const MQ = LogicUnit.methods({
+// MQ*2 else if COND/REG CTL: MQ else MQ
+  //     MQ     MQ CTL     SPEC/MQ SHIFT  COND/REG CTL   Action
+  //  0:MQ SEL   0:MQ            0             0           MQ
+  //  0:MQ SEL   0:MQ            0             1           MQ*2 + AD CRY-2
+  //  0:MQ SEL   0:MQ            1             0           MQ/4 + ADX34,ADX35
+  //  0:MQ SEL   0:MQ            1?            1           MQ
+  //  0:MQ SEL   0:MQ*2          0             1           MQ*2 + AD CRY-2
+  //  0:MQ SEL   0:MQ*2          1?            1           MQ
 
-  getInputs() {
+
+  //  0:MQ SEL   1:MQ*2    MQ*2
+  //  0:MQ SEL   2:MQ*.5   MQ/2 (drops bits 0,6,12,18,24,30)
+  //  0:MQ SEL   3:0S      0s
+  //  1:MQM SEL  0:SH      if SPEC/MQ SHIFT=1: MQ/4 else if COND/REG CTL: MQM else SH
+  //  1:MQM SEL  1:MQ*.25  MQ/4 (hi bits ADX34, ADX35)
+  //  1:MQM SEL  2:1S      1s
+  //  1:MQM SEL  3:AD      AD
+  // XXX todo needs CLR/MQ, CLR/AR+MQ, CRL/ARX+MQ, CLR/AR+ARX+MQ, CLR/ARL+ARX+MQ, CLR/ARR+MQ
+  get() {
     let result = 0n;
+    const mq = CR.MQ;
+    const ctl = CR['MQ CTL'];
+    const regctl = CR.COND.get() === CR.COND['REG CTL'];
+    const ctlV = ctl.get();
 
-    // Our complex operations are selected by COND/REG CTL
-    if (CR.COND.get() === CR.COND['REG CTL']) {
-      const MQ_CTL = CR['MQ CTL'];
+    if (regctl) {
 
-      if (MQ.get() === MQ['MQ SEL']) {
+      if (mq.get() === mq['MQ SEL']) {
 
-        switch (MQ_CTL.get()) {
+        switch (ctlV) {
         default:
-        case MQ_CTL.MQ:
+        case ctl.MQ:
           result = this.value;
           break;
 
-        case MQ_CTL['MQ*2']:
-          result = (this.value << 1n) | ADX.get() & 1;
+        case ctl['MQ*2']:
+          result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
           break;
 
-        case MQ_CTL['MQ*.5']:
-          result = (this.value >> 1n) & ~(maskForBit(0)  |
-                                          maskForBit(6)  |
-                                          maskForBit(12) |
-                                          maskForBit(18) |
-                                          maskForBit(24) |
-                                          maskForBit(30));
+        case ctl['MQ*.5']:
+          result = this.value;  // This is NOT USED and WRONG
+          break;
 
-        case MQ_CTL['0S']:
+        case ctl['0S']:
           result = 0n;
           break;
         }
-      } else {                  // Must be MQ/MQM SEL
+      } else {                  // MQ/MQM SEL
 
-        switch (MQ_CTL.get()) {
+        switch (ctlV) {
         default:
-        case MQ_CTL['SH']:
+        case ctl['SH']:
           result = SH.get();
           break;
 
-        case MQ_CTL['MQ*.25']:
+        case ctl['MQ*.25']:
           result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
           break;
 
-        case MQ_CTL['1S']:
+        case ctl['1S']:
           result = ONES.get();
           break;
 
-        case MQ_CTL['1S']:
+        case ctl['AD']:
           result = AD.get();
           break;
         }
       }
+    } else {                    // Not COND/REG CTL
+        switch (ctlV) {
+        default:
+        case ctl['SH']:
+          result = SH.get();
+          break;
+
+        case ctl['MQ*.25']:
+          result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
+          break;
+
+        case ctl['1S']:
+          result = ONES.get();
+          break;
+
+        case ctl['AD']:
+          result = AD.get();
+          break;
+        }
     }
 
-    return D.getInputs(this, null, 'getInputs', result);
+    // Several of the above cases yield > 36 bits and need trimming.
+    result &= ONES.value;
+
+    return D.MUXget(this, null, `get ctlV=${ctlV} mq=${mq.get()} regctl=${regctl}`, result);
   },
 }) ({name: 'MQ', bitWidth: 36});
+
+
+// XXX TODO add loBitsFrom (ADX0) property
+const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36});
+// XXX TODO drops bits 0,6,12,18,24,30
+const MQdiv2 = ShiftDiv({name: 'MQdiv2', shift: 1, bitWidth: 36});
+// XXX TODO add hiBitsFrom property (ADX34,ADX35)
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -1092,9 +1139,9 @@ const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12});
 ////////////////////////////////////////////////////////////////
 // Logic units.
 const BRx2 = ShiftMult({name: 'BRx2', shift: 1, bitWidth: 36});
-const ARx4 = ShiftMult({name: 'ARx4', shift: 1, bitWidth: 36});
+const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36});
 const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36});
-const ARXx4 = ShiftMult({name: 'ARXx4', shift: 1, bitWidth: 36});
+const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36});
 
 
 // SCAD CONTROL
@@ -1481,11 +1528,14 @@ FM.inputs = AR;
 FM.controlInput = FieldMatcher({name: 'FM_WRITE', inputs: CR.COND,
                                 matchValue: CR.COND['FM WRITE']});
 
-AD.inputs = [ADB, ADA, ZERO];
+// XXX cin needs to be correctly defined.
+AD.inputs = [ADA, ADB, ZERO];
 AD.funcInput = CR.AD;
 AD_13_35.inputs = AD;
 AD_13_17.inputs = AD;
-ADX.inputs = [ADXB, ADXA, ZERO];
+
+// XXX cin needs to be correctly defined.
+ADX.inputs = [ADXA, ADXB, ZERO];
 ADX.funcInput = CR.AD;
 
 PC.inputs = VMA;
@@ -1499,7 +1549,8 @@ VMA_HELD.inputs = VMA;
 VMA_PREV_SECT.inputs = AD_13_17;
 VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 
-MQ.inputs = [ZERO, SH, ONES, AD];
+MQ.inputs = [MQ, MQx2, MQdiv2, ZERO,
+             SH, MQdiv4, ONES, AD];
 
 ADA.inputs = [AR, ARX, MQ, PC];
 ADA.controlInput = CR.ADA;
