@@ -90,20 +90,16 @@ describe('Clocking/latching', () => {
       BR.value = 0o600100n;
       MQ.value = 0o000010n;
 
-      const Xcode = `X: AD/A+B, ADA/PC ADB/BR, AR/AR, AR CTL/ARR LOAD, J/Y`;
+      const Xcode = `X: AD/A+B, ADA/PC ADB/BR, AR/AD, AR CTL/ARR LOAD, J/Y`;
       CRADR.value = X;
       CR.value = 0n;
       CR.AD = CR.AD['A+B'];
       CR.ADA = CR.ADA.PC;
       CR.ADB = CR.ADB.BR;
-
+      CR.AR = CR.AR.AD;
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.J = Y;
       CRAM.data[CRADR.value] = CR.value;
-
-      // Select serial number into ARR to prep for next cycle
-      CR.AR = CR.AR.AR;
-
       CD(Xcode);
 
       const Ycode = `Y: AD/A+B, ADA/MQ, ADB/AR*4`;
