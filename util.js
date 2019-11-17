@@ -4,18 +4,19 @@ const _ = require('lodash');
 // Return octal string for `n` value decoded as groups of `groupSize`
 // with at least `minDigits` octal digits padded on left with leading
 // zeroes.
-function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0) ? 6 : 4) {
+function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0) ? 6 : 4, delim = '.') {
   const lzString = _.padStart(n.toString(8), minDigits, '0');
 
   if (groupSize > 0) {
     const re = RegExp(`(.{${groupSize}})`, 'g');
-    return (lzString.match(re) || [lzString]).join('.');
+    return (lzString.match(re) || [lzString]).join(delim);
   } else {
     return lzString;
   }
 }
 module.exports.octal = octal;
 module.exports.oct6 = n => octal(n, 6);
+module.exports.octW = n => octal(n, 12, 6, ',,');
 
 
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of
