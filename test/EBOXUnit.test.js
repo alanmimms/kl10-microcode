@@ -2,7 +2,7 @@
 const _ = require('lodash');
 const expect = require('chai').expect;
 
-const {octal, oct6} = require('../util');
+const {octal, oct6, octW} = require('../util');
 
 const {
   EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
@@ -90,7 +90,7 @@ describe('Clocking/latching', () => {
       BR.value = 0o600100n;
       MQ.value = 0o000010n;
 
-      const Xcode = `X: AD/A+B, ADA/PC ADB/BR, AR/AD, AR CTL/ARR LOAD, J/Y`;
+      const Xcode = `X: AD/A+B, ADB/BR, ADA/PC, AR/AD, AR CTL/ARR LOAD, J/Y`;
       CRADR.value = X;
       CR.value = 0n;
       CR.AD = CR.AD['A+B'];
@@ -102,17 +102,19 @@ describe('Clocking/latching', () => {
       CRAM.data[CRADR.value] = CR.value;
       CD(Xcode);
 
-      const Ycode = `Y: AD/A+B, ADA/MQ, ADB/AR*4`;
+      const Ycode = `Y: AD/A+B, ADB/AR*4, ADA/MQ, AR/AD, AR CTL/ARR LOAD, J/Z`;
       CRADR.value = Y;
       CR.value = 0n;
       CR.AD = CR.AD['A+B'];
       CR.ADA = CR.ADA.MQ;
       CR.ADB = CR.ADB['AR*4'];
+      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
+      CR.AR = CR.AR.AD;
       CR.J = Z;
       CRAM.data[CRADR.value] = CR.value;
       CD(Ycode);
 
-      const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2`;
+      const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2, J/X`;
       CRADR.value = Z;
       CR.value = 0n;
       CR.AD = CR.AD['A+B'];
@@ -149,9 +151,9 @@ EXECUTE:`);
 
     function CL(pre) {
       console.log(`\
-${pre} ; CRADR=${octal(CRADR.value)} \
-PC=${oct6(PC.value)} BR=${oct6(BR.value)} \
-MQ=${oct6(MQ.value)} AD=${oct6(AD.value)} AR=${octal(AR.value, 12)}`);
+${pre} ; CRADR=${octal(CRADR.value)}
+   PC=${octW(PC.value)} BR=${octW(BR.value)} \
+MQ=${octW(MQ.value)} AD=${octW(AD.value)} AR=${octW(AR.value)}`);
     }
 
     function CD(code) {
