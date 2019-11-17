@@ -4,7 +4,7 @@ const util = require('util');
 const StampIt = require('@stamp/it');
 
 const {
-  octal,
+  octal, oct6, octW,
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask
 } = require('./util');
@@ -19,6 +19,7 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const D = {
   getInputs: nop,
   get: nop,
+  DPAget: LOG,
   latch: LOG,
   write: nop,
   reset: nop,
@@ -34,7 +35,7 @@ function nop(T, P, F, x) {return x}
 function LOG(T, P, F, x) {
   const name = `${T.name}@${P || ''}`;
   const bw = Number(T.bitWidth || 36);
-  const xString = x == null ? '' : `=${octal(x, Math.ceil(bw/3))}`;
+  const xString = x == null ? '' : `=${octW(x)}`;
   console.log(`${name} ${F}${xString}`);
   return x;
 }
@@ -852,7 +853,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     return v;
   },
 
-  getInputs() {
+  get() {
     const func = this.getFunc();
     const f = Number(func) & 0o37;
     const a = this.inputs[0].get();
@@ -890,7 +891,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['A-1']:      result = this.do(f, a, b);          break;
     }
 
-    return D.getInputs(this, 'DataPathALU', 'getInputs', result);
+    return D.DPAget(this, 'DataPathALU',
+                    `get a=${oct6(a)} b=${oct6(b)} cin=${cin} result=`, result);
   },
 });
 
@@ -1519,7 +1521,7 @@ ARMMR.controlInput = CR.VMAX;
 
 ARMM.inputs = [ARMML, ARMMR];
 
-ARMR.inputs = [SERIAL_NUMBER, CACHE, ADX, EBUS, SH, ADx2, ADdiv4];
+ARMR.inputs = [SERIAL_NUMBER, CACHE, AD, EBUS, SH, ADx2, ADdiv4];
 ARMR.controlInput = CR.AR;
 
 ARML.inputs = [AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4];
