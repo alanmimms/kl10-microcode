@@ -1016,15 +1016,63 @@ const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 
+// From p. 155 Figure 2-7 MQ Selection:
+// CRAM   SPEC     DISP/  DISP/   MQ   MQM  MQM   MQM   MQ    MQ
+//  MQ   MQ SHIFT   DIV    MUL    CTL   EN  SEL2  SEL1  SEL2  SEL1
+//   0      0        0      0     00    0     0     0    1     1
+//   0      0        1      0     0X    0     0     0    1     0
+//   0      1        0      0     0X    0     0     0    1     0
+//   1                            11    1     1     0    0     0
+//   1      0        0      0     00    1     0     0    0     0
+//   1      0        0      1     00    1     0     0    0     0
+//   0      0        0      0     01    0     0     0    1     0
+//   1      0        0      0     10    1     1     1    0     0
+//   1      0        0      0     11    1     0     0    0     0
+// RESET    0        0      0     00    1     0     0    0     0
+//
+// DISP/MUL implies MQ SHIFT, AD LONG, dispatch on FE0!MQ34!MQ35
+// DISP/DIV implies MQ SHIFT, AD LONG, dispatch on FE0!BR0!AD CRY0
+
+// From MP00301_KL10PV_Jun80 p. 365 (M8543 CTL2):
+//   MQ                MQ    MQM    MQM     MQ
+//  FUNC        MQ/    CTL/   EN    SEL    SEL
+//-------     ------   ----- ----  -----  -----
+//  HOLD         0       -     0     00     11
+//    0          0      #3     0     00     00
+//   LSH         0      #1     0     00     10
+//   RSH         0      #2     0     00     01
+//
+//   SH          1       -     1     01     00
+//   AD          1      #3     1     10     00
+//   RSH*2       1      #1     1     10     00
+//    1          1      #2     1     11     00
+//
+// DIV (LSH)     0       -     0     00     10
+// MUL (RSH*2)   1       -     1     00     00
+// RESET         -       -     1     11     00
+//   CLR         0       -     0     00     00
+//
+// MQ CLR   = CLR/MQ & (MEM/ARL IND | SPEC/ARL IND | COND/ARL IND)
+// MQM EN   = RESET | CRAM.MQ
+// MQM SEL2 = MQ/MQM SEL & (RESET | REG CTL #07 | MQ CLR)
+// MQM SEL1 = MQ/MQM SEL & !(MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV)
+// MQ  SEL2 = MQ/MQ  SEL & !(RESET | REG CTL #07 | MQ CLR)
+// MQ  SEL1 = MQ/MQ  SEL & !(MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV)
 const MQ = LogicUnit.methods({
+
 // MQ*2 else if COND/REG CTL: MQ else MQ
-  //     MQ     MQ CTL     SPEC/MQ SHIFT  COND/REG CTL   Action
-  //  0:MQ SEL   0:MQ            0             0           MQ
-  //  0:MQ SEL   0:MQ            0             1           MQ*2 + AD CRY-2
-  //  0:MQ SEL   0:MQ            1             0           MQ/4 + ADX34,ADX35
-  //  0:MQ SEL   0:MQ            1?            1           MQ
-  //  0:MQ SEL   0:MQ*2          0             1           MQ*2 + AD CRY-2
-  //  0:MQ SEL   0:MQ*2          1?            1           MQ
+  //                    DISP/MUL
+  //                      or
+  //                    DISP/DIV
+  //                      or
+  //                     SPEC/    COND/
+  //     MQ     MQ CTL  MQ SHIFT  REG CTL   Action
+  //  0:MQ SEL   0:MQ     0         0        MQ
+  //  0:MQ SEL   0:MQ     0         1        MQ*2 + AD CRY-2
+  //  0:MQ SEL   0:MQ     1         0        MQ/4 + ADX34,ADX35
+  //  0:MQ SEL   0:MQ     1?        1        MQ
+  //  0:MQ SEL   0:MQ*2   0         1        MQ*2 + AD CRY-2
+  //  0:MQ SEL   0:MQ*2   1?        1        MQ
 
 
   //  0:MQ SEL   1:MQ*2    MQ*2
@@ -1038,53 +1086,114 @@ const MQ = LogicUnit.methods({
   get() {
     let result = 0n;
     const mq = CR.MQ;
+    const mqmEnable = mq.get();
     const ctl = CR['MQ CTL'];
     const regctl = CR.COND.get() === CR.COND['REG CTL'];
     const ctlV = ctl.get();
+    const spec = CR.SPEC;
+    const specV = spec.get();
+    const disp = CR.DISP;
+    const dispV = disp.get();
 
-    if (regctl) {
+    // From MP00301_KL10PV_Jun80 p. 365 (CTL2)
+    // MQ CLR   = CLR/MQ & (MEM/ARL IND | SPEC/ARL IND | COND/ARL IND)
+    // MQM EN   = RESET | CRAM.MQ
+    // b1 = MQ CLR | REG CTL #07 | RESET
+    // b0 = MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV
+    // MQM SEL2 = MQ/MQM SEL & b1
+    // MQM SEL1 = MQ/MQM SEL & !b0
+    // MQ  SEL2 = MQ/MQ  SEL & !b1
+    // MQ  SEL1 = MQ/MQ  SEL & !b0
+    const mqClr = CR.CLR === CR.CLR['MQ'] &&
+          (CR.MEM === CR.MEM['ARL IND']
+           || CR.SPEC === CR.SPEC['ARL IND']
+           || CR.COND === CR.COND['ARL IND']);
+    const b1 = mqClr || (ctl & 2);
+    const b0 = mqClr || (ctl & 1) || specV === spec['MQ SHIFT'] ||
+          dispV === disp.MUL || dispV === disp.DIV;
+    const selector = +!!b1 << 1n | +!!b0;
 
-      if (mq.get() === mq['MQ SEL']) {
+    if (!mqmEnable) {        // MQM is not enabled, so only MQ or 0s
 
-        switch (ctlV) {
+      // Both bits in MQ function selector are inverted, so uninvert
+      // to match the inputs to the 10141 and make cases clearer. This
+      // matches the 10141 doc.
+      switch (selector ^ 3) {
+      default:
+      case 3:                 // HOLD
+        result = this.value;
+        break;
+
+      case 2:                 // SHIFT LEFT
+        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
+        break;
+
+      case 1:                   // SHIFT RIGHT
+        result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
+        break;
+
+      case 0:                 // LOAD
+        result = 0n;
+        break;
+      }
+    } else {                  // MQM is enabled, so both MQ and MQM selectors matter
+      let mqmV;               // Output of MQM
+
+      if (mqmEnable) {
+
+        // Selector for MQM is inverted in LSB only, so uninvert that
+        // bit to simplify case enumeration. After invention it
+        // matches the numbering on p. 16 of MP00301_KL10PV_Jun80
+        // E45,E48,E35.
+        switch (selector ^ 1n) {
         default:
-        case ctl.MQ:
-          result = this.value;
-          break;
-
-        case ctl['MQ*2']:
-          result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
-          break;
-
-        case ctl['MQ*.5']:
-          result = this.value;  // This is NOT USED and WRONG
-          break;
-
-        case ctl['0S']:
-          result = 0n;
-          break;
-        }
-      } else {                  // MQ/MQM SEL
-
-        switch (ctlV) {
-        default:
-        case ctl['SH']:
-          result = SH.get();
-          break;
-
-        case ctl['MQ*.25']:
+        case 0:
           result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
           break;
 
-        case ctl['1S']:
-          result = ONES.get();
+        case 1:
+          result = SH.get();
           break;
 
-        case ctl['AD']:
+        case 2:
           result = AD.get();
           break;
+
+        case 3:
+          result = ONES.get();
+          break;
         }
+      } else {
+          mqmV = 0n;            // MQM disabled means it outputs 0s
       }
+
+      // Now take MQ SELn into account. Bits in MQ function in
+      // selector are inverted so our cases are reverse ordered. This
+      // is further complicated by the fact that the 10141 doc uses
+      // "shift left" for [S2,S1] == [0,1] and treats bit #0 as the
+      // LEFTMOST bit, but the goddamned PDP10 bit numbering is
+      // backwards (and sick and wrong IMHO), so that function is
+      // really a PDP10 SHIFT RIGHT.
+      result = mqDo(selector);
+      switch (selector) {
+      default:
+      case 3:                   // HOLD
+        result = this.value;
+        break;
+
+      case 2:                   // PDP10 SHIFT LEFT
+        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
+        break;
+
+      case 1:                   // PDP10 SHIFT RIGHT
+        result = (this.value >> 1n) | 
+        break;
+
+      case 0:                   // LOAD
+        result = 0n;
+        break;
+      }
+    }
     } else {                    // Not COND/REG CTL
         switch (ctlV) {
         default:
