@@ -221,7 +221,7 @@ module.exports.EBOXUnit = EBOXUnit;
 
 ////////////////////////////////////////////////////////////////
 // The EBOX.
-EBOX = StampIt.compose(Named, {
+const EBOX = StampIt.compose(Named, {
 }).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
 }).props({
@@ -499,12 +499,13 @@ module.exports.ShiftMult = ShiftMult;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftDiv = Combinatorial.compose({name: 'ShiftDiv'})
-      .init(function({shift = 1}) {
+      .init(function({shift = 1, topBits = ZERO}) {
         this.shift = BigInt(shift);
       }).methods({
 
         getInputs() {
-          const result = this.inputs.get() >> this.shift;
+          const topBits = this.topBits.get() << (this.bitWidth - this.shift);
+          const result = (topBits | this.inputs.get()) >> this.shift;
           return D.getInputs(this, 'ShiftDiv', 'getInputs', result);
         },
       });
@@ -512,21 +513,6 @@ module.exports.ShiftDiv = ShiftDiv;
 
 
 ////////////////////////////////////////////////////////////////
-// Compute N+k for a given input. Can be used to subtract using
-// negative k.
-const Adder = Combinatorial.compose({name: 'Adder'})
-      .init(function({k = 1}) {
-        this.k = k;
-      }).methods({
-
-        getInputs() {
-          const result = this.inputs.get() + this.k;
-          return D.getInputs(this, 'Adder', 'getInputs', result);
-        },
-      });
-module.exports.ShiftDiv = ShiftDiv;
-
-
 // RAMs
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84});
 const CR = Reg({name: 'CR', bitWidth: 84});
@@ -895,7 +881,13 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
   },
 });
 
-const ADX = DataPathALU({name: 'ADX', bitWidth: 36});
+const ADX = DataPathALU.compose({name: 'ADX'}).methods({
+
+  // XXX this needs an implementation
+  getCRY_02() { return 0n },
+
+}) ({name: 'ADX', bitWidth: 36});
+
 
 // Note many DISP field values affect carry and LONG:
 //
@@ -1013,91 +1005,15 @@ const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 
-// From p. 155 Figure 2-7 MQ Selection:
-// CRAM   SPEC     DISP/  DISP/   MQ   MQM  MQM   MQM   MQ    MQ
-//  MQ   MQ SHIFT   DIV    MUL    CTL   EN  SEL2  SEL1  SEL2  SEL1
-//   0      0        0      0     00    0     0     0    1     1
-//   0      0        1      0     0X    0     0     0    1     0
-//   0      1        0      0     0X    0     0     0    1     0
-//   1                            11    1     1     0    0     0
-//   1      0        0      0     00    1     0     0    0     0
-//   1      0        0      1     00    1     0     0    0     0
-//   0      0        0      0     01    0     0     0    1     0
-//   1      0        0      0     10    1     1     1    0     0
-//   1      0        0      0     11    1     0     0    0     0
-// RESET    0        0      0     00    1     0     0    0     0
-//
-// DISP/MUL implies MQ SHIFT, AD LONG, dispatch on FE0!MQ34!MQ35
-// DISP/DIV implies MQ SHIFT, AD LONG, dispatch on FE0!BR0!AD CRY0
-
-// From MP00301_KL10PV_Jun80 p. 365 (M8543 CTL2):
-//   MQ                MQ    MQM    MQM     MQ
-//  FUNC        MQ/    CTL/   EN    SEL    SEL
-//-------     ------   ----- ----  -----  -----
-//  HOLD         0       -     0     00     11
-//    0          0      #3     0     00     00
-//   LSH         0      #1     0     00     10
-//   RSH         0      #2     0     00     01
-//
-//   SH          1       -     1     01     00
-//   AD          1      #3     1     10     00
-//   RSH*2       1      #1     1     10     00
-//    1          1      #2     1     11     00
-//
-// DIV (LSH)     0       -     0     00     10
-// MUL (RSH*2)   1       -     1     00     00
-// RESET         -       -     1     11     00
-//   CLR         0       -     0     00     00
-//
-// MQ CLR   = CLR/MQ & (MEM/ARL IND | SPEC/ARL IND | COND/ARL IND)
-// MQM EN   = RESET | CRAM.MQ
-// MQM SEL2 = MQ/MQM SEL & (RESET | REG CTL #07 | MQ CLR)
-// MQM SEL1 = MQ/MQM SEL & !(MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV)
-// MQ  SEL2 = MQ/MQ  SEL & !(RESET | REG CTL #07 | MQ CLR)
-// MQ  SEL1 = MQ/MQ  SEL & !(MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV)
 const MQ = LogicUnit.methods({
 
-// MQ*2 else if COND/REG CTL: MQ else MQ
-  //                    DISP/MUL
-  //                      or
-  //                    DISP/DIV
-  //                      or
-  //                     SPEC/    COND/
-  //     MQ     MQ CTL  MQ SHIFT  REG CTL   Action
-  //  0:MQ SEL   0:MQ     0         0        MQ
-  //  0:MQ SEL   0:MQ     0         1        MQ*2 + AD CRY-2
-  //  0:MQ SEL   0:MQ     1         0        MQ/4 + ADX34,ADX35
-  //  0:MQ SEL   0:MQ     1?        1        MQ
-  //  0:MQ SEL   0:MQ*2   0         1        MQ*2 + AD CRY-2
-  //  0:MQ SEL   0:MQ*2   1?        1        MQ
-
-
-  //  0:MQ SEL   1:MQ*2    MQ*2
-  //  0:MQ SEL   2:MQ*.5   MQ/2 (drops bits 0,6,12,18,24,30)
-  //  0:MQ SEL   3:0S      0s
-  //  1:MQM SEL  0:SH      if SPEC/MQ SHIFT=1: MQ/4 else if COND/REG CTL: MQM else SH
-  //  1:MQM SEL  1:MQ*.25  MQ/4 (hi bits ADX34, ADX35)
-  //  1:MQM SEL  2:1S      1s
-  //  1:MQM SEL  3:AD      AD
-  // XXX todo needs CLR/MQ, CLR/AR+MQ, CRL/ARX+MQ, CLR/AR+ARX+MQ, CLR/ARL+ARX+MQ, CLR/ARR+MQ
   get() {
     let result = 0n;
 
     // From MP00301_KL10PV_Jun80 p. 365 (CTL2)
-    const [mq, mqmEnable] = getCRFieldAndValue('MQ');
-    const [regCtl, regCtlV] = getCRFieldAndValue('REG CTL');
-    const [mqCtl, mqCtlV] = getCRFieldAndValue('MQ CTL');
+    const mqmEnable = CR.MQ.get();
+    const mqCtlV = CR['MQ CTL'].get();
     const [disp, dispV] = getCRFieldAndValue('DISP');
-    const [MUL, DIV] = [disp.MUL, disp.DIV];
-
-    // All of this is needed to generate mqClr
-    const clrV = CR.CLR.get();
-    const [mem, memV] = getCRFieldAndValue('MEM');
-    const [spec, specV] = getCRFieldAndValue('SPEC');
-    const [cond, condV] = getCRFieldAndValue('COND');
-    const mqClr = (clrV & 0o10n) &&
-          (memV === mem['ARL IND'] || specV === spec['ARL IND'] || condV === cond['ARL IND']);
-    const doMQShift = specV === spec['MQ SHIFT'] || dispV === MUL || dispV === DIV;
 
 
     ////////////////////////////////////////////////////////////////
@@ -1106,135 +1022,29 @@ const MQ = LogicUnit.methods({
     // 1. Compute MQM output or 0s if not enabled.
     // 2. Using MQM output value, compute MQ value.
     ////////////////////////////////////////////////////////////////
+    let mqmOut = 0;
 
+    // Determine MQM output
+    if (mqmEnable) mqmOut = this.inputs[mqCtlV].get();
 
-    // First, SPEC/MQ SHIFT or the DISP dispatches for MUL and DIV
-    // imply MQ SHIFT (and AD LONG). MUL uses MQM. MQ SHIFT by itself
-    // and DIV use only MQ (i.e., work with MQ/MQ EN
-    if (doMQShift) {
-
-      if (mqmEnable) {          // MUL
-        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
-      } else {                  // DIV
-      }
-    } else {
+    // We only implement MQ based left shift. The right shift is
+    // madness, dropping bits 0, 6, 12, 18, 24, 30. The definition of
+    // "left" and "right" are reversed by the steaming pile that is
+    // the NeverToBeSufficientlyDamned PDP10 bit numbering.
+    if (dispV === disp.DIV) {   // Left shift, MQ*2
+      this.value = mqmOut << 1n | ADX.getCRY_02();
     }
 
-    if (!mqmEnable) {        // MQM is not enabled, so only MQ or 0s
-
-      // Both bits in MQ function selector are inverted, so uninvert
-      // to match the inputs to the 10141 and make cases clearer. This
-      // matches the 10141 doc.
-      switch (selector ^ 3) {
-      default:
-      case 3:                 // HOLD
-        result = this.value;
-        break;
-
-      case 2:                 // SHIFT LEFT
-        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
-        break;
-
-      case 1:                   // SHIFT RIGHT
-        result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
-        break;
-
-      case 0:                 // LOAD
-        result = 0n;
-        break;
-      }
-    } else {                  // MQM is enabled, so both MQ and MQM selectors matter
-      let mqmV;               // Output of MQM
-
-      if (mqmEnable) {
-
-        // Selector for MQM is inverted in LSB only, so uninvert that
-        // bit to simplify case enumeration. After invention it
-        // matches the numbering on p. 16 of MP00301_KL10PV_Jun80
-        // E45,E48,E35.
-        switch (selector ^ 1n) {
-        default:
-        case 0:
-          result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
-          break;
-
-        case 1:
-          result = SH.get();
-          break;
-
-        case 2:
-          result = AD.get();
-          break;
-
-        case 3:
-          result = ONES.get();
-          break;
-        }
-      } else {
-          mqmV = 0n;            // MQM disabled means it outputs 0s
-      }
-
-      // Now take MQ SELn into account. Bits in MQ function in
-      // selector are inverted so our cases are reverse ordered. This
-      // is further complicated by the fact that the 10141 doc uses
-      // "shift left" for [S2,S1] == [0,1] and treats bit #0 as the
-      // LEFTMOST bit, but the goddamned PDP10 bit numbering is
-      // backwards (and sick and wrong IMHO), so that function is
-      // really a PDP10 SHIFT RIGHT.
-      result = mqDo(selector);
-      switch (selector) {
-      default:
-      case 3:                   // HOLD
-        result = this.value;
-        break;
-
-      case 2:                   // PDP10 SHIFT LEFT
-        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
-        break;
-
-      case 1:                   // PDP10 SHIFT RIGHT
-        result = (this.value >> 1n) | 
-        break;
-
-      case 0:                   // LOAD
-        result = 0n;
-        break;
-      }
-    }
-    } else {                    // Not COND/REG CTL
-        switch (ctlV) {
-        default:
-        case ctl['SH']:
-          result = SH.get();
-          break;
-
-        case ctl['MQ*.25']:
-          result = ((this.value >> 2n) & ~(3n << 34n)) | (ADX.get() << 34n);
-          break;
-
-        case ctl['1S']:
-          result = ONES.get();
-          break;
-
-        case ctl['AD']:
-          result = AD.get();
-          break;
-        }
-    }
-
-    // Several of the above cases yield > 36 bits and need trimming.
+    // Some of the above cases yield > 36 bits and need trimming.
     result &= ONES.value;
 
-    return D.MUXget(this, null, `get ctlV=${ctlV} mq=${mq.get()} regctl=${regctl}`, result);
+    return D.MUXget(this, null, `get MQ CTL/=${mqCtlV} MQM EN=${mqmEnable}`, result);
   },
 }) ({name: 'MQ', bitWidth: 36});
 
 
 // XXX TODO add loBitsFrom (ADX0) property
 const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36});
-// XXX TODO drops bits 0,6,12,18,24,30
-const MQdiv2 = ShiftDiv({name: 'MQdiv2', shift: 1, bitWidth: 36});
-// XXX TODO add hiBitsFrom property (ADX34,ADX35)
 const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36});
 
 
@@ -1672,8 +1482,8 @@ VMA_HELD.inputs = VMA;
 VMA_PREV_SECT.inputs = AD_13_17;
 VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 
-MQ.inputs = [MQ, MQx2, MQdiv2, ZERO,
-             SH, MQdiv4, ONES, AD];
+MQ.inputs = [SH, MQdiv4, ONES, AD];
+MQdiv4.topBits = ADX;
 
 ADA.inputs = [AR, ARX, MQ, PC];
 ADA.controlInput = CR.ADA;
