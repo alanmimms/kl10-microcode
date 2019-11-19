@@ -47,11 +47,8 @@ function LOG(T, P, F, x) {
 // M8539 APR module is replaced by M8545 in KL10 model B.
 // M8523 VMA module is replaced by M8542 in KL10 model B.
 
-var EBOX;                       // Forward references are a pain.
 
-
-// Most of our instances need to have a name for debugging and
-// display.
+// Name our instances for debugging and display.
 const Named = StampIt({name: 'Named'})
       .init(function({name}) {
         this.name = name;
@@ -220,6 +217,44 @@ const EBOXUnit = StampIt({
   },
 });
 module.exports.EBOXUnit = EBOXUnit;
+
+
+////////////////////////////////////////////////////////////////
+// The EBOX.
+EBOX = StampIt.compose(Named, {
+}).init(function ({serialNumber}) {
+  this.serialNumber = serialNumber;
+}).props({
+  unitArray: [],      // List of all EBOX Units as an array of objects
+  clock: EBOXClock,
+  run: false,
+}).methods({
+
+  reset() {
+    D.reset(this, null, 'reset');
+    this.resetActive = true;
+    this.run = false;
+    this.unitArray = Object.values(EBOXUnit.units);
+
+    // Reset every Unit back to initial value.
+    this.unitArray.forEach(unit => unit.reset());
+
+    // RESET always generates several clocks with zero CRAM and DRAM.
+    _.range(4).forEach(k => this.cycle());
+
+    this.resetActive = false;
+  },
+
+  run() {
+    this.run = true;
+  },
+
+  cycle() {
+    this.clock.cycle();
+  },
+  
+}) ({name: 'EBOX', serialNumber: 3210});
+module.exports.EBOX = EBOX;
 
 
 // Use this mixin to define a Combinatorial unit that is unclocked.
@@ -658,44 +693,6 @@ const DR = Reg.methods({name: 'DR', bitWidth: 24, clock: DR_CLOCK});
 defineBitFields(DR, DRAMdefinitions);
 
 
-////////////////////////////////////////////////////////////////
-// The EBOX.
-EBOX = StampIt.compose(Named, {
-}).init(function ({serialNumber}) {
-  this.serialNumber = serialNumber;
-}).props({
-  unitArray: [],      // List of all EBOX Units as an array of objects
-  clock: EBOXClock,
-  run: false,
-}).methods({
-
-  reset() {
-    D.reset(this, null, 'reset');
-    this.resetActive = true;
-    this.run = false;
-    this.unitArray = Object.values(EBOXUnit.units);
-
-    // Reset every Unit back to initial value.
-    this.unitArray.forEach(unit => unit.reset());
-
-    // RESET always generates several clocks with zero CRAM and DRAM.
-    _.range(4).forEach(k => this.cycle());
-
-    this.resetActive = false;
-  },
-
-  run() {
-    this.run = true;
-  },
-
-  cycle() {
-    this.clock.cycle();
-  },
-  
-}) ({name: 'EBOX', serialNumber: 3210});
-module.exports.EBOX = EBOX;
-
-
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
 const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3, clock: LOAD_AC_BLOCKS});
 
@@ -1085,33 +1082,43 @@ const MQ = LogicUnit.methods({
   // XXX todo needs CLR/MQ, CLR/AR+MQ, CRL/ARX+MQ, CLR/AR+ARX+MQ, CLR/ARL+ARX+MQ, CLR/ARR+MQ
   get() {
     let result = 0n;
-    const mq = CR.MQ;
-    const mqmEnable = mq.get();
-    const ctl = CR['MQ CTL'];
-    const regctl = CR.COND.get() === CR.COND['REG CTL'];
-    const ctlV = ctl.get();
-    const spec = CR.SPEC;
-    const specV = spec.get();
-    const disp = CR.DISP;
-    const dispV = disp.get();
 
     // From MP00301_KL10PV_Jun80 p. 365 (CTL2)
-    // MQ CLR   = CLR/MQ & (MEM/ARL IND | SPEC/ARL IND | COND/ARL IND)
-    // MQM EN   = RESET | CRAM.MQ
-    // b1 = MQ CLR | REG CTL #07 | RESET
-    // b0 = MQ CLR | REG CTL #08 | SPEC/MQ SHIFT | DISP/MUL | DISP/DIV
-    // MQM SEL2 = MQ/MQM SEL & b1
-    // MQM SEL1 = MQ/MQM SEL & !b0
-    // MQ  SEL2 = MQ/MQ  SEL & !b1
-    // MQ  SEL1 = MQ/MQ  SEL & !b0
-    const mqClr = CR.CLR === CR.CLR['MQ'] &&
-          (CR.MEM === CR.MEM['ARL IND']
-           || CR.SPEC === CR.SPEC['ARL IND']
-           || CR.COND === CR.COND['ARL IND']);
-    const b1 = mqClr || (ctl & 2);
-    const b0 = mqClr || (ctl & 1) || specV === spec['MQ SHIFT'] ||
-          dispV === disp.MUL || dispV === disp.DIV;
-    const selector = +!!b1 << 1n | +!!b0;
+    const [mq, mqmEnable] = getCRFieldAndValue('MQ');
+    const [regCtl, regCtlV] = getCRFieldAndValue('REG CTL');
+    const [mqCtl, mqCtlV] = getCRFieldAndValue('MQ CTL');
+    const [disp, dispV] = getCRFieldAndValue('DISP');
+    const [MUL, DIV] = [disp.MUL, disp.DIV];
+
+    // All of this is needed to generate mqClr
+    const clrV = CR.CLR.get();
+    const [mem, memV] = getCRFieldAndValue('MEM');
+    const [spec, specV] = getCRFieldAndValue('SPEC');
+    const [cond, condV] = getCRFieldAndValue('COND');
+    const mqClr = (clrV & 0o10n) &&
+          (memV === mem['ARL IND'] || specV === spec['ARL IND'] || condV === cond['ARL IND']);
+    const doMQShift = specV === spec['MQ SHIFT'] || dispV === MUL || dispV === DIV;
+
+
+    ////////////////////////////////////////////////////////////////
+    // XXX THIS NEEDS REWRITE.
+    // Strategy should be:
+    // 1. Compute MQM output or 0s if not enabled.
+    // 2. Using MQM output value, compute MQ value.
+    ////////////////////////////////////////////////////////////////
+
+
+    // First, SPEC/MQ SHIFT or the DISP dispatches for MUL and DIV
+    // imply MQ SHIFT (and AD LONG). MUL uses MQM. MQ SHIFT by itself
+    // and DIV use only MQ (i.e., work with MQ/MQ EN
+    if (doMQShift) {
+
+      if (mqmEnable) {          // MUL
+        result = (this.value << 1n) | ((ADX.get() >> 36n) & 1n);
+      } else {                  // DIV
+      }
+    } else {
+    }
 
     if (!mqmEnable) {        // MQM is not enabled, so only MQ or 0s
 
@@ -1559,6 +1566,13 @@ const MBOX = RAM.methods({
 }) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36});
 
 const MBUS = Reg({name: 'MBUS', bitWidth: 36});
+
+
+// Simplify grabbing a CR field object (for retrieving properties
+// defining constant values) and the value of the CR field.
+function getCRFieldAndValue(fieldName) {
+  return [CR[fieldName], CR[fieldName].get()];
+}
 
 
 // Parse a sequence of microcode field definitions (see define.mic for
