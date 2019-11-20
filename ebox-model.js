@@ -223,6 +223,7 @@ const EBOX = StampIt.compose(Named, {
 }).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
   this.microInstructionsExecuted = 0n;
+  this.executionTime = 0;
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,

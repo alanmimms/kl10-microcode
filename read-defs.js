@@ -11,7 +11,7 @@ const definesRE = new RegExp([
   /(?<DRAM>.*?)(?=\s+\.UCODE\s+)/,
 ].map(re => re.source).join(''), 'ms');
 
-const define_mic = fs.readFileSync('./define.mic');
+const define_mic = fs.readFileSync('kl10-source/define.mic');
 
 if (!define_mic) {
   console.error(`ERROR: Missing 'define.mic' file which is required for ebox-model`);
