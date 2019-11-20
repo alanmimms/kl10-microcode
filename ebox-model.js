@@ -482,13 +482,14 @@ module.exports.LogicUnit = LogicUnit;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftMult = Combinatorial.compose({name: 'ShiftMult'})
-      .init(function({shift = 1}) {
+      .init(function({shift = 1, loBits = ZERO}) {
         this.shift = BigInt(shift);
       }).methods({
 
         get() {
           const inp = this.inputs.get();
-          const result = inp << this.shift;
+          const loBits = this.loBits.get() >> (this.loBits.bitWidth - this.shift);
+          const result = inp << this.shift | loBits;
           return D.get(this, 'ShiftMult', `get in=${octW(inp)} result=`, result);
         },
       });
@@ -499,13 +500,13 @@ module.exports.ShiftMult = ShiftMult;
 // Given a function selector and a set of inputs, compute a set of
 // results.
 const ShiftDiv = Combinatorial.compose({name: 'ShiftDiv'})
-      .init(function({shift = 1, topBits = ZERO}) {
+      .init(function({shift = 1, hiBits = ZERO}) {
         this.shift = BigInt(shift);
       }).methods({
 
         getInputs() {
-          const topBits = this.topBits.get() << (this.bitWidth - this.shift);
-          const result = (topBits | this.inputs.get()) >> this.shift;
+          const hiBits = this.hiBits.get() << (this.hiBits.bitWidth - this.shift);
+          const result = (this.inputs.get() | hiBits) >> this.shift;
           return D.getInputs(this, 'ShiftDiv', 'getInputs', result);
         },
       });
@@ -1005,45 +1006,24 @@ const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1});
 
-const MQ = LogicUnit.methods({
+const MQ = Reg.methods({
 
-  get() {
-    let result = 0n;
+  getInputs() {
+    let result = this.value;
 
     // From MP00301_KL10PV_Jun80 p. 365 (CTL2)
     const mqmEnable = CR.MQ.get();
     const mqCtlV = CR['MQ CTL'].get();
-    const [disp, dispV] = getCRFieldAndValue('DISP');
 
+    result = this.inputs[mqmEnable << 3n | mqCtlV].get();
 
-    ////////////////////////////////////////////////////////////////
-    // XXX THIS NEEDS REWRITE.
-    // Strategy should be:
-    // 1. Compute MQM output or 0s if not enabled.
-    // 2. Using MQM output value, compute MQ value.
-    ////////////////////////////////////////////////////////////////
-    let mqmOut = 0;
-
-    // Determine MQM output
-    if (mqmEnable) mqmOut = this.inputs[mqCtlV].get();
-
-    // We only implement MQ based left shift. The right shift is
-    // madness, dropping bits 0, 6, 12, 18, 24, 30. The definition of
-    // "left" and "right" are reversed by the steaming pile that is
-    // the NeverToBeSufficientlyDamned PDP10 bit numbering.
-    if (dispV === disp.DIV) {   // Left shift, MQ*2
-      this.value = mqmOut << 1n | ADX.getCRY_02();
-    }
-
-    // Some of the above cases yield > 36 bits and need trimming.
-    result &= ONES.value;
-
-    return D.MUXget(this, null, `get MQ CTL/=${mqCtlV} MQM EN=${mqmEnable}`, result);
+    // Some of the cases yield > 36 bits and need trimming.
+    this.value = result &= ONES.value;
+    return D.MUXget(this, null, `get MQ CTL=${mqCtlV} MQM EN=${mqmEnable} result`, result);
   },
 }) ({name: 'MQ', bitWidth: 36});
 
 
-// XXX TODO add loBitsFrom (ADX0) property
 const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36});
 const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36});
 
@@ -1482,8 +1462,9 @@ VMA_HELD.inputs = VMA;
 VMA_PREV_SECT.inputs = AD_13_17;
 VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 
-MQ.inputs = [SH, MQdiv4, ONES, AD];
-MQdiv4.topBits = ADX;
+MQ.inputs = [MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD];
+MQdiv4.hiBits = ADX;
+MQx2.loBits = ADX;
 
 ADA.inputs = [AR, ARX, MQ, PC];
 ADA.controlInput = CR.ADA;
@@ -1526,7 +1507,10 @@ AR_POS.inputs = AR;
 AR_SHIFT.inputs = AR;
 AR_00_12.inputs = AR;
 
+// XXX TODO: BR is clocked by CRAM BR LOAD
 BR.inputs = AR;
+
+// XXX TODO: BRX is clocked by CRAM BRX LOAD
 BRX.inputs = ARX;
 
 FE.inputs = SCAD;
@@ -1546,11 +1530,21 @@ SCADB.inputs = [FE, AR_SIZE, AR_00_08, MAGIC_NUMBER];
 SCADB.controlInput = CR.SCADB;
 
 ADx2.inputs = AD;
+ADx2.loBits = ADX;
+
 ADdiv4.inputs = AD;
+
 BRx2.inputs = BR;
+BRx2.loBits = BRX;
+
 ARx4.inputs = AR;
+ARx4.loBits = ARX;
+
 BRXx2.inputs = BRX;
+BRXx2.loBits = ZERO;
+
 ARXx4.inputs = ARX;
+ARXx4.inputs = ZERO;
 
 SCD_FLAGS.inputs = AR_00_12;
 VMA_FLAGS.inputs = ZERO;        // XXX VERY temporary
