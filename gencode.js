@@ -12,10 +12,11 @@ const StampIt = require('@stamp/it');
 
 const {octal} = require('./util');
 const EBOX = require('./ebox-model');
+const {EBOXUnit, CRAM, DRAM} = EBOX;
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
-var cram;
+var cram, cramLines;
 var dram;
 
 
@@ -25,13 +26,16 @@ function readMicroAssemblyListing() {
     fs.readFileSync('kl10-source/klx.mcr').toString().split(/[\n\r\f]+/),
     line => !line.match(/^\s+END\s*$/));
 
-  // The xram arrays are the BigInt representation of the microcode.
-  //
-  // The xramDefs objects are indexed by microcode field. Each property
-  // there defines an object whose properties are the field value names
-  // corresponding values for that field.
-  cram = parse(ucodeListing, /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/);
-  dram = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/);
+  // The xram arrays are the BigInt representation of the microcode
+  // and the lines arrays are the strings of source code for each. The
+  // xramDefs objects are indexed by microcode field. Each property
+  // there defines an object whose properties are the field value
+  // names corresponding values for that field.
+  ({bytes: cram, linesArray: cramLines} =
+   parse(ucodeListing,
+         /^U\s+(\d+), (\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+).*/,
+         /^.*?;NICOND \(NXT INSTR\)/));
+  ({bytes: dram} = parse(ucodeListing, /^D\s+(\d+), (\d+),(\d+).*/));
 }
 
 
@@ -175,21 +179,30 @@ function readAndHandleDirectives() {
 
 // Parse a line of microassmebly listing, extracting address and code.
 // This works for CRAM or DRAM with the only different controlled by
-// the `re` parameter.
-function parse(lines, re) {
+// the `re` parameter. `linesRE` (only specified for CRAM) is the
+// position to reference as the start of source code for the first
+// CRAM word.
+function parse(lines, re, linesRE) {
+  let lastPos = lines.findIndex(line => line.match(linesRE));
+
   // This has to be a reduce() instead of a map because the
   // microassembly listing builds microcode words in essentially
   // random address order.
-  return lines.reduce((bytes, line) => {
+  return lines.reduce(({bytes, linesArray}, line, lineX) => {
     const m = line.match(re);
 
     if (m) {
       const a = parseInt(m[1], 8);
       bytes[a] = `0o${m.slice(2).join('')}`;
+
+      if (lastPos) {
+        linesArray[a] = lines.slice(lastPos, lineX + 1).join('\n');
+        lastPos = lineX + 1;
+      }
     }
 
-    return bytes;
-  }, []);
+    return {bytes, linesArray};
+  }, {bytes: [], linesArray: []});
 }
 
 
@@ -250,7 +263,7 @@ function generateModel() {
 
 
 function generateFunctions() {
-  return _.range(EBOX.CRAM.nWords).map(ma => {
+  return _.range(CRAM.nWords).map(ma => {
     const mw = cram[ma];
 
     const headerCode = [
@@ -287,6 +300,11 @@ function generateXRAMArray(wordsArray, bitWidth) {
 }
 
 
+function generateLinesArray(linesArray) {
+  return linesArray.map(line => '`' + line + '`').join(',\n  ');
+}
+
+
 function generateFile({filename, 
                        prefixCode = '', 
                        code, 
@@ -310,6 +328,7 @@ ${suffixCode}
 
 function generateMicrocode() {
   generateFile({filename: 'cram.js', code: generateXRAMArray(cram, 84)});
+  generateFile({filename: 'cram-lines.js', code: generateLinesArray(cramLines)});
   generateFile({filename: 'dram.js', code: generateXRAMArray(dram, 24)});
 
   generateFile({filename: 'microcode.js', arrayName: 'const ops',
@@ -319,7 +338,7 @@ var ${Object.keys(EBOX).join(',')};
 
 module.exports.initialize = function initialize(e) {
   EBOX = e;
-  ${Object.keys(EBOX.EBOX.units)
+  ${Object.keys(EBOXUnit.units)
     .map(n => `${n} = e.units.${n};`)
     .join('\n  ')}
 };
