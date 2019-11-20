@@ -14,7 +14,9 @@
     "@stamp/it": "^1.1.0",
     "command-line-args": "^5.1.1",
     "command-line-usage": "^6.1.0",
-    "lodash": "^4.7.0"
+    "keypress": "^0.2.1",
+    "lodash": "^4.7.0",
+    "readline": "^1.3.0"
   },
   "devDependencies": {
     "chai": "^4.2.0",
