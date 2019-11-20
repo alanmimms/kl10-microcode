@@ -9,7 +9,7 @@ const keypress = require('keypress');
 const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
-const {octal, oct6, octW} = require('./util');
+const {octal, oct6, octW, shiftForBit} = require('./util');
 
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
@@ -17,8 +17,9 @@ const DRAMwords = require('./dram.js');
 const cramLines = require('./cram-lines.js');
 
 const {
-  EBOX, CRADR, CRAM, CR, DRAM, DR,
-  AR, ARX, BR, BRX, MQ,
+  EBOX, MBOX,
+  CRADR, CRAM, CR, DRAM, DR,
+  AR, ARX, BR, BRX, MQ, VMA, PC,
 } = EBOXmodel;
 
 
@@ -201,9 +202,9 @@ function curInstruction() {
 
 
 function doDump(words) {
-  const dump = [AR, ARX, BR, BRX, MQ]
+  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC]
         .map(r => `${r.name}=${octW(r.get())}`)
-        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '  ' : '\n'), '');
+        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '\n' : '  '), '');
   
   console.log(dump);
 }
@@ -481,6 +482,27 @@ function main()
 
   // Load DRAM from our Microcode
   DRAMwords.forEach((dw, addr) => DRAM.data[addr] = dw);
+
+  // HRROI 13,01234567
+  MBOX.data[0] = 0o1234567n << 0n |
+    0n << 18n |
+    0n << 13n |
+    13n << 12n |
+    0o561n << shiftForBit(6);
+
+  // HRLZI 12,1234
+  MBOX.data[1] = 0o1234n << 0n |
+    0n << 18n |
+    0n << 13n |
+    12n << 12n |
+    0o555n << shiftForBit(6);
+
+  // ADDI 11,4321
+  MBOX.data[2] = 0o4321n << 0n |
+    0n << 18n |
+    0n << 13n |
+    11n << 12n |
+    0o271n << shiftForBit(6);
 
   setImmediate(startEmulator);
 }

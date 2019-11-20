@@ -393,7 +393,7 @@ module.exports.RAM = RAM;
 // when `COND/FM WRITE` with:
 //      inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"
 const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
-      .init(function({matchValue, matchF = (cur => BigInt(+(cur === this.matchValue)))}) {
+      .init(function({matchValue, matchF = (cur => BigInt(cur === this.matchValue))}) {
         this.matchValue = eval(matchValue); // Should be static
         this.matchF = matchF;
       }).methods({
@@ -408,10 +408,10 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 // Use this for example as a `control` for a RAM to write when
 // `COND/FM WRITE` with {inputs: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
 const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
-      .init(function({inputs, matchValue, matchF}) {
+      .init(function({inputs, matchValue = 0n, matchF}) {
         this.inputs = inputs;
         this.matchValue = eval(matchValue); // Should be static
-        this.matchF = matchF || (cur => BigInt(+(cur === this.matchValue)));
+        this.matchF = matchF || (cur => BigInt(cur === this.matchValue));
         EBOXClock.addUnit(this);
       }).methods({
 
@@ -422,6 +422,8 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
         latch() {
           const cur = this.inputs.get();
           this.value = this.matchF(cur);
+
+          D.latch(this, 'FieldMatchClock', `latch prematch`, this.value);
 
           if (this.value) {
             D.latch(this, 'FieldMatchClock', `latch `, this.value);
@@ -1100,7 +1102,7 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
 
           if (CR.FE.get())
             result = 0;
-          else if (CR.COND.get() == CR.COND['FE SHRT'])
+          else if (CONDis('FE SHRT'))
             result = 1;
           else
             result = 3;
@@ -1345,6 +1347,7 @@ const MBOX = RAM.methods({
       break;
 
     case CR.MEM['IFET']:	// UNCONDITIONAL instruction FETCH
+      result = this.data[this.getAddress()];
       break;
 
     case CR.MEM['FETCH']:	// LOAD NEXT INSTR TO ARX (CONTROL BY #)
@@ -1418,6 +1421,28 @@ function defineBitFields(input, s, ignoreFields = []) {
     }
   });
 }
+
+////////////////////////////////////////////////////////////////
+// Handy utility functions
+
+// For each XXXXis(name) function, return 1n iff XXXX/${name} is true.
+const SPECis = matcherFactory('SPEC');
+const CONDis = matcherFactory('COND');
+
+
+// Return 1n iff CR[fieldName] has value of the constant
+// fieldValueName defined for that field.
+function fieldIs(fieldName, fieldValueName) {
+  return BigInt(CR[fieldName].get() === CR[fieldName][fieldValueName]);
+}
+
+
+// Returns a matcher function to match CR field `fieldName` against
+// its constant value named by the function parameter.
+function matcherFactory(fieldName) {
+  return name => BigInt(CR[fieldName].get() === CR[fieldName][name]);
+}
+
 
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
@@ -1548,6 +1573,11 @@ ARXx4.inputs = ARX;
 ARXx4.inputs = ZERO;
 
 SCD_FLAGS.inputs = AR_00_12;
+SCD_FLAGS.clock = FieldMatchClock({name: 'SET_FLAGS',
+                                   inputs: CR.SPEC,
+                                   matchF: spec => BigInt(spec === CR.SPEC['FLAG CTL'] &&
+                                                          fieldIs('FLAG CTL', 'SET FLAGS'))});
+
 VMA_FLAGS.inputs = ZERO;        // XXX VERY temporary
 PC_PLUS_FLAGS.inputs = [SCD_FLAGS, PC];
 VMA_PLUS_FLAGS.inputs = [VMA_FLAGS, VMA_HELD];
