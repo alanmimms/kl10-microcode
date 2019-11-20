@@ -415,19 +415,17 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
       }).methods({
 
         reset() {
-          this.value = this.prevValue = 0n;
+          this.value = 0n;
         },
 
         latch() {
           const cur = this.inputs.get();
           this.value = this.matchF(cur);
 
-          if (this.value && !this.prevValue) { // Do on rising edge only
-            D.latch(this, 'FieldMatchClock', 'latch', this.value);
+          if (this.value) {
+            D.latch(this, 'FieldMatchClock', `latch `, this.value);
             this.drives.forEach(unit => unit.latch());
           }
-
-          this.prevValue = this.value;
         },
       });
 
