@@ -19,6 +19,7 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const D = {
   getInputs: nop,
   get: nop,
+  MUXget: LOG,
   latch: nop,
   write: nop,
   reset: nop,
@@ -435,7 +436,8 @@ const Mux = Combinatorial.compose({name: 'Mux'}).methods({
   get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    return D.get(this, `Mux control=${controlValue}`, 'get', input.get());
+    D.MUXget(this, `Mux control=${controlValue}`, 'before crash', 0n);
+    return D.MUXget(this, `Mux control=${controlValue}`, 'get', input.get());
   },
 });
 module.exports.Mux = Mux;
@@ -1011,7 +1013,8 @@ const MQ = Reg.methods({
     const mqmEnable = CR.MQ.get();
     const mqCtlV = CR['MQ CTL'].get();
 
-    result = this.inputs[mqmEnable << 3n | mqCtlV].get();
+    const x = mqmEnable << 2n | mqCtlV;
+    result = this.inputs[x].get();
 
     // Some of the cases yield > 36 bits and need trimming.
     this.value = result &= ONES.value;
@@ -1113,7 +1116,7 @@ const SH = LogicUnit.methods({
 
   getInputs() {
     const count = SC.get();
-    const func = this.getFunc();
+    const func = this.getControl();
     let result;
 
     switch (func) {
@@ -1460,15 +1463,16 @@ VMA_PREV_SECT_13_17.inputs = VMA_PREV_SECT;
 
 MQ.inputs = [MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD];
 MQdiv4.hiBits = ADX;
+MQx2.inputs = MQ;
 MQx2.loBits = ADX;
 
-ADA.inputs = [AR, ARX, MQ, PC];
-ADA.controlInput = CR.ADA;
+ADA.inputs = [AR, ARX, MQ, PC, ZERO, ZERO, ZERO, ZERO];
+ADA.controlInput = CR.ADA;      // Note three bit field
 
 ADB.inputs = [FM, BRx2, BR, ARx4];
 ADB.controlInput = CR.ADB;
 
-ADXA.inputs = [ARX, ARX, ARX, ARX];
+ADXA.inputs = [ARX, ARX, ARX, ARX, ZERO, ZERO, ZERO];
 ADXA.controlInput = CR.ADA;
 
 ADXB.inputs = [ZERO, BRXx2, BRX, ARXx4];
