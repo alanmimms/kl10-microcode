@@ -19,7 +19,6 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const D = {
   getInputs: nop,
   get: nop,
-  MUXget: LOG,
   latch: nop,
   write: nop,
   reset: nop,
@@ -223,6 +222,7 @@ module.exports.EBOXUnit = EBOXUnit;
 const EBOX = StampIt.compose(Named, {
 }).init(function ({serialNumber}) {
   this.serialNumber = serialNumber;
+  this.microInstructionsExecuted = 0n;
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
@@ -250,6 +250,7 @@ const EBOX = StampIt.compose(Named, {
 
   cycle() {
     this.clock.cycle();
+    ++this.microInstructionsExecuted;
   },
   
 }) ({name: 'EBOX', serialNumber: 3210});
@@ -436,8 +437,7 @@ const Mux = Combinatorial.compose({name: 'Mux'}).methods({
   get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    D.MUXget(this, `Mux control=${controlValue}`, 'before crash', 0n);
-    return D.MUXget(this, `Mux control=${controlValue}`, 'get', input.get());
+    return D.get(this, `Mux control=${controlValue}`, 'get', input.get());
   },
 });
 module.exports.Mux = Mux;
