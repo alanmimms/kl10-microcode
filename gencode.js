@@ -22,7 +22,7 @@ var dram;
 function readMicroAssemblyListing() {
   // Read our microcode assembly listing so we can suck out its brainz.
   const ucodeListing = _.takeWhile(
-    fs.readFileSync('klx.mcr').toString().split(/[\n\r\f]+/),
+    fs.readFileSync('kl10-source/klx.mcr').toString().split(/[\n\r\f]+/),
     line => !line.match(/^\s+END\s*$/));
 
   // The xram arrays are the BigInt representation of the microcode.
@@ -82,7 +82,7 @@ function readAndHandleDirectives() {
       return cur;
     }, {});
 
-  fs.readFileSync('define.mic')
+  fs.readFileSync('kl10-source/define.mic')
     .toString()
     .split(/[\r\n\f]/)
     .forEach(f => {

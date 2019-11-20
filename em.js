@@ -15,7 +15,10 @@ const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
 const DRAMwords = require('./dram.js');
 
-const {EBOX, CRADR, CRAM, DRAM} = EBOXmodel;
+const {
+  EBOX, CRADR, CRAM, CR, DRAM, DR,
+  AR, ARX, BR, BRX, MQ,
+} = EBOXmodel;
 
 
 const historyMax = 100;
@@ -199,13 +202,18 @@ function curInstruction() {
 
 
 function doDump(words) {
-  console.log(curInstruction());
+  const dump = [AR, ARX, BR, BRX, MQ]
+        .map(r => `${r.name}=${octW(r.get())}`)
+        .reduce((cur, rd, x) => cur + rd + ((x & 1) ? '  ' : "\n"), '');
+  
+  console.log(dump);
 }
 
 
 function doStep(words) {
   const n = words.length > 1 ? parseInt(words[1]) : 1;
   run(n);
+  doDump();
 }
 
 
@@ -438,13 +446,14 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
       if (!maxCount || breakpoint[CRADR.get()]) {
 	const stopTime = process.hrtime();
 	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
-	cpu.executionTime += nSec;
-	const nInstructions = cpu.instructionsExecuted - startOfLastStep;
-	const ips =  nInstructions / cpu.executionTime;
-	console.log(`[Executed ${nInstructions} instructions ` +
+
+	EBOX.executionTime += nSec;
+	const nInstructions = EBOX.instructionsExecuted - startOfLastStep;
+	const ips =  nInstructions / EBOX.executionTime;
+	console.log(`[Executed ${nInstructions} micro-instructions ` +
 		    `or ${ips.toFixed(1)}/s]`);
+
 	startOfLastStep = 0;	// Report full count next time if not in a step
-	delete breakpoint[cpu.pc];
       }
 
       startCommandLine();
