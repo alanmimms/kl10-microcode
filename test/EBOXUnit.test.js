@@ -114,12 +114,14 @@ describe('Clocking/latching', () => {
       CRAM.data[CRADR.value] = CR.value;
       CD(Ycode);
 
-      const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2, J/X`;
+      const Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2, AR CTL/ARR LOAD, J/X`;
       CRADR.value = Z;
       CR.value = 0n;
       CR.AD = CR.AD['A+B'];
       CR.ADA = CR.ADA.AR;
       CR.ADB = CR.ADB['BR*2'];
+      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
+      CR.AR = CR.AR.AD;
       CR.J = X;
       CRAM.data[CRADR.value] = CR.value;
       CD(Zcode);
@@ -135,12 +137,17 @@ describe('Clocking/latching', () => {
       expect(AR.value.toString(8)).to.equal(0o3516700n.toString(8));
       doCycle(Zcode);
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o5117100n.toString(8));
+
       doCycle(Xcode);
       expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o723556n.toString(8));
       doCycle(Ycode);
       expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o3516700n.toString(8));
       doCycle(Zcode);
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o5117100n.toString(8));
     });
 
     function doCycle(code) {
