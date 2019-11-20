@@ -19,9 +19,7 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const D = {
   getInputs: nop,
   get: nop,
-  DPAget: LOG,
-  MUXget: LOG,
-  latch: LOG,
+  latch: nop,
   write: nop,
   reset: nop,
   addr: nop,
@@ -437,7 +435,7 @@ const Mux = Combinatorial.compose({name: 'Mux'}).methods({
   get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    return D.MUXget(this, `Mux control=${controlValue}`, 'get', input.get());
+    return D.get(this, `Mux control=${controlValue}`, 'get', input.get());
   },
 });
 module.exports.Mux = Mux;
@@ -875,8 +873,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['A-1']:      result = this.do(f, a, b);          break;
     }
 
-    return D.DPAget(this, 'DataPathALU',
-                    `get a=${octW(a)} b=${octW(b)} cin=${cin} result=`, result);
+    return D.get(this, 'DataPathALU',
+                 `get a=${octW(a)} b=${octW(b)} cin=${cin} result=`, result);
   },
 });
 
@@ -1017,7 +1015,7 @@ const MQ = Reg.methods({
 
     // Some of the cases yield > 36 bits and need trimming.
     this.value = result &= ONES.value;
-    return D.MUXget(this, null, `get MQ CTL=${mqCtlV} MQM EN=${mqmEnable} result`, result);
+    return D.get(this, null, `get MQ CTL=${mqCtlV} MQM EN=${mqmEnable} result`, result);
   },
 }) ({name: 'MQ', bitWidth: 36});
 
