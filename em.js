@@ -204,7 +204,7 @@ function curInstruction() {
 function doDump(words) {
   const dump = [AR, ARX, BR, BRX, MQ]
         .map(r => `${r.name}=${octW(r.get())}`)
-        .reduce((cur, rd, x) => cur + rd + ((x & 1) ? '  ' : "\n"), '');
+        .reduce((cur, rd, x) => cur + rd + ((x & 1) ? '  ' : '\n'), '');
   
   console.log(dump);
 }
@@ -304,7 +304,7 @@ function doHelp(words) {
     const maxWidth = commands.map(c => c.name)
       .reduce((prev, cur) => cur.length > prev ? cur.length : prev, 0);
 
-    console.log("\nCommands:\n" + 
+    console.log('\nCommands:\n' + 
 		commands
 		.map(c => (_.padStart(c.name, maxWidth) + ': ' +
 			   c.description.replace(/\n/g, '\n  ' +
@@ -361,7 +361,7 @@ function startCommandLine() {
 
   // Note ^C to allow user to regain control from long execute loops.
   rl.on('SIGINT', () => {
-    console.log("\n[INTERRUPT]\n");
+    console.log('\n[INTERRUPT]\n');
     EBOX.run = false;
     startCommandLine();
   });
