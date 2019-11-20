@@ -67,7 +67,7 @@ describe('Mux+Reg', () => {
       _.range(5).forEach(k => {
         Mcontrol.value = BigInt(k);
         CLK.cycle();
-        expect(R.get().toString()).to.equal(BigInt(k + 65).toString());
+        expect(R.get().toString(8)).to.equal(BigInt(k + 65).toString(8));
       });
     });
   });
@@ -128,17 +128,19 @@ describe('Clocking/latching', () => {
       CRAM.latch();
 
       doCycle(Xcode);
-      expect(CRADR.get().toString()).to.equal(Y.toString());
+      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o723556n.toString(8));
       doCycle(Ycode);
-      expect(CRADR.get().toString()).to.equal(Z.toString());
+      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      expect(AR.value.toString(8)).to.equal(0o3516700n.toString(8));
       doCycle(Zcode);
-      expect(CRADR.get().toString()).to.equal(X.toString());
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
       doCycle(Xcode);
-      expect(CRADR.get().toString()).to.equal(Y.toString());
+      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
       doCycle(Ycode);
-      expect(CRADR.get().toString()).to.equal(Z.toString());
+      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
       doCycle(Zcode);
-      expect(CRADR.get().toString()).to.equal(X.toString());
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
     });
 
     function doCycle(code) {
