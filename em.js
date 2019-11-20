@@ -14,6 +14,7 @@ const {octal, oct6, octW} = require('./util');
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
 const DRAMwords = require('./dram.js');
+const cramLines = require('./cram-lines.js');
 
 const {
   EBOX, CRADR, CRAM, CR, DRAM, DR,
@@ -195,16 +196,14 @@ function displayableAddress(x) {
 
 function curInstruction() {
   const x = CRADR.get();
-  let sym = displayableAddress(x);
-  const w = CRAM.data[x];
-  return `${sym}: ${disassemble(w)}`;
+  return cramLines[x];
 }
 
 
 function doDump(words) {
   const dump = [AR, ARX, BR, BRX, MQ]
         .map(r => `${r.name}=${octW(r.get())}`)
-        .reduce((cur, rd, x) => cur + rd + ((x & 1) ? '  ' : '\n'), '');
+        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '  ' : '\n'), '');
   
   console.log(dump);
 }
@@ -294,7 +293,8 @@ function handleLine(line) {
     doHelp();
   }
 
-  if (rl) rl.question(`${curInstruction()} > `, handleLine);
+  if (rl) prompt();
+  lastL = CRADR.get();
 }
 
 
@@ -366,8 +366,16 @@ function startCommandLine() {
     startCommandLine();
   });
 
-  rl.question(`${curInstruction()}> `, handleLine);
+  prompt();
   lastL = CRADR.get();
+}
+
+
+function prompt() {
+  rl.question(`\
+${curInstruction()}
+> `,
+                      handleLine);
 }
 
 
