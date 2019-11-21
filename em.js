@@ -25,7 +25,7 @@ const {
   EBOX, MBOX,
   CRADR, CRAM, CR, DRAM, DR,
   AR, ARX, BR, BRX, MQ, VMA, PC,
-  EBOXUnit,
+  Named, EBOXUnit,
 } = EBOXmodel;
 
 
@@ -289,7 +289,7 @@ function doDebug(words) {
 
   } else if (words.length === 3) { // "debug unit-name method-or-*"
     const unitName = words[1].toUpperCase();
-    const unit = EBOXUnit.units[unitName];
+    const unit = Named.units[unitName];
     const method = words[2];
 
     if (unit) {
@@ -336,7 +336,7 @@ function doStats(words) {
 
 
 function doUnits(words) {
-  const unitNamesSorted = Object.keys(EBOXUnit.units).sort();
+  const unitNamesSorted = Object.keys(Named.units).sort();
   const maxW = unitNamesSorted.reduce((curMax, name) => Math.max(curMax, name.length), 0);
   const unitNamesChunked = _.chunk(unitNamesSorted, 4);
   const result = unitNamesChunked
