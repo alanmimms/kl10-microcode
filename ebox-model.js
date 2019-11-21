@@ -1589,11 +1589,32 @@ MBOX.controlInput = CR.MEM;
 MBUS.inputs = ZERO;             // XXX temporary
 
 
-function wrapForLogging(o, method) {
-  if (!o.unwrapped) o.unwrapped = {};
-  o.unwrapped[method] = o[method];
+// Wrap a method for an optionally stamp-based object with a function
+// that logs the fact of the method call, the name of the object
+// method was invoked for, its parent stamp name (if any) and its
+// result.
+function wrapForLogging(wrappedObj, method) {
+  const context = {
+    wrappedObj,
+    name: wrappedObj.name,
+    methodName: method,
+    originalFunction: wrappedObj[method].bind(wrappedObj),
+  };
+  wrappedObj[method] = wrapper.bind(context);
+
+  function wrapper(...a) {
+    console.log(`wrapper for ${this.name}.${this.methodName}`);
+    const result = this.originalFunction(...a);
+    const stamp = this.wrappedObj.stamp || {name: ''};
+    const name = `${this.name}@${stamp.name}`;
+    const bw = Number(this.wrappedObj.bitWidth || 36);
+    const resultString = result == null ? '' : `=${octW(result)}`;
+    console.log(`${name} ${this.methodName}${resultString}`);
+    return result;
+  }
 }
 
+wrapForLogging(CR, 'get');
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, EBOXUnit.units);
