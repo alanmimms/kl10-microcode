@@ -67,7 +67,8 @@ module.exports.fieldExtract = fieldExtract;
 // name (if any) and its result. The `wrapAction` function can be
 // specified if some other action is needed in the wrapper (e.g.,
 // maintaining statistics, debugging, etc.).
-const contextSymbol = Symbol('unique property name for wrapping and unwrapping context');
+//const contextSymbol = Symbol('unique property name for wrapping and unwrapping context');
+const contextSymbol = 'fred';
 function wrapMethod(objToWrap, method, wrapAction = defaultWrapAction) {
   const context = {
     wrappedObj: objToWrap,
@@ -107,3 +108,19 @@ function unwrapMethod(wrappedObj, method) {
   wrappedObj[method] = context.originalFunction;
 }
 module.exports.unwrapMethod = unwrapMethod;
+
+
+function methodIsWrapped(obj, method) {
+  const value = obj[method];
+  return typeof value === typeofFunction && value[contextSymbol];
+}
+module.exports.methodIsWrapped = methodIsWrapped;
+
+
+// Return a list of names of methods that have wrappers or [] if none.
+const typeofFunction = typeof (() => 0);
+function wrappedMethods(obj) {
+  return Object.keys(obj)
+    .filter(name => methodIsWrapped(obj, name));
+}
+module.exports.wrappedMethods = wrappedMethods;
