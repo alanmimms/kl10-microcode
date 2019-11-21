@@ -33,11 +33,12 @@ module.exports.Named = Named;
 // Each Clock has a list of units it drives. Calling the `latch()`
 // function on a Clock calls `latch()` on each driven unit.
 const Clock = Named.init(function({drives = []}) {
-        this.drives = drives;
-      }).methods({
-        addUnit(unit) { this.drives.push(unit) },
-        cycle() { this.drives.forEach(unit => unit.latch()) },
-      });
+  this.drives = drives;
+  this.wrappableMethods = ['cycle'];
+}).methods({
+  addUnit(unit) { this.drives.push(unit) },
+  cycle() { this.drives.forEach(unit => unit.latch()) },
+});
 module.exports.Clock = Clock;
 
 
@@ -150,6 +151,9 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).statics({
   this.controlInput = control;
   this.addrInput = addr;
   this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
+  this.wrappableMethods = `\
+reset,getAddress,getFunc,getControl,getInputs,get,latch
+`.split(/,\s*/);
   clock.addUnit(this);
 }).props({
   value: 0n,
@@ -185,15 +189,16 @@ const EBOX = StampIt.compose(Named, {
   reset() {
     this.resetActive = true;
     this.run = false;
-    this.unitArray = Object.values(EBOXUnit.units);
+    this.unitArray = Object.values(EBOXUnit.units).concat([this]);
 
     // Reset every Unit back to initial value.
-    this.unitArray.forEach(unit => unit.reset());
+    this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
 
     // RESET always generates several clocks with zero CRAM and DRAM.
     _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
+    this.wrappableMethods = ['cycle'];
   },
 
   run() {
@@ -228,26 +233,25 @@ const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
 // that `s` is PDP10 numbered leftmost bit and `e` is PDP10 numbered
 // rightmost bit in field. So number of bits is `e-s+1`.
 // Not an EBOXUnit, just a useful stamp.
-const BitField = Combinatorial.compose({name: 'BitField'})
-      .init(function({name, s, e}) {
-        this.name = name;
-        this.s = s;
-        this.e = e;
-        this.bitWidth = BigInt(e - s + 1);
-      }).methods({
+const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, s, e}) {
+  this.name = name;
+  this.s = s;
+  this.e = e;
+  this.bitWidth = BigInt(e - s + 1);
+}).methods({
 
-        reset() {
-          this.wordWidth = Number(this.inputs.bitWidth);
-          this.shift = shiftForBit(this.e, this.inputs.bitWidth);
-          this.mask = (1n << BigInt(this.bitWidth)) - 1n;
-        },
+  reset() {
+    this.wordWidth = Number(this.inputs.bitWidth);
+    this.shift = shiftForBit(this.e, this.inputs.bitWidth);
+    this.mask = (1n << BigInt(this.bitWidth)) - 1n;
+  },
 
-        getInputs() {
-          const v = this.inputs.get();
-          const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> BigInt(this.shift);
-          return shifted & this.mask;
-        },
-      });
+  getInputs() {
+    const v = this.inputs.get();
+    const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> BigInt(this.shift);
+    return shifted & this.mask;
+  },
+});
 module.exports.BitField = BitField;
 
 
@@ -275,13 +279,12 @@ module.exports.ONES = ONES;
 ////////////////////////////////////////////////////////////////
 // Take a group of inputs and concatenate them into a single wide
 // field.
-const BitCombiner = Combinatorial.compose({name: 'BitCombiner'})
-      .methods({
+const BitCombiner = Combinatorial.compose({name: 'BitCombiner'}).methods({
 
-        getInputs() {
-          return this.value = this.inputs.reduce((v, i) => (v << i.bitWidth) | i.get(), 0n);
-        },
-      });
+  getInputs() {
+    return this.value = this.inputs.reduce((v, i) => (v << i.bitWidth) | i.get(), 0n);
+  },
+});
 module.exports.BitCombiner = BitCombiner;
 
 
@@ -291,37 +294,36 @@ module.exports.BitCombiner = BitCombiner;
 // one element in `inputs` is the unit that provides a value for calls
 // to `latch()` or write data. A ZERO VALUE on `control` means the
 // clock cycle is a WRITE, otherwise it is a read.
-const RAM = Clocked.compose({name: 'RAM'})
-      .init(function({nWords, initValue = 0n}) {
-        this.nWords = nWords;
-        this.initValue = initValue;
-      }).methods({
+const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n}) {
+  this.nWords = nWords;
+  this.initValue = initValue;
+}).methods({
 
-        reset() {
+  reset() {
 
-          if (this.bitWidth <= 64 && this.initValue === 0n) {
-            this.data = new BigUint64Array(this.nWords);
-          } else {
-            this.data = _.range(Number(this.nWords)).map(x => this.initValue);
-          }
+    if (this.bitWidth <= 64 && this.initValue === 0n) {
+      this.data = new BigUint64Array(this.nWords);
+    } else {
+      this.data = _.range(Number(this.nWords)).map(x => this.initValue);
+    }
 
-          this.value = this.initValue;
-        },
+    this.value = this.initValue;
+  },
 
-        latch() {
-          this.addr = this.getAddress();
-          const isWrite = !this.getControl(); // Active-low /WRITE control
+  latch() {
+    this.addr = this.getAddress();
+    const isWrite = !this.getControl(); // Active-low /WRITE control
 
-          if (isWrite) {
-            this.value = this.get();
-            this.data[this.addr] = this.value;
-          } else {
-            this.value = this.data[this.addr];
-          }
+    if (isWrite) {
+      this.value = this.get();
+      this.data[this.addr] = this.value;
+    } else {
+      this.value = this.data[this.addr];
+    }
 
-          return this.value;
-        },
-      });
+    return this.value;
+  },
+});
 module.exports.RAM = RAM;
 
 
@@ -367,12 +369,14 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
 ////////////////////////////////////////////////////////////////
 // Given a control input and a series of selectable inputs, produce
 // the value of the selected input on the output.
-const Mux = Combinatorial.compose({name: 'Mux'}).methods({
+const Mux = Combinatorial.compose({name: 'Mux'}).init(function({enableF = () => 1n}) {
+  this.enableF = enableF;
+}).methods({
 
   get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
-    return input.get();
+    return this.enableF() ? input.get() : 0n;
   },
 });
 module.exports.Mux = Mux;
@@ -1033,7 +1037,7 @@ const FE = ShiftReg({name: 'FE', bitWidth: 10,
                                              inputs: CR.FE, matchValue: CR.FE.SCAD})});
 const SH = LogicUnit.methods({
 
-  getInputs() {
+  get() {
     const count = SC.get();
     const func = this.getControl();
     let result;
@@ -1177,24 +1181,25 @@ const BRX = Reg({name: 'BRX', bitWidth: 36,
                  clock: FieldMatchClock({name: 'BRX_CLOCK',
                                          inputs: CR.BRX, matchValue: CR.BRX.ARX})});
 
-const SC = LogicUnit.methods({
+const SC = Reg.methods({
 
   getInputs() {
+    const isSCM_ALT = SPECis('SCM ALT');
     const SCM_ALT = CR['SCM ALT'];
     const SPEC = CR.SPEC.get();
     let result;
 
     // Our complex operations are selected by SC/ and SPEC/SCM ALT
     if (CR.SC.get() === 0n) {      // Either recirculate or FE
-      result = SPEC !== SCM_ALT ? this.value : FE.get();
+      result = isSCM_ALT ? FE.get() : this.value;
     } else {
 
-      if (SPEC !== SCM_ALT) {
-        result = SCAD.get();
-      } else {
+      if (isSCM_ALT) {
         const ar = AR.get();
         const ar18filled = ((ar >> 18n) & 1n) ? 0o777777000000n : 0n;
         result = ar18filled | ar & 0o377n; // smear(AR18),,ar28-35
+      } else {
+        result = SCAD.get();
       }
     }
 
@@ -1203,7 +1208,7 @@ const SC = LogicUnit.methods({
 }) ({name: 'SC', bitWidth: 10});
 
 
-const SCADA = Mux({name: 'SCADA', bitWidth: 10});
+const SCADA = Mux({name: 'SCADA', bitWidth: 10, enable: () => !CR['SCADA EN']});
 const SCADB = Mux({name: 'SCADB', bitWidth: 10});
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13});

@@ -13,6 +13,7 @@ const {
   octal, oct6, octW,
   shiftForBit,
   wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
+  typeofFunction,
 } = require('./util');
 
 const EBOXmodel = require('./ebox-model');
@@ -138,8 +139,14 @@ Use 'history on' or 'history off' to enable or disable history mechanism.`,
 
   {name: 'debug',
    description: `With no args, display current registered debug flags and their values.
-With arguments, set specified flag to specified value. If value is unspecified, toggle.`,
+With arguments, set specified flag to specified value. If value is unspecified, toggle.
+Use "debug EBOX-unit-name method" (or "*" for all methods) to log or unlog actions.`,
    doFn: doDebug,
+  },
+
+  {name: 'reset',
+   description: 'Reset and reload everything from scratch.',
+   doFn: doReset,
   },
 
   {name: 'stats',
@@ -280,23 +287,41 @@ function doDebug(words) {
 
     // XXX Display all our debug flags.
 
-  } else if (words.length === 3) { // "debug unit-name method"
+  } else if (words.length === 3) { // "debug unit-name method-or-*"
     const unitName = words[1].toUpperCase();
     const unit = EBOXUnit.units[unitName];
     const method = words[2];
 
     if (unit) {
 
-      if (!unit[method]) {
-        console.error(`${unit.name} doesn't have a method called "${method}"`);
+      if (method === '*') {
+
+        // Do ALL the methods on our wrappable list.
+        (unit.wrappableMethods || [])
+          .filter(method => typeof unit[method] === typeofFunction)
+          .forEach(method => {
+
+          if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
+            unwrapMethod(unit, method);
+            console.log(`${unit.name} ${method} debug now off`);
+          } else {                             // Not wrapped, so wrap
+            wrapMethod(unit, method);
+            console.log(`${unit.name} ${method} debug now on`);
+          }
+        });
       } else {
 
-        if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
-          unwrapMethod(unit, method);
-          console.log(`${unit.name} ${method} debug now off`);
-        } else {                             // Not wrapped, so wrap
-          wrapMethod(unit, method);
-          console.log(`${unit.name} ${method} debug now on`);
+        if (typeof unit[method] !== typeofFunction) {
+          console.error(`${unit.name} doesn't have a method called "${method}"`);
+        } else {
+
+          if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
+            unwrapMethod(unit, method);
+            console.log(`${unit.name} ${method} debug now off`);
+          } else {                             // Not wrapped, so wrap
+            wrapMethod(unit, method);
+            console.log(`${unit.name} ${method} debug now on`);
+          }
         }
       }
     } else {
@@ -327,7 +352,7 @@ var lastX = 0n;
 
 
 function handleLine(line) {
-  const parseLine = () => line.toLowerCase().trim().split(/\s+/);
+  const parseLine = () => line.trim().split(/\s+/);
   let words = parseLine();
 
   if ((words.length === 0 || words[0].length === 0) && lastLine != 0) {
@@ -335,7 +360,7 @@ function handleLine(line) {
     words = parseLine();
   }
 
-  let cmd = words[0] || '?';
+  let cmd = (words[0] || '?').toLowerCase();
 
   lastLine = line;
 
@@ -524,9 +549,7 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 }
 
 
-function main()
-{
-
+function doReset() {
   // Reset
   EBOX.reset();
 
@@ -556,7 +579,12 @@ function main()
     0n << 13n |
     11n << 12n |
     0o271n << shiftForBit(6);
+}
 
+
+function main()
+{
+  doReset();
   setImmediate(startEmulator);
 }
 
