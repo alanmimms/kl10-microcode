@@ -9,7 +9,11 @@ const keypress = require('keypress');
 const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
-const {octal, oct6, octW, shiftForBit} = require('./util');
+const {
+  octal, oct6, octW,
+  shiftForBit,
+  wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
+} = require('./util');
 
 const EBOXmodel = require('./ebox-model');
 const CRAMwords = require('./cram.js');
@@ -20,6 +24,7 @@ const {
   EBOX, MBOX,
   CRADR, CRAM, CR, DRAM, DR,
   AR, ARX, BR, BRX, MQ, VMA, PC,
+  EBOXUnit,
 } = EBOXmodel;
 
 
@@ -142,6 +147,11 @@ With arguments, set specified flag to specified value. If value is unspecified, 
    doFn: doStats,
   },
 
+  {name: 'units',
+   description: 'Display list of EBOX units.',
+   doFn: doUnits,
+  },
+
   {name: 'help',
    description: 'Get a list of available commands and description of each.',
    doFn: doHelp,
@@ -259,12 +269,55 @@ function doValue(words) {
 
 
 function doDebug(words) {
-  console.log(`Not yet implemented.`);
+
+  if (words.length === 1) {
+
+    // Display all our wrapped (for debug) EBOX unit methods first.
+    EBOX.unitArray
+      .sort()
+      .forEach(u => wrappedMethods(u)
+               .forEach(method => console.log(`  debug logging on ${u.name} ${method}`)));
+
+    // XXX Display all our debug flags.
+
+  } else if (words.length === 3) { // "debug unit-name method"
+    const unitName = words[1].toUpperCase();
+    const unit = EBOXUnit.units[unitName];
+    const method = words[2];
+
+    if (unit) {
+
+      if (!unit[method]) {
+        console.error(`${unit.name} doesn't have a method called "${method}"`);
+      } else {
+
+        if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
+          unwrapMethod(unit, method);
+          console.log(`${unit.name} ${method} debug now off`);
+        } else {                             // Not wrapped, so wrap
+          wrapMethod(unit, method);
+          console.log(`${unit.name} ${method} debug now on`);
+        }
+      }
+    } else {
+    }
+  }
 }
 
 
 function doStats(words) {
   console.log(`Not yet implemented.`);
+}
+
+
+function doUnits(words) {
+  const unitNamesSorted = Object.keys(EBOXUnit.units).sort();
+  const maxW = unitNamesSorted.reduce((curMax, name) => Math.max(curMax, name.length), 0);
+  const unitNamesChunked = _.chunk(unitNamesSorted, 4);
+  const result = unitNamesChunked
+        .map(chunk => chunk.map(name => _.padEnd(name, maxW)).join('  '))
+        .join('\n');
+  console.log(result);
 }
 
 
