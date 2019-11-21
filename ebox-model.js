@@ -48,8 +48,9 @@ function LOG(T, P, F, x) {
 
 // Name our instances for debugging and display.
 const Named = StampIt({name: 'Named'})
-      .init(function({name}) {
+      .init(function({name}, {stamp}) {
         this.name = name;
+        this.stamp = stamp;
       });
 module.exports.Named = Named;
 
@@ -162,9 +163,7 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 //
 // * `get()` returns currently latched value or direct value from
 //   `getInputs()` for combinatorial units.
-const EBOXUnit = StampIt({
-  name: 'EBOXUnit',
-}).statics({
+const EBOXUnit = Named.compose({name: 'EBOXUnit'}).statics({
   units: {},                    // Dictionary of all units derived from this
 }).init(function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock}) {
   this.name = name;
@@ -1588,6 +1587,13 @@ MBOX.inputs = MBUS;
 MBOX.addrInput = VMA;
 MBOX.controlInput = CR.MEM;
 MBUS.inputs = ZERO;             // XXX temporary
+
+
+function wrapForLogging(o, method) {
+  if (!o.unwrapped) o.unwrapped = {};
+  o.unwrapped[method] = o[method];
+}
+
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, EBOXUnit.units);
