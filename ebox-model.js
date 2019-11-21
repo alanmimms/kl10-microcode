@@ -21,12 +21,18 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 // M8523 VMA module is replaced by M8542 in KL10 model B.
 
 
-// Name our instances for debugging and display.
-const Named = StampIt({name: 'Named'})
-      .init(function({name}, {stamp}) {
-        this.name = name;
-        this.stamp = stamp;
-      });
+// Name our instances for debugging and display. Every single Named
+// unit is remembered in the Named.units object.
+const Named = StampIt({name: 'Named'}).statics({
+  units: {},                    // Dictionary of all Named instances
+}).init(function({name}, {stamp}) {
+  this.name = name;
+  this.stamp = stamp;
+  this.propName = this.name.replace(/[ .,]/g, '_');
+  Named.units[this.propName] = this;
+}).methods({
+  reset() { },
+});
 module.exports.Named = Named;
 
 
@@ -139,37 +145,34 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 //
 // * `get()` returns currently latched value or direct value from
 //   `getInputs()` for combinatorial units.
-const EBOXUnit = Named.compose({name: 'EBOXUnit'}).statics({
-  units: {},                    // Dictionary of all units derived from this
-}).init(function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock}) {
-  this.name = name;
-  this.propName = this.name.replace(/[ .,]/g, '_');
-  EBOXUnit.units[this.propName] = this;
-  this.clock = clock;
-  this.inputs = inputs;
-  this.funcInput = func;
-  this.controlInput = control;
-  this.addrInput = addr;
-  this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
-  this.wrappableMethods = `\
-reset,getAddress,getFunc,getControl,getInputs,get,latch
+const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
+  function({name, bitWidth, inputs, addr, func, control, clock = EBOXClock}) {
+    this.name = name;
+    this.clock = clock;
+    this.inputs = inputs;
+    this.funcInput = func;
+    this.controlInput = control;
+    this.addrInput = addr;
+    this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
+    this.wrappableMethods = `\
+reset,getAddress,getFunc,getControl,getInputs,get,latch,cycle
 `.split(/,\s*/);
-  clock.addUnit(this);
-}).props({
-  value: 0n,
-}).methods({
+    clock.addUnit(this);
+  }).props({
+    value: 0n,
+  }).methods({
 
-  reset() { this.value = 0n },
+    reset() { this.value = 0n },
 
-  // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
-  getAddress() { return this.addrInput.get() },
-  getFunc() { return this.funcInput.get() },
-  getControl() { return this.controlInput.get() },
-  getInputs() { return this.inputs.get() },
-  getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
-  getRH(v = this.value) { return BigInt.asUintN(18, v) },
-  joinHalves(lh, rh) { return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh) },
-});
+    // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
+    getAddress() { return this.addrInput.get() },
+    getFunc() { return this.funcInput.get() },
+    getControl() { return this.controlInput.get() },
+    getInputs() { return this.inputs.get() },
+    getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
+    getRH(v = this.value) { return BigInt.asUintN(18, v) },
+    joinHalves(lh, rh) { return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh) },
+  });
 module.exports.EBOXUnit = EBOXUnit;
 
 
@@ -189,10 +192,13 @@ const EBOX = StampIt.compose(Named, {
   reset() {
     this.resetActive = true;
     this.run = false;
-    this.unitArray = Object.values(EBOXUnit.units).concat([this]);
+    this.unitArray = Object.values(Named.units).concat([this]);
 
     // Reset every Unit back to initial value.
     this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
+
+    // Pre-fill AC block #7 constant value(s?).
+    FM.data[7 * 16 + 15] = 0o777777n;           // R15
 
     // RESET always generates several clocks with zero CRAM and DRAM.
     _.range(4).forEach(k => this.cycle());
@@ -347,7 +353,7 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
       .init(function({inputs, matchValue = 0n, matchF}) {
         this.inputs = inputs;
-        this.matchValue = eval(matchValue); // Should be static
+        this.matchValue = eval(matchValue); // MUST BE STATIC to use this
         this.matchF = matchF || (cur => BigInt(cur === this.matchValue));
         EBOXClock.addUnit(this);
       }).methods({
@@ -628,12 +634,17 @@ const IR = Reg.methods({
   },
 }) ({name: 'IR', bitWidth: 12, clock: IR_CLOCK,
      control: FieldMatcher({name: 'IR_WRITE', inputs: 'CR.COND',
-                            matchValue: 'CR.COND["LOAD IR"]'})});
+                            matchValue: CR.COND['LOAD IR']})});
 
 
 // AC subfield of IR.
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12});
 
+
+// State Register (internal machine state during instructions)
+const SR = Reg({name: 'SR', bitWidth: 4,
+                clock: FieldMatchClock({name: 'SR_CLOCK', inputs: CR.COND,
+                                        matchValue: CR.COND['SR_#']})});
 
 const FM_ADR = LogicUnit.methods({
   
@@ -1114,12 +1125,15 @@ const ARML = Mux({name: 'ARML', bitWidth: 18});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18});
 
+const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', inputs: CR['AR CTL'],
-                                         matchValue: CR['AR CTL']['ARL LOAD']})});
+                                         matchF: cur => !!(cur & ARL_LOADmask)})});
+
+const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', inputs: CR['AR CTL'],
-                                         matchValue: CR['AR CTL']['ARR LOAD']})});
+                                         matchF: cur => !!(cur & ARR_LOADmask)})});
 
 const ARX = LogicUnit.methods({
 
@@ -1220,7 +1234,7 @@ const VMA_HELD_OR_PC = Mux.methods({
   getInputs() { return BigInt(+this.getControl()) },
 }) ({name: 'VMA HELD OR PC', bitWidth: 36,
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', inputs: 'CR.COND',
-                            matchValue: 'CR.COND["VMA HELD"]'})});
+                            matchValue: CR.COND['VMA HELD']})});
 
 
 ////////////////////////////////////////////////////////////////
@@ -1365,6 +1379,7 @@ CURRENT_BLOCK.inputs = EBUS;
 
 IR.inputs = AD;
 IRAC.inputs = IR;
+SR.inputs = CR['#'];
 
 FM_ADR.inputs = [IRAC, ARX, VMA, MAGIC_NUMBER];
 FMA.inputs = [CR.ACB, FM_ADR];
@@ -1497,4 +1512,4 @@ MBOX.controlInput = CR.MEM;
 MBUS.inputs = ZERO;             // XXX temporary
 
 // Export every EBOXUnit
-module.exports = Object.assign(module.exports, EBOXUnit.units);
+module.exports = Object.assign(module.exports, Named.units);

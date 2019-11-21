@@ -12,7 +12,7 @@ const StampIt = require('@stamp/it');
 
 const {octal} = require('./util');
 const EBOX = require('./ebox-model');
-const {EBOXUnit, CRAM, DRAM} = EBOX;
+const {Named, EBOXUnit, CRAM, DRAM} = EBOX;
 
 const cramDefs = {bpw: 84};
 const dramDefs = {bpw: 12};
@@ -338,7 +338,7 @@ var ${Object.keys(EBOX).join(',')};
 
 module.exports.initialize = function initialize(e) {
   EBOX = e;
-  ${Object.keys(EBOXUnit.units)
+  ${Object.keys(Named.units)
     .map(n => `${n} = e.units.${n};`)
     .join('\n  ')}
 };
