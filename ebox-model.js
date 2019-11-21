@@ -1601,9 +1601,9 @@ function wrapForLogging(wrappedObj, method) {
     originalFunction: wrappedObj[method].bind(wrappedObj),
   };
   wrappedObj[method] = wrapper.bind(context);
+  wrappedObj[method].__wrapForLogging__context = context;
 
   function wrapper(...a) {
-    console.log(`wrapper for ${this.name}.${this.methodName}`);
     const result = this.originalFunction(...a);
     const stamp = this.wrappedObj.stamp || {name: ''};
     const name = `${this.name}@${stamp.name}`;
@@ -1613,6 +1613,14 @@ function wrapForLogging(wrappedObj, method) {
     return result;
   }
 }
+
+
+// The antidote to `wrapForLogging()` to unwrap.
+function unwrapLogging(wrappedObj, method) {
+  const context = wrappedObj[method].__wrapForLogging__context;
+  wrappedObj[method] = context.originalFunction;
+}
+
 
 wrapForLogging(CR, 'get');
 
