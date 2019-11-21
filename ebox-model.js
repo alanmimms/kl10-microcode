@@ -254,7 +254,7 @@ const EBOX = StampIt.compose(Named, {
     ++this.microInstructionsExecuted;
   },
   
-}) ({name: 'EBOX', serialNumber: 3210});
+}) ({name: 'EBOX', serialNumber: 0o6543n});
 module.exports.EBOX = EBOX;
 
 
