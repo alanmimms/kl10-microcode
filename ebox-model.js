@@ -1589,35 +1589,46 @@ MBOX.controlInput = CR.MEM;
 MBUS.inputs = ZERO;             // XXX temporary
 
 
-// Wrap a method for an optionally stamp-based object with a function
-// that logs the fact of the method call, the name of the object
-// method was invoked for, its parent stamp name (if any) and its
-// result.
-function wrapForLogging(wrappedObj, method) {
+// Wrap a method named `method` for an optionally stamp-based object
+// `objToWrap` with a function that logs the fact of the method call,
+// the name of the object method was invoked for, its parent stamp
+// name (if any) and its result. The `wrapAction` function can be
+// specified if some other action is needed in the wrapper (e.g.,
+// maintaining statistics, debugging, etc.).
+const contextSymbol = Symbol('unique property name for wrapping and unwrapping context');
+function wrapForLogging(objToWrap, method, wrapAction = defaultWrapAction) {
   const context = {
-    wrappedObj,
-    name: wrappedObj.name,
+    wrappedObj: objToWrap,
+    name: objToWrap.name,
     methodName: method,
-    originalFunction: wrappedObj[method].bind(wrappedObj),
+    originalFunction: objToWrap[method].bind(objToWrap),
+    wrapAction,
   };
-  wrappedObj[method] = wrapper.bind(context);
-  wrappedObj[method].__wrapForLogging__context = context;
+  objToWrap[method] = wrapper.bind(context);
+  objToWrap[method][contextSymbol] = context;
+  return objToWrap;
+
 
   function wrapper(...a) {
     const result = this.originalFunction(...a);
     const stamp = this.wrappedObj.stamp || {name: ''};
     const name = `${this.name}@${stamp.name}`;
-    const bw = Number(this.wrappedObj.bitWidth || 36);
-    const resultString = result == null ? '' : `=${octW(result)}`;
-    console.log(`${name} ${this.methodName}${resultString}`);
-    return result;
+    const bitWidth = Number(this.wrappedObj.bitWidth || 36);
+    return this.wrapAction({result, stamp, name, bitWidth});
   }
+}
+
+
+function defaultWrapAction({result, stamp, name, bitWidth, context}) {
+  const resultString = result == null ? '' : `=${octW(result)}`;
+  console.log(`${name} ${this.methodName}${resultString}`);
+  return result;
 }
 
 
 // The antidote to `wrapForLogging()` to unwrap.
 function unwrapLogging(wrappedObj, method) {
-  const context = wrappedObj[method].__wrapForLogging__context;
+  const context = wrappedObj[method][contextSymbol];
   wrappedObj[method] = context.originalFunction;
 }
 
