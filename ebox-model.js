@@ -736,8 +736,9 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
 
   // This side-effect sets this.cout for carry and returns the value.
   do(func, a, b, cin = 0n) {
+    const ones = this.ONES;
+    const NOT = x => x ^ ones;
 
-    // XXX this badly needs testing
     switch (func) {
     // ARITHMETIC
     default:
@@ -781,10 +782,6 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     function BOOL(noCarry, withCarry) {
       return {value: cin ? withCarry : noCarry, cout: 0n};
     }
-    
-    function NOT(v) {
-      return v ^ this.ONES;
-    }
   },
 });
 
@@ -819,6 +816,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
+    const bw = this.bitWidth;
+    const unsigned = x => BigInt.asUintN(bw, a);
 
     // XXX CIN is affected by p. 364 E7/E8/E19 grid A4-5.
     // When that isn't true, CIN is ADX COUT.
@@ -831,25 +830,17 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 
     switch(func) {
       // Arithmetic operations
-    case CR.AD['A+1']:      result = this.do(f, a, cin);        break;
-    case CR.AD['A+XCRY']:   result = this.do(f, a, cin);        break;
-    case CR.AD['A+ANDCB']:  result = this.do(f, a);             break;
-    case CR.AD['A+AND']:    result = this.do(f, a);             break;
-    case CR.AD['A*2']:      result = this.do(f, a, a);          break;
+    case CR.AD['A+1']:      result = this.do(f, a, 0n, 1n);     break;
+    case CR.AD['A+XCRY']:   result = this.do(f, a, 0n, cin);    break;
+    case CR.AD['A*2']:      result = this.do(f, a, a, cin);     break;
     case CR.AD['A*2+1']:    result = this.do(f, a, a, 1n);      break;
-    case CR.AD['OR+1']:     result = this.do(f, a, a, cin);     break;
-    case CR.AD['OR+ANDCB']: result = this.do(f, a, a);          break;
-    case CR.AD['A+B']:      result = this.do(f, a, b);          break;
-    case CR.AD['A+B+1']:    result = this.do(f, a, b, cin);     break;
-    case CR.AD['A+OR']:     result = this.do(f, a, b);          break;
-    case CR.AD['ORCB+1']:   result = this.do(f, a, b, cin);     break;
-    case CR.AD['A-B-1']:    result = this.do(f, a, b);          break;
-    case CR.AD['A-B']:      result = this.do(f, a, b, cin);     break;
-    case CR.AD['AND+ORCB']: result = this.do(f, a, b, cin);     break;
-    case CR.AD['XCRY-1']:   result = this.do(f, a, b, cin);     break;
-    case CR.AD['ANDCB-1']:  result = this.do(f, a, b);          break;
-    case CR.AD['AND-1']:    result = this.do(f, a, b);          break;
-    case CR.AD['A-1']:      result = this.do(f, a, b);          break;
+    case CR.AD['A+B']:      result = this.do(f, a, b, cin);     break;
+    case CR.AD['A+B+1']:    result = this.do(f, a, b, 1n);      break;
+    case CR.AD['ORCB+1']:   result = this.do(f, a, b, 1n);      break;
+    case CR.AD['A-B-1']:    result = this.do(f, a, b, cin);     break;
+    case CR.AD['A-B']:      result = this.do(f, a, b, 1n);      break;
+    case CR.AD['XCRY-1']:   result = this.do(f, a, b, 1n);      break;
+    case CR.AD['A-1']:      result = this.do(f, a, b, cin);     break;
       // Logical operations
     case CR.AD['SETCA']:    result = NOT(a);                    break;
     case CR.AD['ORC']:      result = NOT(a) | NOT(b);           break;
@@ -867,6 +858,27 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['ANDCB']:    result = a & NOT(b);                break;
     case CR.AD['AND']:      result = a & b;                     break;
     case CR.AD['A']:        result = a;                         break;
+
+      // Carry generating operations
+    case CR.AD['CRY A EQ -1']:
+      this.cout = a === this.ones ? 1n : 0n;
+      result = this.ones;
+      break;
+
+    case CR.AD['CRY A.B#0']:
+      result = a & b;
+      this.cout = result ? 1n : 0n;
+      break;
+
+    case CR.AD['CRY A#0']:
+      result = a;
+      this.cout = a ? 1n : 0n;
+      break;
+
+    case CR.AD['CRY A GE B']:
+      result = a ^ b;
+      this.cout = unsigned(a) >= unsigned(b) ? 1n : 0n;
+      break;
 
     default:
       result = this.do(f, a, b);
