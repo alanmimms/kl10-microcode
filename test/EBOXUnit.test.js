@@ -23,6 +23,7 @@ const LOG = () => 0;
 
 
 describe('Named', () => {
+
   it('should allow us to name our stamps', () => {
     const q = Named({name: 'this is q'});
     expect(q.name).to.equal('this is q');
@@ -42,16 +43,18 @@ describe('Clock', () => {
 
 
 describe('EBOX', () => {
-  EBOX.reset();
-  CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
-  CRADR.value = 0o1234n;
-  _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
-  expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
-  IR.value = (0o123456n << 18n) | 0o765432n;
-  PC.value = 0o123456n;
+
+  beforeEach(() => {
+    CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
+    CRADR.value = 0o1234n;
+    _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
+    expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
+    IR.value = (0o123456n << 18n) | 0o765432n;
+    PC.value = 0o123456n;
+    EBOX.reset();
+  });
 
   describe(`RESET EBOX`, () => {
-    EBOX.reset();
 
     it(`should clear EBOX state`, () => {
       expect(CRAM.data[123]).to.equal(0n);
@@ -64,6 +67,53 @@ describe('EBOX', () => {
 
   it(`should reflect its serial number`, () => {
     expect(SERIAL_NUMBER.get()).to.equal(EBOX.serialNumber);
+  });
+});
+
+
+describe('Clocking/latching', () => {
+  const X = 100n;
+  const Y = 200n;
+  const Z = 300n;
+
+  beforeEach(() => {
+    EBOX.reset();
+    // X: J/Y
+    CR.value = 0n;
+    CR.J = Y;
+    CRAM.data[X] = CR.value;
+
+    // J/Z
+    CR.value = 0n;
+    CR.J = Z;
+    CRAM.data[Y] = CR.value;
+
+    // J/X
+    CR.value = 0n;
+    CR.J = X;
+    CRAM.data[Z] = CR.value;
+  });
+
+  describe(`Verify basic CRAM J/x jump operation`, () => {
+
+    it(`should cycle through X, Y, Z and then repeat`, () => {
+      CRADR.value = X;
+      CRAM.latch();
+
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+    });
   });
 });
 
@@ -132,113 +182,4 @@ describe('Mux+Reg', () => {
       });
     });
   });
-});
-
-
-describe('Clocking/latching', () => {
-  const X = 100n;
-  const Y = 200n;
-  const Z = 300n;
-  let Xcode, Ycode, Zcode;
-
-  describe('Fill CRAM with test microcode', () => {
-
-    it(`should install CRAM microcode`, () => {
-      // Setup stable state so AD can perform an ADD in first cycle.
-      EBOX.reset();
-      LOG(`\n\n= = = = EBOX was RESET = = = =\n`);
-      VMA.value = PC.value = 0o123456n;
-      BR.value = 0o600100n;
-      MQ.value = 0o000010n;
-
-      Xcode = `X: AD/A+B, ADB/BR, ADA/PC, AR/AD, AR CTL/ARR LOAD, J/Y`;
-      CRADR.value = X;
-      CR.value = 0n;
-      CR.AD = CR.AD['A+B'];
-      CR.ADA = CR.ADA.PC;
-      CR.ADB = CR.ADB.BR;
-      CR.AR = CR.AR.AD;
-      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
-      CR.J = Y;
-      CRAM.data[CRADR.value] = CR.value;
-      CD(Xcode);
-
-      Ycode = `Y: AD/A+B, ADB/AR*4, ADA/MQ, AR/AD, AR CTL/ARR LOAD, J/Z`;
-      CRADR.value = Y;
-      CR.value = 0n;
-      CR.AD = CR.AD['A+B'];
-      CR.ADA = CR.ADA.MQ;
-      CR.ADB = CR.ADB['AR*4'];
-      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
-      CR.AR = CR.AR.AD;
-      CR.J = Z;
-      CRAM.data[CRADR.value] = CR.value;
-      CD(Ycode);
-
-      Zcode = `Z: AD/A+B, ADA/AR, ADB/BR*2, AR CTL/ARR LOAD, J/X`;
-      CRADR.value = Z;
-      CR.value = 0n;
-      CR.AD = CR.AD['A+B'];
-      CR.ADA = CR.ADA.AR;
-      CR.ADB = CR.ADB['BR*2'];
-      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
-      CR.AR = CR.AR.AD;
-      CR.J = X;
-      CRAM.data[CRADR.value] = CR.value;
-      CD(Zcode);
-    });
-  });
-
-  describe(`Verify basic jump and ALU operation`, () => {
-
-    it(`should cycle through X, Y, Z and then repeat while doing muxing and logic`, () => {
-      CRADR.value = X;
-      CRAM.latch();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-
-      doCycle(Xcode);
-      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o723556n.toString(8));
-
-      doCycle(Ycode);
-      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o3516700n.toString(8));
-
-      doCycle(Zcode);
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o5117100n.toString(8));
-
-      doCycle(Xcode);
-      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o723556n.toString(8));
-
-      doCycle(Ycode);
-      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o3516700n.toString(8));
-
-      doCycle(Zcode);
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.value.toString(8)).to.equal(0o5117100n.toString(8));
-    });
-  });
-
-  function doCycle(code) {
-    LOG(`
-EXECUTE:`);
-    CL(code);
-    EBOX.cycle();
-    CL(`   after`);
-  }
-
-  function CL(pre) {
-    LOG(`\
-${pre} ; CRADR=${octal(CRADR.value)}
-   PC=${octW(PC.value)} BR=${octW(BR.value)} \
-MQ=${octW(MQ.value)} AD=${octW(AD.value)} AR=${octW(AR.value)}`);
-  }
-
-  function CD(code) {
-    LOG(`CRAM[${octal(CRADR.value)}] put ${code}
-${octal(CR.value, 84/3)}`);
-  }
 });
