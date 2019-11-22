@@ -520,7 +520,6 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
       case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
         orBits = this.stack.pop();
-        console.log(`CRADR RETURN`);
         break;
 
       case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
@@ -577,10 +576,8 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
       }
 
       this.value = orBits | CR.J.get();
-      console.log(`CRADR dispatch orBits=${octal(orBits)} result=${octal(this.value)}`);
 
       if (CR.CALL.get()) {
-        console.log(`CRADR CALL`);
         this.stack.push(prevValue);
       }
 
@@ -790,11 +787,12 @@ const ALU10181 = StampIt.init(function({bitWidth = 36}) {
 const DataPathALU = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 
-  this.getCarry = Combinatorial.init(function({parentALU}) {
-    this.parentALU = parentALU;
-  }).methods({
-    getInputs() { return this.parentALU.cout },
-  }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
+  this.getCarry = Combinatorial
+    .init(function({parentALU}) {
+      this.parentALU = parentALU;
+    }).methods({
+      getInputs() { return this.parentALU.cout },
+    }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
 }).methods({
 
   do(aluFunction, a, b, cin = 0n) {
@@ -820,6 +818,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     let result = 0n;
 
     switch(func) {
+      // Arithmetic operations
     case CR.AD['A+1']:      result = this.do(f, a, cin);        break;
     case CR.AD['A+XCRY']:   result = this.do(f, a, cin);        break;
     case CR.AD['A+ANDCB']:  result = this.do(f, a);             break;
@@ -839,6 +838,24 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['ANDCB-1']:  result = this.do(f, a, b);          break;
     case CR.AD['AND-1']:    result = this.do(f, a, b);          break;
     case CR.AD['A-1']:      result = this.do(f, a, b);          break;
+      // Logical operations
+    case CR.AD['SETCA']:    result = a ^ this.alu.ONES;         break;
+    case CR.AD['ORC']:      result = a | (b ^ this.alu.ONES);   break;
+    case CR.AD['ORCA']:     result = (a ^ this.alu.ONES) | b;   break;
+    case CR.AD['1S']:       result = this.alu.ONES;             break;
+    case CR.AD['ANDC']:     result = a & (b ^ this.alu.ONES);   break;
+    case CR.AD['NOR']:      result = (a | b) ^ this.alu.ONES;   break;
+    case CR.AD['SETCB']:    result = b ^ this.alu.ONES;         break;
+    case CR.AD['EQV']:      result = a ^ b ^ this.alu.ONES;     break;
+    case CR.AD['ORCB']:     result = a | (b ^ this.alu.ONES);   break;
+    case CR.AD['ANDCA']:    result = (a ^ this.alu.ONES) & b;   break;
+    case CR.AD['XOR']:      result = a ^ b;                     break;
+    case CR.AD['B']:        result = b;                         break;
+    case CR.AD['OR']:       result = a | b;                     break;
+    case CR.AD['0S']:       result = 0n;                        break;
+    case CR.AD['ANDCB']:    result = a & (b ^ this.alu.ONES);   break;
+    case CR.AD['AND']:      result = a & b;                     break;
+    case CR.AD['A']:        result = a;                         break;
     }
 
     return result;
@@ -1126,7 +1143,7 @@ const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5});
 const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17});
 const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17});
 
-const MAGIC_NUMBER = CR['#'];
+const MAGIC_NUMBER = BitCombiner({name: 'MAGIC_NUMBER', bitWidth: 9, inputs: [CR['#']]});
 
 const ARMML = Mux({name: 'ARMML', bitWidth: 9});
 
@@ -1247,7 +1264,7 @@ const SC = Reg.methods({
 }) ({name: 'SC', bitWidth: 10});
 
 
-const SCADA = Mux({name: 'SCADA', bitWidth: 10, enable: () => !CR['SCADA EN']});
+const SCADA = Mux({name: 'SCADA', bitWidth: 10});
 const SCADB = Mux({name: 'SCADB', bitWidth: 10});
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13});
@@ -1495,8 +1512,11 @@ SCAD.funcInput = CR.SCAD;
 SCAD_EXP.inputs = SCAD;
 SCAD_POS.inputs = SCAD;
 SC.inputs = [SC, FE, AR, SCAD];
-SCADA.inputs = [ZERO, ZERO, ZERO, ZERO, FE, AR_POS, AR_EXP, MAGIC_NUMBER];
+
+// SCADA/= includes SCADA EN/= as its MSB.
+SCADA.inputs = [FE, AR_POS, AR_EXP, MAGIC_NUMBER, ZERO, ZERO, ZERO, ZERO];
 SCADA.controlInput = CR.SCADA;
+
 SCADB.inputs = [FE, AR_SIZE, AR_00_08, MAGIC_NUMBER];
 SCADB.controlInput = CR.SCADB;
 
