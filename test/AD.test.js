@@ -34,6 +34,10 @@ const NOT = x => x ^ ones38;
 
 describe('AD ALU', () => {
 
+  function desc(op) {
+    return `should do ${ARinitial.toString(8)} ${op} ${BRinitial.toString(8)}`;
+  }
+
   beforeEach('Reset EBOX', () => {
     EBOX.reset();
 
@@ -43,7 +47,7 @@ describe('AD ALU', () => {
     ARR.value = ARinitial;
   });
 
-  describe(`Addition`, () => {
+  describe(`Arithmetic functions`, () => {
 
     it(`should add BR and PC to ARR and jump to Y`, () => {
       // `X: AD/A+B, ADB/BR, ADA/PC, AR/AD, AR CTL/ARR LOAD, J/Y
@@ -98,54 +102,81 @@ describe('AD ALU', () => {
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
       expect(AR.value.toString(8)).to.equal(((ARinitial + BRinitial*2n) & ARones).toString(8));
     });
+
+    it(desc('A+1'),       () => arithOp('A+1',    (a, b) => a+1n));
+    it(desc('A+XCRY(0)'), () => arithOp('A+XCRY', (a, b) => a, 0n));
+    it(desc('A+XCRY(1)'), () => arithOp('A+XCRY', (a, b) => a + 1n, 1n));
+    it(desc('A*2'),       () => arithOp('A*2',    (a, b) => a * 2n));
+    it(desc('A*2+1'),     () => arithOp('A*2+1',  (a, b) => a * 2n + 1n));
+    it(desc('A+B'),       () => arithOp('A+B',    (a, b) => a + b));
+    it(desc('A+B+1'),     () => arithOp('A+B+1',  (a, b) => a + b + 1n));
+    it(desc('ORCB+1'),    () => arithOp('ORCB+1', (a, b) => (a | NOT(b)) + 1n));
+    it(desc('A-B-1'),     () => arithOp('A-B-1',  (a, b) => a - b - 1n));
+    it(desc('A-B'),       () => arithOp('A-B',    (a, b) => a - b));
+    it(desc('XCRY(0)-1'), () => arithOp('XCRY-1', (a, b) => 0n, 0n));
+    it(desc('XCRY(1)-1'), () => arithOp('XCRY-1', (a, b) => 0n, 1n));
+    it(desc('A-1'),       () => arithOp('A-1',    (a, b) => a - 1n));
+
+
+    // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
+    // Test for result calculated by opFunc.
+    function arithOp(CRname, opFunc, xcry = 0n) {
+      const sb = opFunc(ARinitial, BRinitial) & ARones;
+
+      // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
+      CR.value = 0n;
+      CR.AD = CR.AD[CRname];
+      CR.ADA = CR.ADA.AR;
+      CR.ADB = CR.ADB.BR;
+      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
+      CR.AR = CR.AR.AD;
+      CR.J = X;
+      CRAM.data[Z] = CR.value;
+      CRADR.value = Z;
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(AR.value.toString(8)).to.equal(sb.toString(8));
+    }
   });
 
-  describe(`Boolean`, () => {
+  describe(`Logical functions`, () => {
+    it(desc('A'),          () => boolOp('A',     (a, b) => a));
+    it(desc('B'),          () => boolOp('B',     (a, b) => b));
+    it(desc('OR'),         () => boolOp('OR',    (a, b) => a | b));
+    it(desc('AND'),        () => boolOp('AND',   (a, b) => a & b));
+    it(desc('XOR'),        () => boolOp('XOR',   (a, b) => a ^ b));
+    it(desc('EQV'),        () => boolOp('EQV',   (a, b) => NOT(a ^ b)));
+    it(desc('SETCA'),      () => boolOp('SETCA', (a, b) => NOT(a)));
+    it(desc('SETCB'),      () => boolOp('SETCB', (a, b) => NOT(b)));
+    it(desc('0S'),         () => boolOp('0S',    (a, b) => 0n));
+    it(desc('1S'),         () => boolOp('1S',    (a, b) => ones36));
+    it(desc('NOR'),        () => boolOp('NOR',   (a, b) => NOT(a | b)));
+    it(desc('ORCA'),       () => boolOp('ORCA',  (a, b) => NOT(a) | b));
+    it(desc('ORCB'),       () => boolOp('ORCB',  (a, b) => a | NOT(b)));
+    it(desc('ANDCA'),      () => boolOp('ANDCA', (a, b) => NOT(a) & b));
+    it(desc('ANDCB'),      () => boolOp('ANDCB', (a, b) => a & NOT(b)));
+    it(desc('ANDC (NOR)'), () => boolOp('ANDC',  (a, b) => NOT(a) & NOT(b)));
+    it(desc('ORC (NAND)'), () => boolOp('ORC',   (a, b) => NOT(a & b)));
+
     
-    describe(`Logical functions`, () => {
-      it(desc('A'),          () => boolOp('A',     (a, b) => a));
-      it(desc('B'),          () => boolOp('B',     (a, b) => b));
-      it(desc('OR'),         () => boolOp('OR',    (a, b) => a | b));
-      it(desc('AND'),        () => boolOp('AND',   (a, b) => a & b));
-      it(desc('XOR'),        () => boolOp('XOR',   (a, b) => a ^ b));
-      it(desc('EQV'),        () => boolOp('EQV',   (a, b) => NOT(a ^ b)));
-      it(desc('SETCA'),      () => boolOp('SETCA', (a, b) => NOT(a)));
-      it(desc('SETCB'),      () => boolOp('SETCB', (a, b) => NOT(b)));
-      it(desc('0S'),         () => boolOp('0S',    (a, b) => 0n));
-      it(desc('1S'),         () => boolOp('1S',    (a, b) => ones36));
-      it(desc('NOR'),        () => boolOp('NOR',   (a, b) => NOT(a | b)));
-      it(desc('ORCA'),       () => boolOp('ORCA',  (a, b) => NOT(a) | b));
-      it(desc('ORCB'),       () => boolOp('ORCB',  (a, b) => a | NOT(b)));
-      it(desc('ANDCA'),      () => boolOp('ANDCA', (a, b) => NOT(a) & b));
-      it(desc('ANDCB'),      () => boolOp('ANDCB', (a, b) => a & NOT(b)));
-      it(desc('ANDC (NOR)'), () => boolOp('ANDC',  (a, b) => NOT(a) & NOT(b)));
-      it(desc('ORC (NAND)'), () => boolOp('ORC',   (a, b) => NOT(a & b)));
+    // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
+    // Test for result calculated by opFunc.
+    function boolOp(CRname, opFunc) {
+      const sb = opFunc(ARinitial, BRinitial) & ARones;
 
-
-      function desc(op) {
-        return `should do ${ARinitial.toString(8)} ${op} ${BRinitial.toString(8)}`;
-      }
-
-      
-      // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
-      // Test for result calculated by opFunc.
-      function boolOp(CRname, opFunc) {
-        const sb = opFunc(ARinitial, BRinitial) & ARones;
-
-        // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
-        CR.value = 0n;
-        CR.AD = CR.AD[CRname];
-        CR.ADA = CR.ADA.AR;
-        CR.ADB = CR.ADB.BR;
-        CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
-        CR.AR = CR.AR.AD;
-        CR.J = X;
-        CRAM.data[Z] = CR.value;
-        CRADR.value = Z;
-        EBOX.cycle();
-        expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-        expect(AR.value.toString(8)).to.equal(sb.toString(8));
-      }
-    });
+      // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
+      CR.value = 0n;
+      CR.AD = CR.AD[CRname];
+      CR.ADA = CR.ADA.AR;
+      CR.ADB = CR.ADB.BR;
+      CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
+      CR.AR = CR.AR.AD;
+      CR.J = X;
+      CRAM.data[Z] = CR.value;
+      CRADR.value = Z;
+      EBOX.cycle();
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(AR.value.toString(8)).to.equal(sb.toString(8));
+    }
   });
 });
