@@ -25,6 +25,7 @@ const Z = 300n;
 const PCinitial = 0o123456n;
 const MQinitial = 0o000010n;
 const BRinitial = 0o246100n;
+const BRXinitial = 0o777777n;   // Must cause carry out if added to MQinitial
 const ARinitial = 0o654321n;
 const ARones = (1n << 18n) - 1n;
 const ones36 = 0o777777777777n;
@@ -103,33 +104,39 @@ describe('AD ALU', () => {
       expect(AR.value.toString(8)).to.equal(((ARinitial + BRinitial*2n) & ARones).toString(8));
     });
 
-    it(desc('A+1'),       () => arithOp('A+1',    (a, b) => a+1n));
-    it(desc('A+XCRY(0)'), () => arithOp('A+XCRY', (a, b) => a, 0n));
-    it(desc('A+XCRY(1)'), () => arithOp('A+XCRY', (a, b) => a + 1n, 1n));
-    it(desc('A*2'),       () => arithOp('A*2',    (a, b) => a * 2n));
-    it(desc('A*2+1'),     () => arithOp('A*2+1',  (a, b) => a * 2n + 1n));
-    it(desc('A+B'),       () => arithOp('A+B',    (a, b) => a + b));
-    it(desc('A+B+1'),     () => arithOp('A+B+1',  (a, b) => a + b + 1n));
-    it(desc('ORCB+1'),    () => arithOp('ORCB+1', (a, b) => (a | NOT(b)) + 1n));
-    it(desc('A-B-1'),     () => arithOp('A-B-1',  (a, b) => a - b - 1n));
-    it(desc('A-B'),       () => arithOp('A-B',    (a, b) => a - b));
-    it(desc('XCRY(0)-1'), () => arithOp('XCRY-1', (a, b) => 0n, 0n));
-    it(desc('XCRY(1)-1'), () => arithOp('XCRY-1', (a, b) => 0n, 1n));
-    it(desc('A-1'),       () => arithOp('A-1',    (a, b) => a - 1n));
+    it(desc('A+1'),           () => arithOp('A+1',    (a, b) => a + 1n));
+    it(desc('A+XCRY c=0'),    () => arithOp('A+XCRY', (a, b) => a + 0n, 0n));
+    it(desc('A+XCRY c=1'),    () => arithOp('A+XCRY', (a, b) => a + 1n, 1n));
+    it(desc('A*2 c=0'),       () => arithOp('A*2',    (a, b) => a * 2n + 0n));
+    it(desc('A*2 c=1'),       () => arithOp('A*2',    (a, b) => a * 2n + 1n));
+    it(desc('A*2+1'),         () => arithOp('A*2+1',  (a, b) => a * 2n + 1n));
+    it(desc('A+B c=0'),       () => arithOp('A+B',    (a, b) => a + b + 0n, 0n));
+    it(desc('A+B c=1'),       () => arithOp('A+B',    (a, b) => a + b + 1n, 1n));
+    it(desc('A+B+1'),         () => arithOp('A+B+1',  (a, b) => a + b + 1n));
+    it(desc('ORCB+1'),        () => arithOp('ORCB+1', (a, b) => (a | NOT(b)) + 1n));
+    it(desc('A-B-1'),         () => arithOp('A-B-1',  (a, b) => a - b - 1n));
+    it(desc('A-B c=0'),       () => arithOp('A-B',    (a, b) => a - b - 1n, 0n));
+    it(desc('A-B c=1'),       () => arithOp('A-B',    (a, b) => a - b - 0n, 1n));
+    it(desc('XCRY-1 c=0'),    () => arithOp('XCRY-1', (a, b) => ARones, 0n));
+    it(desc('XCRY-1 c=1'),    () => arithOp('XCRY-1', (a, b) => 0n, 1n));
+    it(desc('A-1 c=0'),       () => arithOp('A-1',    (a, b) => a - 1n));
+    it(desc('A-1 c=1'),       () => arithOp('A-1',    (a, b) => a, 1n));
 
 
     // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
     // Test for result calculated by opFunc.
-    function arithOp(CRname, opFunc, xcry = 0n) {
+    function arithOp(CRname, opFunc, cin = 0n) {
       const sb = opFunc(ARinitial, BRinitial) & ARones;
 
-      // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
+      // Z: AD/${CRname}, ADA/AR, ADB/BR, ARX/MQ, AR CTL/ARR LOAD, J/X
       CR.value = 0n;
       CR.AD = CR.AD[CRname];
       CR.ADA = CR.ADA.AR;
       CR.ADB = CR.ADB.BR;
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.AR = CR.AR.AD;
+      if (!cin) BRX.value = 0n; // Do not generate carry out of ARX
+      CR.ARX = CR.ARX.MQ;       // ARX = MQ + BRX (generate carry)
       CR.J = X;
       CRAM.data[Z] = CR.value;
       CRADR.value = Z;
