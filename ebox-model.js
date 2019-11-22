@@ -271,7 +271,7 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
 module.exports.ConstantUnit = ConstantUnit;
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
-const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: 0o777777777777n});
+const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: (1n << 36n) - 1n});
 module.exports.ZERO = ZERO;
 module.exports.ONES = ONES;
 
@@ -709,10 +709,13 @@ const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36});
 
 const ALU10181 = StampIt.init(function({bitWidth = 36}) {
   this.bitWidth = bitWidth = BigInt(bitWidth);
-  this.ONES = (1n << bitWidth) - 1n;
 }).props({
   name: 'ALU10181',
 }).methods({
+
+  reset() {
+    this.ONES = (1n << this.bitWidth) - 1n;
+  },
 
   add(a, b, cin = 0n) {
     if (typeof a !== 'bigint') debugger;
@@ -795,6 +798,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
 }).methods({
 
+  reset() { this.alu.reset() },
+
   do(aluFunction, a, b, cin = 0n) {
     const v = this.alu.do(aluFunction, a, b, cin);
     this.cout = v.cout;
@@ -839,26 +844,33 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['AND-1']:    result = this.do(f, a, b);          break;
     case CR.AD['A-1']:      result = this.do(f, a, b);          break;
       // Logical operations
-    case CR.AD['SETCA']:    result = a ^ this.alu.ONES;         break;
-    case CR.AD['ORC']:      result = a | (b ^ this.alu.ONES);   break;
-    case CR.AD['ORCA']:     result = (a ^ this.alu.ONES) | b;   break;
+    default:
+      result = this.doc(f, a, b);
+      break;
+    case CR.AD['SETCA']:    result = NOT(a);                    break;
+    case CR.AD['ORC']:      result = a | NOT(b);                break;
+    case CR.AD['ORCA']:     result = NOT(a) | b;                break;
     case CR.AD['1S']:       result = this.alu.ONES;             break;
-    case CR.AD['ANDC']:     result = a & (b ^ this.alu.ONES);   break;
-    case CR.AD['NOR']:      result = (a | b) ^ this.alu.ONES;   break;
-    case CR.AD['SETCB']:    result = b ^ this.alu.ONES;         break;
-    case CR.AD['EQV']:      result = a ^ b ^ this.alu.ONES;     break;
-    case CR.AD['ORCB']:     result = a | (b ^ this.alu.ONES);   break;
-    case CR.AD['ANDCA']:    result = (a ^ this.alu.ONES) & b;   break;
+    case CR.AD['ANDC']:     result = a & NOT(b);                break;
+    case CR.AD['NOR']:      result = NOT(a | b);                break;
+    case CR.AD['SETCB']:    result = NOT(b);                    break;
+    case CR.AD['EQV']:      result = NOT(a ^ b);                break;
+    case CR.AD['ORCB']:     result = a | NOT(b);                break;
+    case CR.AD['ANDCA']:    result = NOT(a) & b;                break;
     case CR.AD['XOR']:      result = a ^ b;                     break;
     case CR.AD['B']:        result = b;                         break;
     case CR.AD['OR']:       result = a | b;                     break;
     case CR.AD['0S']:       result = 0n;                        break;
-    case CR.AD['ANDCB']:    result = a & (b ^ this.alu.ONES);   break;
+    case CR.AD['ANDCB']:    result = a & NOT(b);                break;
     case CR.AD['AND']:      result = a & b;                     break;
     case CR.AD['A']:        result = a;                         break;
     }
 
     return result;
+
+    function NOT(v) {
+      return v ^ this.alu.ONES;
+    }
   },
 });
 
@@ -1044,6 +1056,8 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 }).methods({
 
+  reset() { this.alu.reset() },
+
   getInputs() {
     const func = Number(this.getFunc());
     const a = this.inputs[0].get();
@@ -1052,14 +1066,14 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
 
     switch(func) {
     default:
-    case CR.SCAD.A:        result = this.alu.do(0o00, a, b);            break;
-    case CR.SCAD['A-B-1']: result = this.alu.do(0o11, a, b);            break;
-    case CR.SCAD['A+B']:   result = this.alu.do(0o06, a, b);            break;
-    case CR.SCAD['A-1']:   result = this.alu.do(0o17, a, b);            break;
-    case CR.SCAD['A+1']:   result = this.alu.do(0o00, a, b, 1n);        break;
-    case CR.SCAD['A-B']:   result = this.alu.do(0o11, a, b, 1n);        break;
-    case CR.SCAD.OR:       result = this.alu.do(0o04, a, b);            break;
-    case CR.SCAD.AND:      result = this.alu.do(0o16, a, b, 1n);        break;
+    case CR.SCAD.A:        result = this.alu.do(0o00n, a, b);            break;
+    case CR.SCAD['A-B-1']: result = this.alu.do(0o11n, a, b);            break;
+    case CR.SCAD['A+B']:   result = this.alu.do(0o06n, a, b);            break;
+    case CR.SCAD['A-1']:   result = this.alu.do(0o17n, a, b);            break;
+    case CR.SCAD['A+1']:   result = this.alu.do(0o00n, a, b, 1n);        break;
+    case CR.SCAD['A-B']:   result = this.alu.do(0o11n, a, b, 1n);        break;
+    case CR.SCAD.OR:       result = this.alu.do(0o04n, a, b);            break;
+    case CR.SCAD.AND:      result = this.alu.do(0o16n, a, b, 1n);        break;
     }
 
     return result;
