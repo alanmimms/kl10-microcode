@@ -164,7 +164,7 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,getInput,get,latch,cycle
 
     reset() {
       this.value = 0n;
-      this.bitWidth = BigInt(this.bitWidth);
+      this.bitWidth = BigInt(this.bitWidth || 1n);
       this.ones = (1n << this.bitWidth) - 1n;
     },
 
@@ -818,6 +818,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const b = this.inputs[1].get();
     const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
     const allOnes = this.alu.ONES;
+    const NOT = v => v ^ allOnes;
 
     // XXX CIN is affected by p. 364 E7/E8/E19 grid A4-5.
     // When that isn't true, CIN is ADX COUT.
@@ -850,14 +851,10 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['AND-1']:    result = this.do(f, a, b);          break;
     case CR.AD['A-1']:      result = this.do(f, a, b);          break;
       // Logical operations
-    default:
-      result = this.doc(f, a, b);
-      break;
     case CR.AD['SETCA']:    result = NOT(a);                    break;
-    case CR.AD['ORC']:      result = a | NOT(b);                break;
+    case CR.AD['ORC']:      result = NOT(a) | NOT(b);           break;
     case CR.AD['ORCA']:     result = NOT(a) | b;                break;
-    case CR.AD['1S']:       result = this.alu.ONES;             break;
-    case CR.AD['ANDC']:     result = a & NOT(b);                break;
+    case CR.AD['1S']:       result = allOnes;                   break;
     case CR.AD['NOR']:      result = NOT(a | b);                break;
     case CR.AD['SETCB']:    result = NOT(b);                    break;
     case CR.AD['EQV']:      result = NOT(a ^ b);                break;
@@ -870,13 +867,13 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     case CR.AD['ANDCB']:    result = a & NOT(b);                break;
     case CR.AD['AND']:      result = a & b;                     break;
     case CR.AD['A']:        result = a;                         break;
+
+    default:
+      result = this.do(f, a, b);
+      break;
     }
 
-    return result;
-
-    function NOT(v) {
-      return v ^ allOnes;
-    }
+    return result & this.ones;
   },
 });
 
