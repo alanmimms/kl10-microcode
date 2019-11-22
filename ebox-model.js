@@ -1105,7 +1105,6 @@ const ARMMR = Mux.methods({
 }) ({name: 'ARMMR', bitWidth: 17 - 13 + 1});
 
 
-const ARMM = BitCombiner({name: 'ARMM', bitWidth: 18});
 const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36});
 const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36});
 
@@ -1432,12 +1431,10 @@ ARMML.controlInput = CR.ARMM;
 ARMMR.inputs = [PC_13_17, VMA_PREV_SECT_13_17];
 ARMMR.controlInput = CR.VMAX;
 
-ARMM.inputs = [ARMML, ARMMR];
-
-ARMR.inputs = [SERIAL_NUMBER, CACHE, AD, EBUS, SH, ADx2, ADdiv4];
+ARMR.inputs = [ARMMR, CACHE, AD, EBUS, SH, ADx2, ADdiv4];
 ARMR.controlInput = CR.AR;
 
-ARML.inputs = [AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4];
+ARML.inputs = [ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4];
 ARML.controlInput = CR.AR;
 
 ARL.inputs = ARML;
