@@ -2,7 +2,10 @@
 const _ = require('lodash');
 const expect = require('chai').expect;
 
-const {octal, oct6, octW} = require('../util');
+const {
+  octal, oct6, octW,
+  wrapMethod,
+} = require('../util');
 
 const {
   EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
@@ -39,20 +42,24 @@ describe('Clock', () => {
 
 
 describe('EBOX', () => {
+  EBOX.reset();
+  CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
+  CRADR.value = 0o1234n;
+  _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
+  expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
+  IR.value = (0o123456n << 18n) | 0o765432n;
+  PC.value = 0o123456n;
 
-  it(`should reset itself and all EBOXUnits`, () => {
-    CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
-    CRADR.value = 0o1234n;
-    _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
-    expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
-    IR.value = (0o123456n << 18n) | 0o765432n;
-    PC.value = 0o123456n;
-    describe(`RESET EBOX`, () => EBOX.reset());
-    expect(CRAM.data[123]).to.equal(0n);
-    expect(CRADR.value).to.equal(0n);
-    expect(CRADR.stack.length).to.equal(0);
-    expect(IR.value).to.equal(0n);
-    expect(PC.value).to.equal(0n);
+  describe(`RESET EBOX`, () => {
+    EBOX.reset();
+
+    it(`should clear EBOX state`, () => {
+      expect(CRAM.data[123]).to.equal(0n);
+      expect(CRADR.value).to.equal(0n);
+      expect(CRADR.stack.length).to.equal(0);
+      expect(IR.value).to.equal(0n);
+      expect(PC.value).to.equal(0n);
+    });
   });
 
   it(`should reflect its serial number`, () => {
@@ -63,38 +70,65 @@ describe('EBOX', () => {
 
 describe('Mux+Reg', () => {
   const CLK = Clock({name: 'CLK'});
-  let M, A, B, C, D, E, Mcontrol, R;
+  const Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
+  const A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
+  const B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
+  const C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
+  const D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
+  const E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
+  const M = Mux({name: 'M', bitWidth: 36, clock: CLK,
+                 inputs: [A,B,C,D,E], control: Mcontrol});
+  const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: M});
+
+  
+
+  beforeEach(() => {
+    describe(`RESET EBOX`, () => {
+      EBOX.reset();
+
+      it(`should reset`, () => {
+        expect(1).to.equal(1);
+      });
+    });
+  });
+
+  const expectedK = k => (BigInt(k) & 1n) ? BigInt(k) + 65n : 0n;
 
   describe('Mux', () => {
-    describe(`RESET EBOX`, () => EBOX.reset());
-
-    Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
-    A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
-    B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
-    C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
-    D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
-    E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
-    M = Mux({name: 'M', bitWidth: 36, clock: CLK,
-             inputs: [A,B,C,D,E], control: Mcontrol});
 
     it(`should select Mux inputs A-E (65-69 decimal) in turn`, () => {
       _.range(5).forEach(k => {
-        Mcontrol.value = BigInt(k);
-        expect(M.get()).to.equal(BigInt(k + 65));
+        const bigK = BigInt(k);
+        Mcontrol.value = bigK;
+        expect(M.get()).to.equal(bigK + 65n);
         CLK.cycle();
-        expect(M.get()).to.equal(BigInt(k + 65));
+        expect(M.get()).to.equal(bigK + 65n);
+      });
+    });
+
+    it(`should properly call and react to result of 'enableF'`, () => {
+
+      _.range(5).forEach(k => {
+        const bigK = BigInt(k);
+        M.enableF = () => bigK & 1n; // Only enable on odd values
+        Mcontrol.value = bigK;
+        expect(M.get()).to.equal(expectedK(k));
+        CLK.cycle();
+        expect(M.get()).to.equal(expectedK(k));
       });
     });
   });
 
   describe('Reg', () => {
-    const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: M, control: ONES});
 
     it(`should latch Mux output selected to A-E (65-69 decimal) in turn`, () => {
+      M.enableF = () => 1n;     // Always enabled again
+
       _.range(5).forEach(k => {
-        Mcontrol.value = BigInt(k);
+        const bigK = BigInt(k);
+        Mcontrol.value = bigK;
         CLK.cycle();
-        expect(R.get().toString(8)).to.equal(BigInt(k + 65).toString(8));
+        expect(R.get().toString(8)).to.equal((bigK + 65n).toString(8));
       });
     });
   });
