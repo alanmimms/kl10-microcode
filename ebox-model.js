@@ -155,8 +155,8 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.addrInput = addr;
     this.bitWidth = typeof bitWidth === 'undefined' ? bitWidth : BigInt(bitWidth);
     this.wrappableMethods = `\
-reset,getAddress,getFunc,getControl,getInputs,get,latch,cycle
-`.split(/,\s*/);
+reset,getAddress,getAddr,getFunc,getControl,getInputs,getInput,get,latch,cycle
+`.trim().split(/,\s*/);
     clock.addUnit(this);
   }).props({
     value: 0n,
@@ -191,24 +191,18 @@ const EBOX = StampIt.compose(Named, {
 
   reset() {
     this.resetActive = true;
+    this.ucodeRun = false;
     this.run = false;
     this.unitArray = Object.values(Named.units).concat([this]);
 
     // Reset every Unit back to initial value.
     this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
 
-    // Pre-fill AC block #7 constant value(s?).
-    FM.data[7 * 16 + 15] = 0o777777n;           // R15
-
     // RESET always generates several clocks with zero CRAM and DRAM.
     _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
     this.wrappableMethods = ['cycle'];
-  },
-
-  run() {
-    this.run = true;
   },
 
   cycle() {
@@ -409,9 +403,7 @@ module.exports.ShiftReg = ShiftReg;
 ////////////////////////////////////////////////////////////////
 // Given a function selector and a set of inputs, compute a set of
 // results.
-const LogicUnit = Combinatorial.compose({name: 'LogicUnit'}).methods({
-//  get() { return this.getInputs() },
-});
+const LogicUnit = Combinatorial.compose({name: 'LogicUnit'});
 module.exports.LogicUnit = LogicUnit;
 
 
@@ -468,6 +460,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
   },
 
   getInputs() {
+    const prevValue = this.value;                 // Save in case of CALL
 
     if (this.force1777) {
       this.force1777 = false;
@@ -527,6 +520,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
       case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
         orBits = this.stack.pop();
+        console.log(`CRADR RETURN`);
         break;
 
       case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
@@ -540,11 +534,39 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
                                 // to set bit 2 (usually gates AD left into ARL)
         break;
 
+      case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
+
+        if (EBOX.piCyclePending) {
+          break;                          // orBits |= 0;
+        } else if (!EBOX.run) {
+          orBits |= 0o02n;
+          break;
+        } else if (EBOX.mtrIntReq) {
+          orBits |= 0o04n;
+          break;
+        } else if (EBOX.intReq) {
+          orBits |= 0o06n;
+          break;
+        } else if (EBOX.ucodeState05) {
+          orBits |= 0o10n;
+          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+          break;
+        } else if (EBOX.vmaACRef) {
+          orBits |= 0o12n;
+          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+          break;
+        } else {
+          orBits |= 0o16n;                // Nothing pending
+          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+          break;
+        }
+
+        break;
+
       case CR.DISP['DIAG']:
       case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
       case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
       case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
-      case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
       case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
       case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
       case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
@@ -554,7 +576,15 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
       }
 
-      return this.value = orBits | CR.J.get();
+      this.value = orBits | CR.J.get();
+      console.log(`CRADR dispatch orBits=${octal(orBits)} result=${octal(this.value)}`);
+
+      if (CR.CALL.get()) {
+        console.log(`CRADR CALL`);
+        this.stack.push(prevValue);
+      }
+
+      return this.value;
     }
   },
 }) ({name: 'CRADR', bitWidth: 11});
@@ -656,15 +686,15 @@ const FM_ADR = LogicUnit.methods({
     case CR.FMADR.AC0:
       acr = IRAC.get(); break;
     case CR.FMADR.AC1:
-      acr = (IRAC.get() + 1) & 15n; break;
+      acr = (IRAC.get() + 1n) & 15n; break;
+    case CR.FMADR.AC2:
+      acr = (IRAC.get() + 2n) & 15n; break;
+    case CR.FMADR.AC3:
+      acr = (IRAC.get() + 3n) & 15n; break;
     case CR.FMADR.XR:
       acr = ARX_14_17.get(); break;
     case CR.FMADR.VMA:
       acr = VMA_32_35.get(); break;
-    case CR.FMADR.AC2:
-      acr =  (IRAC.get() + 2) & 15n; break;
-    case CR.FMADR.AC3:
-      acr = (IRAC.get() + 3) & 15n; break;
     case CR.FMADR['AC+#']:
       acr = (IRAC.get() + MAGIC_NUMBER.get()) & 15n; break;
     case CR.FMADR['#B#']:
@@ -1046,9 +1076,9 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
 const FE = ShiftReg({name: 'FE', bitWidth: 10,
                      clock: FieldMatchClock({name: 'FE_CLOCK',
                                              inputs: CR.FE, matchValue: CR.FE.SCAD})});
-const SH = LogicUnit.methods({
+const SH = Reg.methods({
 
-  get() {
+  getInputs() {
     const count = SC.get();
     const func = this.getControl();
     let result;
@@ -1165,7 +1195,7 @@ const ARX = LogicUnit.methods({
       break;
 
     case ARX['ADX*2']:
-      result = ADX.get() << 1n | ((MQ.get() >> 35n) & 1);
+      result = ADX.get() << 1n | ((MQ.get() >> 35n) & 1n);
       break;
 
     case ARX.ADX:
@@ -1182,10 +1212,6 @@ const ARX = LogicUnit.methods({
   },
 }) ({name: 'ARX', bitWidth: 36});
 
-// E.g.
-// AR_AR AND ADMSK	"ADMSK,ADB/FM,ADA/AR,AD/AND,AR/AD"
-// FETCH		"MEM/IFET"
-// U 1072: VMA_AR AND ADMSK,FETCH,J/NOP
 const AR = BitCombiner({name: 'AR', bitWidth: 36});
 const BR = Reg({name: 'BR', bitWidth: 36,
                 clock: FieldMatchClock({name: 'BR_CLOCK',
