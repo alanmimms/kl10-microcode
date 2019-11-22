@@ -85,9 +85,24 @@ const commands = [
    doFn: doStep,
   },
 
+  {name: 'cstep',
+   description: 'Step N CPU instructions times, where N is 1 if not specified',
+   doFn: doCPUStep,
+  },
+
   {name: 'go',
    description: 'Continue execution.',
    doFn: doGo,
+  },
+
+  {name: 'cgo',
+   description: 'Run CPU (instructions).',
+   doFn: doCPUGo,
+  },
+
+  {name: 'cstop',
+   description: 'Stop CPU (instructions) execution.',
+   doFn: doCPUStop,
   },
 
   {name: 'til',
@@ -234,9 +249,28 @@ function doStep(words) {
 }
 
 
+function doCPUStep(words) {
+  const n = words.length > 1 ? parseInt(words[1]) : 1;
+  console.log(`Not yet implemented.`);
+}
+
+
 function doGo(words) {
   console.log(`[Running from ${octal(CRADR.get())}]`);
   run();
+}
+
+
+function doCPUGo(words) {
+  console.log(`[Running from ${octal(PC.get())}]`);
+  EBOX.run = true;
+  run();
+}
+
+
+function doCPUStop(words) {
+  console.log(`[Stopping CPU at ${octal(PC.get())}]`);
+  EBOX.run = false;
 }
 
 
@@ -441,7 +475,7 @@ function startCommandLine() {
   // Note ^C to allow user to regain control from long execute loops.
   rl.on('SIGINT', () => {
     console.log('\n[INTERRUPT]\n');
-    EBOX.run = false;
+    EBOX.ucodeRun = false;
     startCommandLine();
   });
 
@@ -466,7 +500,7 @@ function dteKeypressHandler(ch, key) {
     let c = ch.charCodeAt(0);
 
     // Stop with C-\ keypress
-    if (c === 0o34) EBOX.run = false;
+    if (c === 0o34) EBOX.ucodeRun = false;
 
     dte0.ttyIn(c);
   } else if (key.sequence) {
@@ -508,25 +542,25 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
   setImmediate(runAsync);
 
   function runAsync() {
-    EBOX.run = true;
+    EBOX.ucodeRun = true;
     const startCount = EBOX.microInstructionsExecuted;
     const startTime = process.hrtime();
 
-    for (let n = insnsPerTick; EBOX.run && n; --n) {
+    for (let n = insnsPerTick; EBOX.ucodeRun && n; --n) {
       EBOX.cycle();
       const cradr = CRADR.get();
 
       if (breakpoint[cradr]) {
 	console.log(`[${breakpoint[cradr]}]`); // Say why we stopped
 	breakpoint = {};
-        EBOX.run = false;
+        EBOX.ucodeRun = false;
       } else {
         if (maxCount && EBOX.microInstructionsExecuted - startCount >= maxCount)
-	  EBOX.run = false;
+	  EBOX.ucodeRun = false;
       }
     }
 
-    if (EBOX.run) {
+    if (EBOX.ucodeRun) {
       setImmediate(runAsync);
     } else {
 
