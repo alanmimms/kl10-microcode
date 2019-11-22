@@ -44,7 +44,11 @@ describe('Clock', () => {
 
 describe('EBOX', () => {
 
-  beforeEach(() => {
+  beforeEach('EBOX reset', () => {
+    EBOX.reset();
+  });
+
+  it(`should clear EBOX state`, () => {
     CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
     CRADR.value = 0o1234n;
     _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
@@ -52,17 +56,11 @@ describe('EBOX', () => {
     IR.value = (0o123456n << 18n) | 0o765432n;
     PC.value = 0o123456n;
     EBOX.reset();
-  });
-
-  describe(`RESET EBOX`, () => {
-
-    it(`should clear EBOX state`, () => {
-      expect(CRAM.data[123]).to.equal(0n);
-      expect(CRADR.value).to.equal(0n);
-      expect(CRADR.stack.length).to.equal(0);
-      expect(IR.value).to.equal(0n);
-      expect(PC.value).to.equal(0n);
-    });
+    expect(CRAM.data[123]).to.equal(0n);
+    expect(CRADR.value).to.equal(0n);
+    expect(CRADR.stack.length).to.equal(0);
+    expect(IR.value).to.equal(0n);
+    expect(PC.value).to.equal(0n);
   });
 
   it(`should reflect its serial number`, () => {
@@ -76,7 +74,7 @@ describe('Clocking/latching', () => {
   const Y = 200n;
   const Z = 300n;
 
-  beforeEach(() => {
+  beforeEach('Reset EBOX and fill CRAM with canonical X,Y,Z jumping ucode', () => {
     EBOX.reset();
     // X: J/Y
     CR.value = 0n;
@@ -120,26 +118,18 @@ describe('Clocking/latching', () => {
 
 describe('Mux+Reg', () => {
   const CLK = Clock({name: 'CLK'});
-  const Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36, value: 0n});
-  const A = ConstantUnit({name: 'A', bitWidth: 36, value: 65n});
-  const B = ConstantUnit({name: 'B', bitWidth: 36, value: 66n});
-  const C = ConstantUnit({name: 'C', bitWidth: 36, value: 67n});
-  const D = ConstantUnit({name: 'D', bitWidth: 36, value: 68n});
-  const E = ConstantUnit({name: 'E', bitWidth: 36, value: 69n});
-  const M = Mux({name: 'M', bitWidth: 36, clock: CLK,
+  const Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36n, value: 0n});
+  const A = ConstantUnit({name: 'A', bitWidth: 36n, value: 65n});
+  const B = ConstantUnit({name: 'B', bitWidth: 36n, value: 66n});
+  const C = ConstantUnit({name: 'C', bitWidth: 36n, value: 67n});
+  const D = ConstantUnit({name: 'D', bitWidth: 36n, value: 68n});
+  const E = ConstantUnit({name: 'E', bitWidth: 36n, value: 69n});
+  const M = Mux({name: 'M', bitWidth: 36n, clock: CLK,
                  inputs: [A,B,C,D,E], control: Mcontrol});
-  const R = Reg({name: 'R', bitWidth: 36, clock: CLK, inputs: M});
+  const R = Reg({name: 'R', bitWidth: 36n, clock: CLK, inputs: M});
 
-  
-
-  beforeEach(() => {
-    describe(`RESET EBOX`, () => {
-      EBOX.reset();
-
-      it(`should reset`, () => {
-        expect(1).to.equal(1);
-      });
-    });
+  beforeEach('Reset EBOX', () => {
+    EBOX.reset();
   });
 
   const expectedK = k => (BigInt(k) & 1n) ? BigInt(k) + 65n : 0n;

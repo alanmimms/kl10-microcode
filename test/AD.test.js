@@ -24,23 +24,24 @@ const Y = 200n;
 const Z = 300n;
 const PCinitial = 0o123456n;
 const MQinitial = 0o000010n;
-const BRinitial = 0o600100n;
+const BRinitial = 0o246100n;
 const ARinitial = 0o654321n;
+const ARones = (1n << 18n) - 1n;
 const ones36 = 0o777777777777n;
 const ones38 = 0o3777777777777n;
-
-
-beforeEach(() => {
-  EBOX.reset();
-
-  VMA.value = PC.value = PCinitial;
-  BR.value = BRinitial;
-  MQ.value = MQinitial;
-  ARR.value = ARinitial;
-});
+const NOT = x => x ^ ones38;
 
 
 describe('AD ALU', () => {
+
+  beforeEach('Reset EBOX', () => {
+    EBOX.reset();
+
+    VMA.value = PC.value = PCinitial;
+    BR.value = BRinitial;
+    MQ.value = MQinitial;
+    ARR.value = ARinitial;
+  });
 
   describe(`Addition`, () => {
 
@@ -59,7 +60,7 @@ describe('AD ALU', () => {
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
-      expect(AR.value.toString(8)).to.equal((BRinitial + PCinitial).toString(8));
+      expect(AR.value.toString(8)).to.equal(((BRinitial + PCinitial) & ARones).toString(8));
     });
 
     it(`should add AR*4 and MQ to ARR and jump to Z`, () => {
@@ -78,7 +79,7 @@ describe('AD ALU', () => {
       ARR.value = ARinitial;
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
-      expect(AR.value.toString(8)).to.equal((ARinitial*4n + MQinitial).toString(8));
+      expect(AR.value.toString(8)).to.equal(((ARinitial*4n + MQinitial) & ARones).toString(8));
     });
 
     it(`should add AR and BR*2 to ARR and jump to X`, () => {
@@ -95,42 +96,47 @@ describe('AD ALU', () => {
       CRADR.value = Z;
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.value.toString(8)).to.equal((ARinitial + BRinitial*2n).toString(8));
+      expect(AR.value.toString(8)).to.equal(((ARinitial + BRinitial*2n) & ARones).toString(8));
     });
   });
 
   describe(`Boolean`, () => {
     
     describe(`Logical functions`, () => {
+      it(desc('A'),          () => boolOp('A',     (a, b) => a));
+      it(desc('B'),          () => boolOp('B',     (a, b) => b));
+      it(desc('OR'),         () => boolOp('OR',    (a, b) => a | b));
+      it(desc('AND'),        () => boolOp('AND',   (a, b) => a & b));
+      it(desc('XOR'),        () => boolOp('XOR',   (a, b) => a ^ b));
+      it(desc('EQV'),        () => boolOp('EQV',   (a, b) => NOT(a ^ b)));
+      it(desc('SETCA'),      () => boolOp('SETCA', (a, b) => NOT(a)));
+      it(desc('SETCB'),      () => boolOp('SETCB', (a, b) => NOT(b)));
+      it(desc('0S'),         () => boolOp('0S',    (a, b) => 0n));
+      it(desc('1S'),         () => boolOp('1S',    (a, b) => ones36));
+      it(desc('NOR'),        () => boolOp('NOR',   (a, b) => NOT(a | b)));
+      it(desc('ORCA'),       () => boolOp('ORCA',  (a, b) => NOT(a) | b));
+      it(desc('ORCB'),       () => boolOp('ORCB',  (a, b) => a | NOT(b)));
+      it(desc('ANDCA'),      () => boolOp('ANDCA', (a, b) => NOT(a) & b));
+      it(desc('ANDCB'),      () => boolOp('ANDCB', (a, b) => a & NOT(b)));
+      it(desc('ANDC (NOR)'), () => boolOp('ANDC',  (a, b) => NOT(a) & NOT(b)));
+      it(desc('ORC (NAND)'), () => boolOp('ORC',   (a, b) => NOT(a & b)));
 
-      it(`should do OR`, () => boolOp('OR', (a, b) => a | b));
-      it(`should do AND`, () => boolOp('AND', (a, b) => a & b));
-      it(`should do XOR`, () => boolOp('XOR', (a, b) => a ^ b));
-      it(`should do EQV`, () => boolOp('EQV', (a, b) => NOT(a ^ b)));
-      it(`should do SETCA`, () => boolOp('XOR', (a, b) => NOT(a)));
-      it(`should do SETCB`, () => boolOp('XOR', (a, b) => NOT(b)));
-      it(`should do 0S`, () => boolOp('0S', (a, b) => 0n));
-      it(`should do 1S`, () => boolOp('1S', (a, b) => ones36));
-      it(`should do NOR`, () => boolOp('NOR', (a, b) => NOT(a | b)));
-      it(`should do ORC (NAND)`, () => boolOp('ORC', (a, b) => NOT(a & b)));
-      it(`should do ORCA`, () => boolOp('ORCA', (a, b) => NOT(a) | b));
-      it(`should do ANDC`, () => boolOp('ANDC', (a, b) => NOT(a & b)));
-      it(`should do ORCB`, () => boolOp('ORCB', (a, b) => a | NOT(b)));
-      it(`should do ANDCA`, () => boolOp('ANDCA', (a, b) => NOT(a) & b));
-      it(`should do ANDCB`, () => boolOp('ANDCB', (a, b) => a & NOT(b)));
-      it(`should do A`, () => boolOp('A', (a, b) => a));
-      it(`should do B`, () => boolOp('B', (a, b) => b));
 
+      function desc(op) {
+        return `should do ${ARinitial.toString(8)} ${op} ${BRinitial.toString(8)}`;
+      }
 
+      
       // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
       // Test for result calculated by opFunc.
       function boolOp(CRname, opFunc) {
-        const expected = opFunc(ARinitial, BRinitial);
-        // Z: AD/OR, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
+        const sb = opFunc(ARinitial, BRinitial) & ARones;
+
+        // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
         CR.value = 0n;
         CR.AD = CR.AD[CRname];
         CR.ADA = CR.ADA.AR;
-        CR.ADB = CR.ADB['BR'];
+        CR.ADB = CR.ADB.BR;
         CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
         CR.AR = CR.AR.AD;
         CR.J = X;
@@ -138,11 +144,7 @@ describe('AD ALU', () => {
         CRADR.value = Z;
         EBOX.cycle();
         expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-        expect(AR.value.toString(8)).to.equal(expected.toString(8));
-      }
-
-      function NOT(x) {
-        return x ^ ones36;
+        expect(AR.value.toString(8)).to.equal(sb.toString(8));
       }
     });
   });
