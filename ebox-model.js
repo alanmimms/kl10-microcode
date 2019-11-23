@@ -172,7 +172,10 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,getInput,get,latch,cycle
     getAddress() { return this.addrInput.get() },
     getFunc() { return this.funcInput.get() },
     getControl() { return this.controlInput.get() },
-    getInputs() { return this.inputs.get() & this.ones },
+    getInputs() {
+      if (typeof this.inputs.get !== typeof (() => 0)) debugger;
+      return this.inputs.get() & this.ones;
+    },
     getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
     getRH(v = this.value) { return BigInt.asUintN(18, v) },
     joinHalves(lh, rh) { return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh) },
@@ -739,6 +742,11 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     const ones = this.ONES;
     const NOT = x => x ^ ones;
 
+    if (!cin) {            // Without hard knowledge of cin, get it from ARX cout
+      const ARXresult = ARX.get();
+      cin = ARX.cout;
+    }
+
     switch (func) {
     // ARITHMETIC
     default:
@@ -798,6 +806,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 }).methods({
 
   reset() {
+    this.cout = 0n;
     this.ones = (1n << this.bitWidth) - 1n;
     this.alu.reset();
   },
@@ -1186,6 +1195,8 @@ const ARMMR = Mux.methods({
 
 const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36n});
 const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36n});
+const ADXx2 = ShiftMult({name: 'ADXx2', shift: 1, bitWidth: 36n});
+const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', shift: 2, bitWidth: 36n});
 
 const SERIAL_NUMBER = ConstantUnit.methods({
   reset() { this.value = BigInt(EBOX.serialNumber) },
@@ -1213,53 +1224,8 @@ const ARR = Reg({name: 'ARR', bitWidth: 18n,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', inputs: CR['AR CTL'],
                                          matchF: cur => !!(cur & ARR_LOADmask)})});
 
-const ARX = LogicUnit.methods({
-
-  getInputs() {
-    const ARX = CR.ARX;
-    let result;
-
-    // Our complex operations are selected by ARX/
-    switch (ARX.get()) {
-    default:
-    case ARX.MEM:
-    case ARX.ARX:
-      result = this.value;
-      break;
-
-    case ARX.CACHE:
-      result = 0n;                // XXX someday...
-      break;
-
-    case ARX.AD:
-      result = AD.get();
-      break;
-
-    case ARX.MQ:
-      result = MQ.get();
-      break;
-
-    case ARX.SH:
-      result = SH.get();
-      break;
-
-    case ARX['ADX*2']:
-      result = ADX.get() << 1n | ((MQ.get() >> 35n) & 1n);
-      break;
-
-    case ARX.ADX:
-      result = ADX.get();
-      break;
-
-    case ARX['ADX*.25']:
-      result = ADX.get() >> 2n | (AD.get() & 3n);
-      break;
-    }
-
-    return result;
-
-  },
-}) ({name: 'ARX', bitWidth: 36n});
+const ARXM = Mux({name: 'ARXM', bitWidth: 36n});
+const ARX = Reg({name: 'ARX', bitWidth: 36n});
 
 const AR = BitCombiner({name: 'AR', bitWidth: 36n});
 const BR = Reg({name: 'BR', bitWidth: 36n,
@@ -1468,10 +1434,6 @@ AD.funcInput = CR.AD;
 AD_13_35.inputs = AD;
 AD_13_17.inputs = AD;
 
-// XXX cin needs to be correctly defined.
-ADX.inputs = [ADXA, ADXB, ZERO];
-ADX.funcInput = CR.AD;
-
 PC.inputs = VMA;
 PC.controlInput = FieldMatcher({name: 'LOAD_PC', inputs: CR.SPEC,
                                 matchValue: CR.SPEC['LOAD PC']});
@@ -1494,6 +1456,10 @@ ADA.controlInput = CR.ADA;      // Note three bit field
 ADB.inputs = [FM, BRx2, BR, ARx4];
 ADB.controlInput = CR.ADB;
 
+// XXX cin (ADXCRY36) needs to be correctly defined.
+ADX.inputs = [ADXA, ADXB, ZERO];
+ADX.funcInput = CR.AD;
+
 ADXA.inputs = [ARX, ARX, ARX, ARX, ZERO, ZERO, ZERO];
 ADXA.controlInput = CR.ADA;
 
@@ -1515,9 +1481,11 @@ ARML.controlInput = CR.AR;
 ARL.inputs = ARML;
 ARR.inputs = ARMR;
 
-ARX.inputs = [ARX, CACHE, AD, MQ, SH, ZERO, ADX, ZERO];
-ARX.controlInput = CR.ARX;
+ARX.inputs = ARXM;
 ARX_14_17.inputs = ARX;
+
+ARXM.inputs = [ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4];
+ARXM.controlInput = CR.ARX;
 
 AR.inputs = [ARL, ARR];
 AR_00_08.inputs = AR;
@@ -1527,10 +1495,10 @@ AR_POS.inputs = AR;
 AR_SHIFT.inputs = AR;
 AR_00_12.inputs = AR;
 
-// XXX TODO: BR is clocked by CRAM BR LOAD
+// XXX TODO: BR is clocked by CRAM BR LOAD?
 BR.inputs = AR;
 
-// XXX TODO: BRX is clocked by CRAM BRX LOAD
+// XXX TODO: BRX is clocked by CRAM BRX LOAD?
 BRX.inputs = ARX;
 
 FE.inputs = SCAD;
@@ -1565,6 +1533,12 @@ ARx4.loBits = ARX;
 
 BRXx2.inputs = BRX;
 BRXx2.loBits = ZERO;
+
+ADXx2.inputs = ADX;
+ADXx2.loBits = MQ;
+
+ADXdiv4.inputs = ADX;
+ADXdiv4.hiBits = AD;
 
 ARXx4.inputs = ARX;
 ARXx4.inputs = ZERO;
