@@ -727,14 +727,14 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     if (typeof b !== 'bigint') debugger;
     if (typeof cin !== 'bigint') debugger;
     const sum = a + b + cin;
-    this.cout = sum > this.ONES ? 1n : 0n;
-    return sum & this.ONES;
+    const cout = sum > this.ONES ? 1n : 0n;
+    return {value: sum & this.ONES, cout};
   },
 
   sub(a, b, cin = 0n) {
-    const diff = a - b - cin;
-    this.cout = diff > this.ONES ? 1n : 0n;
-    return diff & this.ONES;
+    const diff = a - b + cin;
+    const cout = diff > this.ONES ? 1n : 0n;      // XXX Need to support diff < 0
+    return {value: diff & this.ONES, cout};
   },
 
   // This side-effect sets this.cout for carry and returns the value.
@@ -768,27 +768,27 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     case 0o17: return this.sub(a, 1n, cin);
 
     // BOOLEAN
-    case 0o20: return BOOL(NOT(a), a);
-    case 0o21: return BOOL(NOT(a) | NOT(b), this.add(a, a & NOT(b)));
-    case 0o22: return BOOL(NOT(a) | b, this.add(a, a & b));
-    case 0o23: return BOOL(1n, this.add(a, a));
-    case 0o24: return BOOL(a & b, a | b);
-    case 0o25: return BOOL(NOT(b), this.add(a & NOT(b), a | b));
-    case 0o26: return BOOL(NOT(a ^ b), this.add(a, b));
-    case 0o27: return BOOL(a | NOT(b), this.add(a, a | b));
-    case 0o30: return BOOL(NOT(a) & b, a | NOT(b));
-    case 0o31: return BOOL(a ^ b, this.sub(a, b, 1n));
-    case 0o32: return BOOL(b, this.add(a | NOT(b), a & b));
-    case 0o33: return BOOL(a | b, this.add(a, a | NOT(b)));
-    case 0o34: return BOOL(0n, this.ONES);
-    case 0o35: return BOOL(a & NOT(b), this.sub(a & NOT(b), 1n));
-    case 0o36: return BOOL(a & b, this.sub(a & b, 1n));
-    case 0o37: return BOOL(a, this.sub(a, 1n));
+    case 0o20: return BOOL(cin ? NOT(a) : a);
+    case 0o21: return BOOL(cin ? NOT(a) | NOT(b) : this.add(a, a & NOT(b)));
+    case 0o22: return BOOL(cin ? NOT(a) | b : this.add(a, a & b));
+    case 0o23: return BOOL(cin ? 1n : this.add(a, a));
+    case 0o24: return BOOL(cin ? a & b : a | b);
+    case 0o25: return BOOL(cin ? NOT(b) : this.add(a & NOT(b), a | b));
+    case 0o26: return BOOL(cin ? NOT(a ^ b) : this.add(a, b));
+    case 0o27: return BOOL(cin ? a | NOT(b) : this.add(a, a | b));
+    case 0o30: return BOOL(cin ? NOT(a) & b : a | NOT(b));
+    case 0o31: return BOOL(cin ? a ^ b : this.sub(a, b, 1n));
+    case 0o32: return BOOL(cin ? b : this.add(a | NOT(b), a & b));
+    case 0o33: return BOOL(cin ? a | b : this.add(a, a | NOT(b)));
+    case 0o34: return BOOL(cin ? 0n : this.ONES);
+    case 0o35: return BOOL(cin ? a & NOT(b) : this.sub(a & NOT(b), 1n));
+    case 0o36: return BOOL(cin ? a & b : this.sub(a & b, 1n));
+    case 0o37: return BOOL(cin ? a : this.sub(a, 1n));
     }
 
 
-    function BOOL(noCarry, withCarry) {
-      return {value: cin ? withCarry : noCarry, cout: 0n};
+    function BOOL(value) {
+      return {value, cout: 0n};
     }
   },
 });
@@ -812,9 +812,9 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
   },
 
   do(aluFunction, a, b, cin = 0n) {
-    const v = this.alu.do(aluFunction, a, b, cin);
-    this.cout = v.cout;
-    return v;
+    const {value, cout} = this.alu.do(aluFunction, a, b, cin);
+    this.cout = cout;
+    return value;
   },
 
   get() {
@@ -870,8 +870,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 
       // Carry generating operations
     case CR.AD['CRY A EQ -1']:
-      this.cout = a === this.ones ? 1n : 0n;
-      result = this.ones;
+      this.cout = a === allOnes ? 1n : 0n;
+      result = allOnes;
       break;
 
     case CR.AD['CRY A.B#0']:
@@ -890,11 +890,13 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
       break;
 
     default:
-      result = this.do(f, a, b);
+      console.log(`DataPathALU get func=${func.toString(8)} which is not a case`);
+      debugger;
+      result = -1n;
       break;
     }
 
-    return result & this.ones;
+    return result & allOnes;
   },
 });
 
@@ -1507,7 +1509,7 @@ FE.controlInput = FEcontrol;
 SH.inputs = [AR, ARX];
 SH.controlInput = CR.SH;
 
-SCAD.inputs = [SCADA, SCADB];
+SCAD.inputs = [SCADA, SCADB, ZERO];
 SCAD.funcInput = CR.SCAD;
 SCAD_EXP.inputs = SCAD;
 SCAD_POS.inputs = SCAD;
