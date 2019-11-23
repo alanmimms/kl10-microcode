@@ -723,9 +723,6 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
   },
 
   add(a, b, cin = 0n) {
-    if (typeof a !== 'bigint') debugger;
-    if (typeof b !== 'bigint') debugger;
-    if (typeof cin !== 'bigint') debugger;
     const sum = a + b + cin;
     const cout = sum > this.ONES ? 1n : 0n;
     return {value: sum & this.ONES, cout};
@@ -762,7 +759,7 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     case 0o11: return this.sub(a, b, cin ^ 1n);
     case 0o12: return this.add(a | NOT(b), a & b, cin);
     case 0o13: return this.add(a, a | NOT(b), cin);
-    case 0o14: return this.add(this.ONES, 0n, cin);
+    case 0o14: return this.add(ones, 0n, cin);
     case 0o15: return this.sub(a & NOT(b), 1n, cin);
     case 0o16: return this.sub(a & b, 1n, cin);
     case 0o17: return this.sub(a, 1n, cin);
@@ -780,14 +777,15 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     case 0o31: return BOOL(cin ? a ^ b : this.sub(a, b, 1n));
     case 0o32: return BOOL(cin ? b : this.add(a | NOT(b), a & b));
     case 0o33: return BOOL(cin ? a | b : this.add(a, a | NOT(b)));
-    case 0o34: return BOOL(cin ? 0n : this.ONES);
+    case 0o34: return BOOL(cin ? 0n : ones);
     case 0o35: return BOOL(cin ? a & NOT(b) : this.sub(a & NOT(b), 1n));
     case 0o36: return BOOL(cin ? a & b : this.sub(a & b, 1n));
     case 0o37: return BOOL(cin ? a : this.sub(a, 1n));
     }
 
 
-    function BOOL(value) {
+    function BOOL(v) {
+      const value = typeof v === 'object' ? v.value : v;
       return {value, cout: 0n};
     }
   },
@@ -822,11 +820,14 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const f = Number(func) & 0o37;
     const a = this.inputs[0].get();
     const b = this.inputs[1].get();
-    const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
+
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
     const bw = this.bitWidth;
     const unsigned = x => BigInt.asUintN(bw, a);
+
+    // If 0o40 mask is lit, force cin.
+    const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
 
     // XXX CIN is affected by p. 364 E7/E8/E19 grid A4-5.
     // When that isn't true, CIN is ADX COUT.
@@ -837,65 +838,8 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     // the LSB of the adder for XXX (i.e., from a bit to the right).
     let result = 0n;
 
-    switch(func) {
-      // Arithmetic operations
-    case CR.AD['A+1']:      result = this.do(f, a, 0n, 1n);     break;
-    case CR.AD['A+XCRY']:   result = this.do(f, a, 0n, cin);    break;
-    case CR.AD['A*2']:      result = this.do(f, a, a, cin);     break;
-    case CR.AD['A*2+1']:    result = this.do(f, a, a, 1n);      break;
-    case CR.AD['A+B']:      result = this.do(f, a, b, cin);     break;
-    case CR.AD['A+B+1']:    result = this.do(f, a, b, 1n);      break;
-    case CR.AD['ORCB+1']:   result = this.do(f, a, b, 1n);      break;
-    case CR.AD['A-B-1']:    result = this.do(f, a, b, cin);     break;
-    case CR.AD['A-B']:      result = this.do(f, a, b, 1n);      break;
-    case CR.AD['XCRY-1']:   result = this.do(f, a, b, 1n);      break;
-    case CR.AD['A-1']:      result = this.do(f, a, b, cin);     break;
-      // Logical operations
-    case CR.AD['SETCA']:    result = NOT(a);                    break;
-    case CR.AD['ORC']:      result = NOT(a) | NOT(b);           break;
-    case CR.AD['ORCA']:     result = NOT(a) | b;                break;
-    case CR.AD['1S']:       result = allOnes;                   break;
-    case CR.AD['NOR']:      result = NOT(a | b);                break;
-    case CR.AD['SETCB']:    result = NOT(b);                    break;
-    case CR.AD['EQV']:      result = NOT(a ^ b);                break;
-    case CR.AD['ORCB']:     result = a | NOT(b);                break;
-    case CR.AD['ANDCA']:    result = NOT(a) & b;                break;
-    case CR.AD['XOR']:      result = a ^ b;                     break;
-    case CR.AD['B']:        result = b;                         break;
-    case CR.AD['OR']:       result = a | b;                     break;
-    case CR.AD['0S']:       result = 0n;                        break;
-    case CR.AD['ANDCB']:    result = a & NOT(b);                break;
-    case CR.AD['AND']:      result = a & b;                     break;
-    case CR.AD['A']:        result = a;                         break;
-
-      // Carry generating operations
-    case CR.AD['CRY A EQ -1']:
-      this.cout = a === allOnes ? 1n : 0n;
-      result = allOnes;
-      break;
-
-    case CR.AD['CRY A.B#0']:
-      result = a & b;
-      this.cout = result ? 1n : 0n;
-      break;
-
-    case CR.AD['CRY A#0']:
-      result = a;
-      this.cout = a ? 1n : 0n;
-      break;
-
-    case CR.AD['CRY A GE B']:
-      result = a ^ b;
-      this.cout = unsigned(a) >= unsigned(b) ? 1n : 0n;
-      break;
-
-    default:
-      console.log(`DataPathALU get func=${func.toString(8)} which is not a case`);
-      debugger;
-      result = -1n;
-      break;
-    }
-
+    result = this.do(f, a, b, cin);
+    console.log(`${this.name} f=${f.toString(8)} func=${func.toString(8)} result=${result}`);
     return result & allOnes;
   },
 });
