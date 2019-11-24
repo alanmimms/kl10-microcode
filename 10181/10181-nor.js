@@ -35,12 +35,29 @@ function do10181(a, b, m, s, c0) {
   const a0a = NOR(NOT(a0), NOR(b0, s0), NOR(s1, NOT(b0)));
   const a0b = NOR(NOR(NOT(b0), a0, s2), NOR(a0, b0, s3));
 
-  // t = s3 s2 s1 s0  a3  a2  a1  a0  b3  b2  b1  b0
-  // f = s3 s2 s1 s0 !a3 !a2 !a1 !a0 !b3 !b2 !b1 !b0
-  // ab=              b3  b2  b1  b0
-  // nb=             !b3 !b2 !b1 !b0
-  // s2=              s2  s2  s2  s2  s2  s2  s2  s2
-  // s3=              s3  s3  s3  s3  s3  s3  s3  s3
+  // pa=  a3  a2  a1  a0
+  // na= !a3 !a2 !a1 !a0
+  // pb=  b3  b2  b1  b0
+  // nb= !b3 !b2 !b1 !b0
+  // s0=  s0  s0  s0  s0
+  // s1=  s1  s1  s1  s1
+  // s2=  s2  s2  s2  s2
+  // s3=  s3  s3  s3  s3
+
+  // aXa:
+  //   NOT(a3..a0) = ~pa
+  //   NOR(b3..b0, s0) = ~(pb | s0)
+  //   NOR(s1, NOT(b3..b0)) = ~(~pb | s1)
+  // aXa = ~(~pa | ~(pb | s0) | ~(~pb | s1))
+
+  // aXb:
+  //   NOR(NOT(b3..b0), a3..a0, s2) = ~(nb | pa | s2)
+  //   NOR(a3..a0, b3..b0, s3) = ~(pa | pb | s3)
+  // aXb = ~(~(nb | pa | s2) | ~(pa | pb | s3))
+
+  // bXx = aXa ^ aXb
+
+  // 
 
   // Middle tier XOR gates
   const b3x = XOR(a3a, a3b);
