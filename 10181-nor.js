@@ -1,7 +1,17 @@
 'use strict';
+const util = require('util');
 // 10181 netlist
 // All references are to F10181.pdf p. 7-107 schematic.
-// The symbol @ means NOR.
+
+// If true, build trees of ops.
+const growTrees = true;
+
+// If true, use lisp style ops.
+const beLispy = true;
+
+// If true, use symbolic ops, otherwise numeric/boolean ops.
+const beSymbolic = true;
+
 
 // First logic stage (row of two tiers of NOR gates decoding S0-3).
 // In left to right order.
@@ -69,21 +79,54 @@ function do10181(a, b, m, s, c0) {
 
 
 function NOT(z) {
-  return !z;
+
+  if (growTrees) {
+    return {NOT: z};
+  } else if (beLispy) {
+    return `(NOT ${z})`;
+  } else if (beSymbolic) {
+    const needsParen = !z.match(/^[a-z0-9]+$/) && !z.match(/^\(.*\)$/);;
+    return needsParen ? `!(${z})` : `!${z}`;
+  } else {
+    return !z;
+  }
 }
 
 function OR(...z) {
-  return z.reduce((cur, y) => cur | y);
+
+  if (growTrees) {
+    return z.reduce((cur, y) => cur === 0 ? y : {OR: [cur, y]}, 0);
+  } else if (beLispy) {
+    return `(OR ${z.join(' ')})`;
+  } else if (beSymbolic) {
+    return '(' + z.join(' | ') + ')';
+  } else {
+    return z.reduce((cur, y) => cur | y);
+  }
 }
 
 
 function XOR(...z) {
-  return z.reduce((cur, y) => cur ^ y);
+
+  if (growTrees) {
+    return z.reduce((cur, y) => cur === 0 ? y : {XOR: [cur, y]}, 0);
+  } else if (beLispy) {
+    return `(XOR ${z.join(' ')})`;
+  } else if (beSymbolic) {
+    return '(' + z.join(' ^ ') + ')';
+  } else {
+    return z.reduce((cur, y) => cur ^ y);
+  }
 }
 
 
 function NOR(...z) {
-  return NOT(z.reduce((cur, y) => OR(cur, y)));
+
+  if (beLispy || beSymbolic) {
+    return NOT(OR(...z));
+  } else {
+    return NOT(z.reduce((cur, y) => OR(cur, y)));
+  }
 }
 
 
@@ -105,3 +148,26 @@ function do1(a, b, m, s, c0) {
 module.exports = {
   do1, bitSplit, NOR, do10181,
 };
+
+
+function dump(n, o) {
+  console.log(`${n}=${util.inspect(o, {depth: 99})}`);
+}
+
+
+function main() {
+  const {c4, g, p, f} = do10181('a3,a2,a1,a0'.split(/,/),
+                                'b3,b2,b1,b0'.split(/,/),
+                                'm',
+                                's3,s2,s1,s0'.split(/,/),
+                                'c0');
+  dump('c4', c4);
+  dump('g', g);
+  dump('p', p);
+  dump('f3', f[3]);
+  dump('f2', f[2]);
+  dump('f1', f[1]);
+  dump('f0', f[0]);
+}
+
+main();
