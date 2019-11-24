@@ -4,13 +4,16 @@ const util = require('util');
 // All references are to F10181.pdf p. 7-107 schematic.
 
 // If true, build trees of ops.
-const growTrees = true;
+const growTrees = false;
+
+// If true, build array trees of ops.
+const growATrees = true;
 
 // If true, use lisp style ops.
-const beLispy = true;
+const beLispy = false;
 
 // If true, use symbolic ops, otherwise numeric/boolean ops.
-const beSymbolic = true;
+const beSymbolic = false;
 
 
 // First logic stage (row of two tiers of NOR gates decoding S0-3).
@@ -31,6 +34,13 @@ function do10181(a, b, m, s, c0) {
 
   const a0a = NOR(NOT(a0), NOR(b0, s0), NOR(s1, NOT(b0)));
   const a0b = NOR(NOR(NOT(b0), a0, s2), NOR(a0, b0, s3));
+
+  // t = s3 s2 s1 s0  a3  a2  a1  a0  b3  b2  b1  b0
+  // f = s3 s2 s1 s0 !a3 !a2 !a1 !a0 !b3 !b2 !b1 !b0
+  // ab=              b3  b2  b1  b0
+  // nb=             !b3 !b2 !b1 !b0
+  // s2=              s2  s2  s2  s2  s2  s2  s2  s2
+  // s3=              s3  s3  s3  s3  s3  s3  s3  s3
 
   // Middle tier XOR gates
   const b3x = XOR(a3a, a3b);
@@ -82,6 +92,14 @@ function NOT(z) {
 
   if (growTrees) {
     return {NOT: z};
+  } else if (growATrees) {
+
+    // Double NOT optimization
+    if (Array.isArray(z) && z[0] === 'NOT')
+      return z[1];
+    else
+      return ['NOT', z];
+
   } else if (beLispy) {
     return `(NOT ${z})`;
   } else if (beSymbolic) {
@@ -96,6 +114,8 @@ function OR(...z) {
 
   if (growTrees) {
     return z.reduce((cur, y) => cur === 0 ? y : {OR: [cur, y]}, 0);
+  } else if (growATrees) {
+    return ['OR', ...z];
   } else if (beLispy) {
     return `(OR ${z.join(' ')})`;
   } else if (beSymbolic) {
@@ -110,12 +130,30 @@ function XOR(...z) {
 
   if (growTrees) {
     return z.reduce((cur, y) => cur === 0 ? y : {XOR: [cur, y]}, 0);
+  } else if (growATrees) {
+    return ['XOR', ...z];
   } else if (beLispy) {
     return `(XOR ${z.join(' ')})`;
   } else if (beSymbolic) {
     return '(' + z.join(' ^ ') + ')';
   } else {
     return z.reduce((cur, y) => cur ^ y);
+  }
+}
+
+
+function AND(...z) {
+
+  if (growTrees) {
+    return z.reduce((cur, y) => cur === 0 ? y : {AND: [cur, y]}, 0);
+  } else if (growATrees) {
+    return ['AND', ...z];
+  } else if (beLispy) {
+    return `(AND ${z.join(' ')})`;
+  } else if (beSymbolic) {
+    return '(' + z.join(' & ') + ')';
+  } else {
+    return z.reduce((cur, y) => cur & y);
   }
 }
 
@@ -151,7 +189,34 @@ module.exports = {
 
 
 function dump(n, o) {
-  console.log(`${n}=${util.inspect(o, {depth: 99})}`);
+  console.log(`${n}: ${util.inspect(o, {depth: 999, compact: true, maxArrayLength: 9999})},`);
+}
+
+
+function demorgan(n) {
+  if (!Array.isArray(n)) return n;
+  
+// NOR(a, ..., z) = AND(NOT(a), ..., NOT(z))
+  if (n[0] === 'NOT' && Array.isArray(n[1]) && n[1][0] === 'OR') {
+
+    n[1].forEach((v, x, a) => {
+
+      if (x === 0) 
+        a[x] = 'AND';
+      else
+        a[x] = NOT(demorgan(v));
+    });
+
+    // Replace (NOT(OR a ... z)) with newly modified (AND a ... z)
+    n = n[1];
+  } else {
+
+    n.forEach((v, x) => {
+      if (x > 0) n[x] = demorgan(v);
+    });
+  }
+
+  return n;
 }
 
 
@@ -161,6 +226,8 @@ function main() {
                                 'm',
                                 's3,s2,s1,s0'.split(/,/),
                                 'c0');
+/*
+  console.log(`const NORtree = {`);
   dump('c4', c4);
   dump('g', g);
   dump('p', p);
@@ -168,6 +235,19 @@ function main() {
   dump('f2', f[2]);
   dump('f1', f[1]);
   dump('f0', f[0]);
+  console.log(`};`);
+*/  
+  console.log(`const ANDCtree = {`);
+  dump('c4', demorgan(c4));
+  dump('g', demorgan(g));
+  dump('p', demorgan(p));
+  dump('f3', demorgan(f[3]));
+  dump('f2', demorgan(f[2]));
+  dump('f1', demorgan(f[1]));
+  dump('f0', demorgan(f[0]));
+  console.log(`};`);
+
+  console.log(`module.exports = {ANDCtree};`);
 }
 
 main();
