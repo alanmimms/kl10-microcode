@@ -1,5 +1,8 @@
 'use strict';
 const util = require('util');
+const _ = require('lodash');
+const Espresso = require('espresso-logic-minimizer');
+
 // 10181 netlist
 // All references are to F10181.pdf p. 7-107 schematic.
 
@@ -7,7 +10,7 @@ const util = require('util');
 const growTrees = false;
 
 // If true, build array trees of ops.
-const growATrees = true;
+const growATrees = false;
 
 // If true, use lisp style ops.
 const beLispy = false;
@@ -196,8 +199,8 @@ function bitSplit(p) {
 
 
 function do1(a, b, m, s, c0) {
-  const {c4, g, p, f} = do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
-  console.log(`f=${f.map(b => +b).join('')} c4=${+c4} g=${+g} p=${+p}`);
+//  const {c4, g, p, f} = do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
+  return do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
 }
 
 module.exports = {
@@ -237,6 +240,32 @@ function demorgan(n) {
 }
 
 
+function toBin(v, w=4) {
+  return _.padStart(v.toString(2), w, '0');
+}
+
+
+function genEspressoTruthTable() {
+//  const ei = new Espresso.Espresso(17, 4);
+
+  _.range(2).forEach(c0 => {
+    _.range(2).forEach(m => {
+      _.range(16).forEach(s => {
+        _.range(16).forEach(a => {
+          _.range(16).forEach(b => {
+            const {c4, g, p, f} = do1(a, b, m, s, c0);
+            //            ei.push([bitSplit(a), bitSplit(b), m, bitSplit(s), c0], [+g, +p, +c4, ...f]);
+            console.log([bitSplit(a), bitSplit(b), m, bitSplit(s), c0].join('')
+                        + ' '
+                        + [+g, +p, +c4, ...(f.map(b => +b))].join(''));
+          });
+        });
+      });
+    });
+  });
+}
+
+
 function main() {
   const {c4, g, p, f} = do10181('a3,a2,a1,a0'.split(/,/),
                                 'b3,b2,b1,b0'.split(/,/),
@@ -253,7 +282,7 @@ function main() {
   dump('f1', f[1]);
   dump('f0', f[0]);
   console.log(`};`);
-*/  
+
   console.log(`const ANDCtree = {`);
   dump('c4', demorgan(c4));
   dump('g', demorgan(g));
@@ -265,6 +294,11 @@ function main() {
   console.log(`};`);
 
   console.log(`module.exports = {ANDCtree};`);
+
+  console.log(`Result:`);
+  console.log(genEspressoTruthTable());
+*/
+  genEspressoTruthTable();
 }
 
 main();

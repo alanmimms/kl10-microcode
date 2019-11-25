@@ -1,0 +1,3 @@
+[submodule "espresso-logic"]
+	path = espresso-logic
+	url = ./espresso-logic
