@@ -1,5 +1,7 @@
 'use strict';
 const util = require('util');
+const _ = require('lodash');
+
 // 10181 netlist
 // All references are to F10181.pdf p. 7-107 schematic.
 
@@ -7,7 +9,7 @@ const util = require('util');
 const growTrees = false;
 
 // If true, build array trees of ops.
-const growATrees = true;
+const growATrees = false;
 
 // If true, use lisp style ops.
 const beLispy = false;
@@ -200,6 +202,7 @@ function do1(a, b, m, s, c0) {
   console.log(`f=${f.map(b => +b).join('')} c4=${+c4} g=${+g} p=${+p}`);
 }
 
+
 module.exports = {
   do1, bitSplit, NOR, do10181,
 };
@@ -237,13 +240,41 @@ function demorgan(n) {
 }
 
 
+function zbin(n, w=4) {
+  return _.padStart(n.toString(2), w, '0');
+}
+
+
 function main() {
+  console.log(`aaaa bbbb m ssss c  c g p ffff`);
+
+  _.range(2).forEach(m => {
+
+    _.range(16).forEach(s => {
+
+      _.range(16).forEach(a => {
+
+        _.range(16).forEach(b => {
+
+          _.range(2).forEach(c0 => {
+
+            const {c4, g, p, f} = do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
+
+            console.log(`\
+${zbin(a)} ${zbin(b)} ${m} ${zbin(s)} ${c0}  \
+${+c4} ${+g} ${+p} ${f.map(b => (+b).toString(2)).join('')}`);
+          });
+        });
+      });
+    });
+  });
+
+/*
   const {c4, g, p, f} = do10181('a3,a2,a1,a0'.split(/,/),
                                 'b3,b2,b1,b0'.split(/,/),
                                 'm',
                                 's3,s2,s1,s0'.split(/,/),
                                 'c0');
-/*
   console.log(`const NORtree = {`);
   dump('c4', c4);
   dump('g', g);
@@ -253,7 +284,6 @@ function main() {
   dump('f1', f[1]);
   dump('f0', f[0]);
   console.log(`};`);
-*/  
   console.log(`const ANDCtree = {`);
   dump('c4', demorgan(c4));
   dump('g', demorgan(g));
@@ -265,6 +295,7 @@ function main() {
   console.log(`};`);
 
   console.log(`module.exports = {ANDCtree};`);
+*/  
 }
 
 main();
