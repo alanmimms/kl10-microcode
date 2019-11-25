@@ -1,0 +1,1 @@
+espresso -o eqntott -estrong -Dopoall  10181.esp > 10181.minimized

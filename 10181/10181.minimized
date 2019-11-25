@@ -1,0 +1,458 @@
+#aaaabbbbmssssc gpcffff
+# phase is -------------- 0000000
+# ESPRESSO  	Time was 0.52 sec, cost is c=399(0) in=2804 out=439 tot=3243
+# phase is -------------- 0000001
+# ESPRESSO  	Time was 2.08 sec, cost is c=399(0) in=2797 out=445 tot=3242
+# phase is -------------- 0000010
+# ESPRESSO  	Time was 2.48 sec, cost is c=399(0) in=2885 out=443 tot=3328
+# phase is -------------- 0000011
+# ESPRESSO  	Time was 2.66 sec, cost is c=399(0) in=2905 out=443 tot=3348
+# phase is -------------- 0000100
+# ESPRESSO  	Time was 2.34 sec, cost is c=399(0) in=2884 out=446 tot=3330
+# phase is -------------- 0000101
+# ESPRESSO  	Time was 2.77 sec, cost is c=399(0) in=2883 out=449 tot=3332
+# phase is -------------- 0000110
+# ESPRESSO  	Time was 2.42 sec, cost is c=399(0) in=2894 out=443 tot=3337
+# phase is -------------- 0000111
+# ESPRESSO  	Time was 2.28 sec, cost is c=399(0) in=2888 out=443 tot=3331
+# phase is -------------- 0001000
+# ESPRESSO  	Time was 2.36 sec, cost is c=399(0) in=2769 out=456 tot=3225
+# phase is -------------- 0001001
+# ESPRESSO  	Time was 2.94 sec, cost is c=399(0) in=2826 out=450 tot=3276
+# phase is -------------- 0001010
+# ESPRESSO  	Time was 2.46 sec, cost is c=399(0) in=2778 out=449 tot=3227
+# phase is -------------- 0001011
+# ESPRESSO  	Time was 2.40 sec, cost is c=399(0) in=2819 out=461 tot=3280
+# phase is -------------- 0001100
+# ESPRESSO  	Time was 2.37 sec, cost is c=399(0) in=2807 out=449 tot=3256
+# phase is -------------- 0001101
+# ESPRESSO  	Time was 2.37 sec, cost is c=399(0) in=2814 out=451 tot=3265
+# phase is -------------- 0001110
+# ESPRESSO  	Time was 2.42 sec, cost is c=399(0) in=2803 out=443 tot=3246
+# phase is -------------- 0001111
+# ESPRESSO  	Time was 1.95 sec, cost is c=399(0) in=2810 out=443 tot=3253
+# phase is -------------- 0010000
+# ESPRESSO  	Time was 1.33 sec, cost is c=367(0) in=2584 out=462 tot=3046
+# phase is -------------- 0010001
+# ESPRESSO  	Time was 2.08 sec, cost is c=367(0) in=2554 out=462 tot=3016
+# phase is -------------- 0010010
+# ESPRESSO  	Time was 2.04 sec, cost is c=367(0) in=2654 out=462 tot=3116
+# phase is -------------- 0010011
+# ESPRESSO  	Time was 2.28 sec, cost is c=367(0) in=2677 out=462 tot=3139
+# phase is -------------- 0010100
+# ESPRESSO  	Time was 2.25 sec, cost is c=367(0) in=2663 out=462 tot=3125
+# phase is -------------- 0010101
+# ESPRESSO  	Time was 2.49 sec, cost is c=367(0) in=2655 out=462 tot=3117
+# phase is -------------- 0010110
+# ESPRESSO  	Time was 2.32 sec, cost is c=367(0) in=2666 out=462 tot=3128
+# phase is -------------- 0010111
+# ESPRESSO  	Time was 2.36 sec, cost is c=367(0) in=2645 out=462 tot=3107
+# phase is -------------- 0011000
+# ESPRESSO  	Time was 2.24 sec, cost is c=416(0) in=2982 out=511 tot=3493
+# phase is -------------- 0011001
+# ESPRESSO  	Time was 2.35 sec, cost is c=416(0) in=2974 out=502 tot=3476
+# phase is -------------- 0011010
+# ESPRESSO  	Time was 2.65 sec, cost is c=415(0) in=2968 out=508 tot=3476
+# phase is -------------- 0011011
+# ESPRESSO  	Time was 2.36 sec, cost is c=416(0) in=2988 out=503 tot=3491
+# phase is -------------- 0011100
+# ESPRESSO  	Time was 2.49 sec, cost is c=431(0) in=3054 out=486 tot=3540
+# phase is -------------- 0011101
+# ESPRESSO  	Time was 2.38 sec, cost is c=431(0) in=3039 out=484 tot=3523
+# phase is -------------- 0011110
+# ESPRESSO  	Time was 2.33 sec, cost is c=431(0) in=3022 out=513 tot=3535
+# phase is -------------- 0011111
+# ESPRESSO  	Time was 1.77 sec, cost is c=431(0) in=3002 out=513 tot=3515
+# phase is -------------- 0100000
+# ESPRESSO  	Time was 2.37 sec, cost is c=420(0) in=2933 out=489 tot=3422
+# phase is -------------- 0100001
+# ESPRESSO  	Time was 2.07 sec, cost is c=420(0) in=2940 out=474 tot=3414
+# phase is -------------- 0100010
+# ESPRESSO  	Time was 1.95 sec, cost is c=420(0) in=3018 out=474 tot=3492
+# phase is -------------- 0100011
+# ESPRESSO  	Time was 2.33 sec, cost is c=420(0) in=3029 out=474 tot=3503
+# phase is -------------- 0100100
+# ESPRESSO  	Time was 3.47 sec, cost is c=420(0) in=3038 out=476 tot=3514
+# phase is -------------- 0100101
+# ESPRESSO  	Time was 2.62 sec, cost is c=420(0) in=3019 out=474 tot=3493
+# phase is -------------- 0100110
+# ESPRESSO  	Time was 2.47 sec, cost is c=420(0) in=3025 out=475 tot=3500
+# phase is -------------- 0100111
+# ESPRESSO  	Time was 1.88 sec, cost is c=420(0) in=3013 out=474 tot=3487
+# phase is -------------- 0101000
+# ESPRESSO  	Time was 2.57 sec, cost is c=423(0) in=2901 out=476 tot=3377
+# phase is -------------- 0101001
+# ESPRESSO  	Time was 2.40 sec, cost is c=422(0) in=2918 out=476 tot=3394
+# phase is -------------- 0101010
+# ESPRESSO  	Time was 2.54 sec, cost is c=423(0) in=2901 out=467 tot=3368
+# phase is -------------- 0101011
+# ESPRESSO  	Time was 2.19 sec, cost is c=423(0) in=2900 out=467 tot=3367
+# phase is -------------- 0101100
+# ESPRESSO  	Time was 2.40 sec, cost is c=423(0) in=2922 out=472 tot=3394
+# phase is -------------- 0101101
+# ESPRESSO  	Time was 2.15 sec, cost is c=423(0) in=2969 out=481 tot=3450
+# phase is -------------- 0101110
+# ESPRESSO  	Time was 2.13 sec, cost is c=423(0) in=2928 out=463 tot=3391
+# phase is -------------- 0101111
+# ESPRESSO  	Time was 1.26 sec, cost is c=423(0) in=2911 out=463 tot=3374
+# phase is -------------- 0110000
+# ESPRESSO  	Time was 1.84 sec, cost is c=393(0) in=2719 out=486 tot=3205
+# phase is -------------- 0110001
+# ESPRESSO  	Time was 2.62 sec, cost is c=393(0) in=2703 out=486 tot=3189
+# phase is -------------- 0110010
+# ESPRESSO  	Time was 3.67 sec, cost is c=393(0) in=2805 out=486 tot=3291
+# phase is -------------- 0110011
+# ESPRESSO  	Time was 2.77 sec, cost is c=393(0) in=2816 out=488 tot=3304
+# phase is -------------- 0110100
+# ESPRESSO  	Time was 4.13 sec, cost is c=393(0) in=2820 out=486 tot=3306
+# phase is -------------- 0110101
+# ESPRESSO  	Time was 2.81 sec, cost is c=393(0) in=2791 out=486 tot=3277
+# phase is -------------- 0110110
+# ESPRESSO  	Time was 2.99 sec, cost is c=393(0) in=2812 out=486 tot=3298
+# phase is -------------- 0110111
+# ESPRESSO  	Time was 2.42 sec, cost is c=393(0) in=2722 out=486 tot=3208
+# phase is -------------- 0111000
+# ESPRESSO  	Time was 3.18 sec, cost is c=445(0) in=3095 out=513 tot=3608
+# phase is -------------- 0111001
+# ESPRESSO  	Time was 2.90 sec, cost is c=448(0) in=3175 out=544 tot=3719
+# phase is -------------- 0111010
+# ESPRESSO  	Time was 2.87 sec, cost is c=444(0) in=3110 out=519 tot=3629
+# phase is -------------- 0111011
+# ESPRESSO  	Time was 2.49 sec, cost is c=444(0) in=3126 out=519 tot=3645
+# phase is -------------- 0111100
+# ESPRESSO  	Time was 3.64 sec, cost is c=461(0) in=3224 out=504 tot=3728
+# phase is -------------- 0111101
+# ESPRESSO  	Time was 2.58 sec, cost is c=461(0) in=3171 out=475 tot=3646
+# phase is -------------- 0111110
+# ESPRESSO  	Time was 2.46 sec, cost is c=463(0) in=3149 out=463 tot=3612
+# phase is -------------- 0111111
+# ESPRESSO  	Time was 1.90 sec, cost is c=463(0) in=3168 out=463 tot=3631
+# phase is -------------- 1000000
+# ESPRESSO  	Time was 1.54 sec, cost is c=415(0) in=2926 out=469 tot=3395
+# phase is -------------- 1000001
+# ESPRESSO  	Time was 2.28 sec, cost is c=415(0) in=2912 out=471 tot=3383
+# phase is -------------- 1000010
+# ESPRESSO  	Time was 2.27 sec, cost is c=415(0) in=3004 out=469 tot=3473
+# phase is -------------- 1000011
+# ESPRESSO  	Time was 2.66 sec, cost is c=419(0) in=2940 out=463 tot=3403
+# phase is -------------- 1000100
+# ESPRESSO  	Time was 2.88 sec, cost is c=415(0) in=3019 out=469 tot=3488
+# phase is -------------- 1000101
+# ESPRESSO  	Time was 2.92 sec, cost is c=415(0) in=2945 out=471 tot=3416
+# phase is -------------- 1000110
+# ESPRESSO  	Time was 2.93 sec, cost is c=415(0) in=3020 out=469 tot=3489
+# phase is -------------- 1000111
+# ESPRESSO  	Time was 2.61 sec, cost is c=415(0) in=2987 out=488 tot=3475
+# phase is -------------- 1001000
+# ESPRESSO  	Time was 2.39 sec, cost is c=444(0) in=3028 out=476 tot=3504
+# phase is -------------- 1001001
+# ESPRESSO  	Time was 2.67 sec, cost is c=445(0) in=3008 out=461 tot=3469
+# phase is -------------- 1001010
+# ESPRESSO  	Time was 2.85 sec, cost is c=445(0) in=2991 out=459 tot=3450
+# phase is -------------- 1001011
+# ESPRESSO  	Time was 3.01 sec, cost is c=445(0) in=3048 out=462 tot=3510
+# phase is -------------- 1001100
+# ESPRESSO  	Time was 3.05 sec, cost is c=445(0) in=3024 out=462 tot=3486
+# phase is -------------- 1001101
+# ESPRESSO  	Time was 2.97 sec, cost is c=445(0) in=3030 out=459 tot=3489
+# phase is -------------- 1001110
+# ESPRESSO  	Time was 2.61 sec, cost is c=445(0) in=3002 out=457 tot=3459
+# phase is -------------- 1001111
+# ESPRESSO  	Time was 2.17 sec, cost is c=445(0) in=3035 out=457 tot=3492
+# phase is -------------- 1010000
+# ESPRESSO  	Time was 1.20 sec, cost is c=359(0) in=2484 out=474 tot=2958
+# phase is -------------- 1010001
+# ESPRESSO  	Time was 2.13 sec, cost is c=359(0) in=2484 out=474 tot=2958
+# phase is -------------- 1010010
+# ESPRESSO  	Time was 2.19 sec, cost is c=359(0) in=2483 out=477 tot=2960
+# phase is -------------- 1010011
+# ESPRESSO  	Time was 2.21 sec, cost is c=359(0) in=2488 out=477 tot=2965
+# phase is -------------- 1010100
+# ESPRESSO  	Time was 2.96 sec, cost is c=359(0) in=2474 out=474 tot=2948
+# phase is -------------- 1010101
+# ESPRESSO  	Time was 2.53 sec, cost is c=359(0) in=2482 out=474 tot=2956
+# phase is -------------- 1010110
+# ESPRESSO  	Time was 3.01 sec, cost is c=359(0) in=2478 out=474 tot=2952
+# phase is -------------- 1010111
+# ESPRESSO  	Time was 1.97 sec, cost is c=359(0) in=2476 out=479 tot=2955
+# phase is -------------- 1011000
+# ESPRESSO  	Time was 2.71 sec, cost is c=408(0) in=2903 out=508 tot=3411
+# phase is -------------- 1011001
+# ESPRESSO  	Time was 2.68 sec, cost is c=408(0) in=2886 out=503 tot=3389
+# phase is -------------- 1011010
+# ESPRESSO  	Time was 2.67 sec, cost is c=408(0) in=2890 out=503 tot=3393
+# phase is -------------- 1011011
+# ESPRESSO  	Time was 2.00 sec, cost is c=408(0) in=2890 out=506 tot=3396
+# phase is -------------- 1011100
+# ESPRESSO  	Time was 2.31 sec, cost is c=423(0) in=2932 out=491 tot=3423
+# phase is -------------- 1011101
+# ESPRESSO  	Time was 2.12 sec, cost is c=423(0) in=2951 out=491 tot=3442
+# phase is -------------- 1011110
+# ESPRESSO  	Time was 2.07 sec, cost is c=423(0) in=2940 out=521 tot=3461
+# phase is -------------- 1011111
+# ESPRESSO  	Time was 1.05 sec, cost is c=423(0) in=2896 out=521 tot=3417
+# phase is -------------- 1100000
+# ESPRESSO  	Time was 2.04 sec, cost is c=438(0) in=3070 out=504 tot=3574
+# phase is -------------- 1100001
+# ESPRESSO  	Time was 3.89 sec, cost is c=438(0) in=3050 out=506 tot=3556
+# phase is -------------- 1100010
+# ESPRESSO  	Time was 4.04 sec, cost is c=438(0) in=3085 out=504 tot=3589
+# phase is -------------- 1100011
+# ESPRESSO  	Time was 3.01 sec, cost is c=438(0) in=3070 out=509 tot=3579
+# phase is -------------- 1100100
+# ESPRESSO  	Time was 3.94 sec, cost is c=438(0) in=3130 out=508 tot=3638
+# phase is -------------- 1100101
+# ESPRESSO  	Time was 3.57 sec, cost is c=438(0) in=3069 out=506 tot=3575
+# phase is -------------- 1100110
+# ESPRESSO  	Time was 3.33 sec, cost is c=438(0) in=3111 out=506 tot=3617
+# phase is -------------- 1100111
+# ESPRESSO  	Time was 2.52 sec, cost is c=439(0) in=3072 out=499 tot=3571
+# phase is -------------- 1101000
+# ESPRESSO  	Time was 3.70 sec, cost is c=471(0) in=3155 out=481 tot=3636
+# phase is -------------- 1101001
+# ESPRESSO  	Time was 3.65 sec, cost is c=470(0) in=3147 out=486 tot=3633
+# phase is -------------- 1101010
+# ESPRESSO  	Time was 3.93 sec, cost is c=470(0) in=3159 out=487 tot=3646
+# phase is -------------- 1101011
+# ESPRESSO  	Time was 2.67 sec, cost is c=469(0) in=3167 out=495 tot=3662
+# phase is -------------- 1101100
+# ESPRESSO  	Time was 3.33 sec, cost is c=471(0) in=3194 out=482 tot=3676
+# phase is -------------- 1101101
+# ESPRESSO  	Time was 2.39 sec, cost is c=471(0) in=3216 out=475 tot=3691
+# phase is -------------- 1101110
+# ESPRESSO  	Time was 2.54 sec, cost is c=471(0) in=3162 out=475 tot=3637
+# phase is -------------- 1101111
+# ESPRESSO  	Time was 1.87 sec, cost is c=471(0) in=3171 out=475 tot=3646
+# phase is -------------- 1110000
+# ESPRESSO  	Time was 1.71 sec, cost is c=385(0) in=2614 out=498 tot=3112
+# phase is -------------- 1110001
+# ESPRESSO  	Time was 2.82 sec, cost is c=385(0) in=2618 out=498 tot=3116
+# phase is -------------- 1110010
+# ESPRESSO  	Time was 3.17 sec, cost is c=385(0) in=2621 out=498 tot=3119
+# phase is -------------- 1110011
+# ESPRESSO  	Time was 1.93 sec, cost is c=385(0) in=2623 out=501 tot=3124
+# phase is -------------- 1110100
+# ESPRESSO  	Time was 3.10 sec, cost is c=385(0) in=2618 out=498 tot=3116
+# phase is -------------- 1110101
+# ESPRESSO  	Time was 2.16 sec, cost is c=385(0) in=2615 out=498 tot=3113
+# phase is -------------- 1110110
+# ESPRESSO  	Time was 2.14 sec, cost is c=385(0) in=2609 out=498 tot=3107
+# phase is -------------- 1110111
+# ESPRESSO  	Time was 1.46 sec, cost is c=385(0) in=2615 out=498 tot=3113
+# phase is -------------- 1111000
+# ESPRESSO  	Time was 3.12 sec, cost is c=440(0) in=3103 out=553 tot=3656
+# phase is -------------- 1111001
+# ESPRESSO  	Time was 2.33 sec, cost is c=441(0) in=3085 out=546 tot=3631
+# phase is -------------- 1111010
+# ESPRESSO  	Time was 2.06 sec, cost is c=441(0) in=3099 out=556 tot=3655
+# phase is -------------- 1111011
+# ESPRESSO  	Time was 1.84 sec, cost is c=438(0) in=3076 out=533 tot=3609
+# phase is -------------- 1111100
+# ESPRESSO  	Time was 2.27 sec, cost is c=453(0) in=3102 out=489 tot=3591
+# phase is -------------- 1111101
+# ESPRESSO  	Time was 1.72 sec, cost is c=453(0) in=3090 out=485 tot=3575
+# phase is -------------- 1111110
+# ESPRESSO  	Time was 1.59 sec, cost is c=455(0) in=3069 out=475 tot=3544
+# phase is -------------- 1111111
+# ESPRESSO  	Time was 0.70 sec, cost is c=455(0) in=3071 out=473 tot=3544
+# opoall	Time was 317.46 sec, cost is c=359(0) in=2484 out=474 tot=2958
+g = (!a3&a2&a1&b3&b1&s2&s1) | (!a3&a2&a1&!b3&!b1&s3&s0) | (a3&a1&!b3&b2
+    &b1&s2&s1&!s0) | (a3&a1&b3&!b2&!b1&s3&!s1&s0) | (!a3&a1&b3&b2&s2&s1
+    &s0) | (!a3&a1&!b3&!b2&s3&s1&s0) | (a3&a2&a1&!b3&b1&s1&!s0) | (a3&a2
+    &a1&b3&!b1&!s1&s0) | (!a3&a1&!b3&!b2&!b1&s3&s0) | (!a3&a1&b3&b2&b1&s2
+    &s1) | (a1&!b3&!b2&b1&s3&s1&!s0) | (a1&b3&b2&!b1&s2&!s1&s0) | (a3&a2
+    &a1&b0&s2) | (a3&a2&a1&!b0&s3) | (a3&a2&b1&b0&s2) | (a3&a2&!b1&!b0&s3) | (
+    !a3&a2&b3&!b2&s2&s0) | (!a3&a2&!b3&!b2&s3&s0) | (!a3&a2&b3&b2&s2&s1) | (
+    !a3&a2&!b3&b2&s3&s1) | (a3&a2&!b3&b2&s1&!s0) | (a3&a2&b3&!b2&!s1&s0) | (
+    a3&a1&b2&b0&s2) | (a3&a1&!b2&!b0&s3) | (a2&a1&b3&b0&s2) | (a2&a1&!b3
+    &!b0&s3) | (a3&a2&a0&b1&s2) | (a3&a2&a0&!b1&s3) | (a3&b2&b1&b0&s2) | (
+    a3&!b2&!b1&!b0&s3) | (a2&b3&b1&b0&s2) | (a2&!b3&!b1&!b0&s3) | (a3&a1
+    &a0&b2&s2) | (a3&a1&a0&!b2&s3) | (a2&a1&a0&b3&s2) | (a2&a1&a0&!b3&s3) | (
+    a1&b3&b2&b0&s2) | (a1&!b3&!b2&!b0&s3) | (a3&a0&b2&b1&s2) | (a3&a0&!b2
+    &!b1&s3) | (a2&a0&b3&b1&s2) | (a2&a0&!b3&!b1&s3) | (b3&b2&b1&b0&s2) | (
+    !b3&!b2&!b1&!b0&s3) | (a1&a0&b3&b2&s2) | (a1&a0&!b3&!b2&s3) | (a0&b3
+    &b2&b1&s2) | (a0&!b3&!b2&!b1&s3) | (a3&a2&a1&a0) | (a3&!b3&s0) | (a3
+    &b3&s1) | (s3&s2);
+
+p = (a2&!b2&s0) | (a2&b2&s1) | (a1&!b1&s0) | (a1&b1&s1) | (a0&!b0&s0) | (
+    a0&b0&s1) | (a3&!b3&s0) | (a3&b3&s1);
+
+c4 = (!a3&a2&a1&a0&b3&b0&s2&s1) | (!a3&a2&a1&a0&!b3&!b0&s3&s0) | (!a3&a2
+    &a0&b3&b1&b0&s2&s1) | (!a3&a2&a0&!b3&!b1&!b0&s3&s0) | (!a3&a1&a0&b3
+    &b2&b0&s2&s1) | (!a3&a1&a0&!b3&!b2&!b0&s3&s0) | (a3&a2&a0&!b3&b1&b0
+    &s2&s1&!s0) | (a3&a2&a0&b3&!b1&!b0&s3&!s1&s0) | (a3&a1&a0&!b3&b2&b0
+    &s2&s1&!s0) | (a3&a1&a0&b3&!b2&!b0&s3&!s1&s0) | (a3&a0&!b3&b2&b1&b0
+    &s2&s1&!s0) | (a3&a0&b3&!b2&!b1&!b0&s3&!s1&s0) | (!a3&a2&b3&b1&b0&s2
+    &c0) | (!a3&a2&!b3&!b1&!b0&s3&c0) | (!a3&a1&b3&b2&b0&s2&c0) | (!a3&a1
+    &!b3&!b2&!b0&s3&c0) | (!a3&a0&b3&b2&b1&s2&c0) | (!a3&a0&!b3&!b2&!b1
+    &s3&c0) | (!a3&a2&a1&b3&b1&s2&s1) | (!a3&a2&a1&!b3&!b1&s3&s0) | (a3
+    &a2&a1&a0&!b3&b0&s1&!s0) | (a3&a2&a1&a0&b3&!b0&!s1&s0) | (!a3&a0&b3
+    &b2&b1&s2&s1&s0) | (!a3&a0&!b3&!b2&!b1&s3&s1&s0) | (!a3&a0&!b3&!b2&!b1
+    &!b0&s3&s0) | (!a3&a0&b3&b2&b1&b0&s2&s1) | (a3&a2&a1&!b3&b0&s2&!s0&c0) | (
+    a3&a2&a1&b3&!b0&s3&!s1&c0) | (a3&a2&!b3&b1&b0&s2&!s0&c0) | (a3&a2&b3
+    &!b1&!b0&s3&!s1&c0) | (a3&a1&!b3&b2&b0&s2&!s0&c0) | (a3&a1&b3&!b2&!b0
+    &s3&!s1&c0) | (a3&a2&a0&!b3&b1&s2&!s0&c0) | (a3&a2&a0&b3&!b1&s3&!s1
+    &c0) | (a3&!b3&b2&b1&b0&s2&!s0&c0) | (a3&b3&!b2&!b1&!b0&s3&!s1&c0) | (
+    a0&!b3&!b2&!b1&b0&s3&s1&!s0) | (a0&b3&b2&b1&!b0&s2&!s1&s0) | (a3&a1
+    &a0&!b3&b2&s2&!s0&c0) | (a3&a1&a0&b3&!b2&s3&!s1&c0) | (a3&a0&!b3&b2
+    &b1&s2&!s0&c0) | (a3&a0&b3&!b2&!b1&s3&!s1&c0) | (a3&a1&!b3&b2&b1&s2
+    &s1&!s0) | (a3&a1&b3&!b2&!b1&s3&!s1&s0) | (!a3&a0&!b0&s3&s2&s0&!c0) | (
+    !a3&a0&b0&s3&s2&s1&!c0) | (!a3&a2&a1&b3&b0&s2&c0) | (!a3&a2&a1&!b3&!b0
+    &s3&c0) | (!a3&a2&a1&a0&b3&s2&c0) | (!a3&a2&a1&a0&!b3&s3&c0) | (a3&a2
+    &a1&a0&!b3&!s0&c0) | (a3&a2&a1&a0&b3&!s1&c0) | (a0&!b3&b0&s3&s2&s1&!s0) | (
+    a0&b3&!b0&s3&s2&!s1&s0) | (!a3&a2&a0&b3&b1&s2&c0) | (!a3&a2&a0&!b3&!b1
+    &s3&c0) | (!a3&b3&b2&b1&b0&s2&c0) | (!a3&!b3&!b2&!b1&!b0&s3&c0) | (
+    a2&a1&!b3&!b0&s3&!s0&c0) | (a2&a1&b3&b0&s2&!s1&c0) | (!a3&a1&a0&b3&b2
+    &s2&c0) | (!a3&a1&a0&!b3&!b2&s3&c0) | (!a3&a1&b3&b2&s2&s1&s0) | (!a3
+    &a1&!b3&!b2&s3&s1&s0) | (a2&!b3&!b1&!b0&s3&!s0&c0) | (a2&b3&b1&b0&s2
+    &!s1&c0) | (a1&!b3&!b2&!b0&s3&!s0&c0) | (a1&b3&b2&b0&s2&!s1&c0) | (
+    a3&a2&a1&!b3&b1&s1&!s0) | (a3&a2&a1&b3&!b1&!s1&s0) | (a2&a0&!b3&!b1
+    &s3&!s0&c0) | (a2&a0&b3&b1&s2&!s1&c0) | (!b3&!b2&!b1&!b0&s3&!s0&c0) | (
+    b3&b2&b1&b0&s2&!s1&c0) | (a1&a0&!b3&!b2&s3&!s0&c0) | (a1&a0&b3&b2&s2
+    &!s1&c0) | (!a3&a1&!b3&!b2&!b1&s3&s0) | (!a3&a1&b3&b2&b1&s2&s1) | (
+    a0&!b3&!b2&!b1&s3&!s0&c0) | (a0&b3&b2&b1&s2&!s1&c0) | (a1&!b3&!b2&b1
+    &s3&s1&!s0) | (a1&b3&b2&!b1&s2&!s1&s0) | (!a3&a1&!b1&s3&s2&s0) | (!a3
+    &a1&b1&s3&s2&s1) | (!a3&a2&b3&!b2&s2&s0) | (!a3&a2&!b3&!b2&s3&s0) | (
+    !a3&a2&b3&b2&s2&s1) | (!a3&a2&!b3&b2&s3&s1) | (a3&a2&!b3&b2&s1&!s0) | (
+    a3&a2&b3&!b2&!s1&s0) | (!a1&s3&s2&c0) | (!a2&s3&s2&c0) | (!a3&s3&s2
+    &c0) | (a3&!b3&s0) | (a3&b3&s1);
+
+f3 = (a3&!a2&!a0&b3&!b1&!b0&!m&!s3&s1&!s0) | (a3&!a2&!a0&!b3&b1&b0&!m&!s2
+    &!s1&s0) | (a3&!a1&!a0&b3&!b2&!b0&!m&!s3&s1&!s0) | (a3&!a1&!a0&!b3&b2
+    &b0&!m&!s2&!s1&s0) | (a3&!a0&b3&!b2&!b1&!b0&!m&!s3&s1&!s0) | (a3&!a0
+    &!b3&b2&b1&b0&!m&!s2&!s1&s0) | (!a3&!a2&!a0&!b3&!b1&!b0&!m&s2&!s0&c0) | (
+    !a3&!a2&!a0&b3&b1&b0&!m&s3&!s1&c0) | (!a3&!a1&!a0&!b3&!b2&!b0&!m&s2
+    &!s0&c0) | (!a3&!a1&!a0&b3&b2&b0&!m&s3&!s1&c0) | (!a3&a2&a1&a0&b3&b0
+    &s2&s1) | (!a3&a2&a1&a0&!b3&!b0&s3&s0) | (!a3&a2&a0&b3&b1&b0&s2&s1) | (
+    !a3&a2&a0&!b3&!b1&!b0&s3&s0) | (!a3&a1&a0&b3&b2&b0&s2&s1) | (!a3&a1
+    &a0&!b3&!b2&!b0&s3&s0) | (a3&!a2&!a1&!a0&!b3&b0&!m&!s2&s0) | (a3&!a2
+    &!a1&!a0&b3&!b0&!m&!s3&s1) | (!a3&!a2&!a1&!b3&!b0&!m&!s3&!s0&!c0) | (
+    !a3&!a2&!a1&b3&b0&!m&!s2&!s1&!c0) | (!a3&!a2&!a0&!b3&!b1&!m&!s3&!s0
+    &!c0) | (!a3&!a2&!a0&b3&b1&!m&!s2&!s1&!c0) | (!a3&!a1&!a0&!b3&!b2&!m
+    &!s3&!s0&!c0) | (!a3&!a1&!a0&b3&b2&!m&!s2&!s1&!c0) | (!a3&!a2&!b3&!b1
+    &!b0&!m&!s3&!s0&!c0) | (!a3&!a2&b3&b1&b0&!m&!s2&!s1&!c0) | (a3&!a2&!a1
+    &b3&!b0&!m&s1&!s0&!c0) | (a3&!a2&!a1&!b3&b0&!m&!s1&s0&!c0) | (a3&!a1
+    &b3&!b2&!b1&!m&!s3&s1&!s0) | (a3&!a1&!b3&b2&b1&!m&!s2&!s1&s0) | (a3
+    &!a2&!a0&b3&!b1&!m&s1&!s0&!c0) | (!a3&!a1&!b3&!b2&!b0&!m&!s3&!s0&!c0) | (
+    a3&!a2&!a0&!b3&b1&!m&!s1&s0&!c0) | (!a3&!a1&b3&b2&b0&!m&!s2&!s1&!c0) | (
+    !a3&!a0&!b3&!b2&!b1&!m&!s3&!s0&!c0) | (!a3&!a0&b3&b2&b1&!m&!s2&!s1&!c0) | (
+    a3&!a1&!a0&b3&!b2&!m&s1&!s0&!c0) | (a3&!a1&!a0&!b3&b2&!m&!s1&s0&!c0) | (
+    !a0&b3&!b2&!b1&b0&!m&!s2&s1&!s0) | (!a0&!b3&b2&b1&!b0&!m&!s3&!s1&s0) | (
+    b3&!b2&!b1&!b0&!m&!s2&s1&!s0&!c0) | (!b3&b2&b1&b0&!m&!s3&!s1&s0&!c0) | (
+    a3&!a2&b3&!b1&!b0&!m&s1&!s0&!c0) | (a3&!a2&!b3&b1&b0&!m&!s1&s0&!c0) | (
+    !a3&!b3&!b2&!b1&!b0&!m&!s3&!s0&!c0) | (!a3&b3&b2&b1&b0&!m&!s2&!s1&!c0) | (
+    a3&!a1&b3&!b2&!b0&!m&s1&!s0&!c0) | (a3&!a1&!b3&b2&b0&!m&!s1&s0&!c0) | (
+    !a3&!a2&!a1&!a0&!b3&!b0&!m&s2&c0) | (!a3&!a2&!a1&!a0&b3&b0&!m&s3&c0) | (
+    a3&!a0&b3&!b2&!b1&!m&s1&!s0&!c0) | (a3&!a0&!b3&b2&b1&!m&!s1&s0&!c0) | (
+    a3&b3&!b2&!b1&!b0&!m&s1&!s0&!c0) | (a3&!b3&b2&b1&b0&!m&!s1&s0&!c0) | (
+    a3&a2&a0&!b3&b1&b0&s2&s1&!s0) | (a3&a2&a0&b3&!b1&!b0&s3&!s1&s0) | (
+    !a3&!a0&!b3&!b2&!b1&!b0&!m&!s0&c0) | (!a3&!a0&b3&b2&b1&b0&!m&!s1&c0) | (
+    !a3&!a0&!b3&!b0&!m&s2&!s1&!s0&c0) | (!a3&!a0&b3&b0&!m&s3&!s1&!s0&c0) | (
+    a3&a1&a0&!b3&b2&b0&s2&s1&!s0) | (a3&a1&a0&b3&!b2&!b0&s3&!s1&s0) | (
+    a3&a0&!b3&b2&b1&b0&s2&s1&!s0) | (a3&a0&b3&!b2&!b1&!b0&s3&!s1&s0) | (
+    !a3&!a1&!b3&!b1&!m&s2&!s1&!s0&c0) | (!a3&!a1&b3&b1&!m&s3&!s1&!s0&c0) | (
+    !a3&a2&b3&b1&b0&s2&c0) | (!a3&a2&!b3&!b1&!b0&s3&c0) | (!a3&a1&b3&b2
+    &b0&s2&c0) | (!a3&a1&!b3&!b2&!b0&s3&c0) | (!a3&a0&b3&b2&b1&s2&c0) | (
+    !a3&a0&!b3&!b2&!b1&s3&c0) | (!a3&a2&a1&b3&b1&s2&s1) | (!a3&a2&a1&!b3
+    &!b1&s3&s0) | (!a3&!a2&!a1&!a0&b3&!m&!s2&!c0) | (!a3&!a2&!a1&!a0&!b3
+    &!m&!s3&!c0) | (!a2&!a1&!a0&!b3&!b0&!m&!s3&s0) | (!a2&!a1&!a0&b3&b0&!m
+    &!s2&s1) | (a3&!a2&!a1&!b3&b1&!m&!s2&s0) | (a3&!a2&!a1&b3&!b1&!m&!s3
+    &s1) | (!a3&a2&!a1&!b2&!m&!s3&!s2&!s0) | (!a3&a2&!a1&b2&!m&!s3&!s2&!s1) | (
+    a3&!a2&!a1&!a0&!b3&!m&s0&!c0) | (a3&!a2&!a1&!a0&b3&!m&s1&!c0) | (!a3
+    &!a0&!b2&!b1&!m&!s3&!s2&!s0) | (!a3&!a0&b2&b1&!m&!s3&!s2&!s1) | (!a1
+    &b3&!b2&b1&!m&!s2&s1&!s0) | (!a1&!b3&b2&!b1&!m&!s3&!s1&s0) | (!a3&!a1
+    &!b3&!b2&!b1&!m&!s3&!s0) | (!a3&!a1&b3&b2&b1&!m&!s2&!s1) | (a3&a2&a1
+    &a0&!b3&b0&s1&!s0) | (a3&a2&a1&a0&b3&!b0&!s1&s0) | (!a3&a0&b3&b2&b1
+    &s2&s1&s0) | (!a3&a0&!b3&!b2&!b1&s3&s1&s0) | (!a3&a0&!b3&!b2&!b1&!b0
+    &s3&s0) | (!a3&a0&b3&b2&b1&b0&s2&s1) | (a3&a2&a1&!b3&b0&s2&!s0&c0) | (
+    a3&a2&a1&b3&!b0&s3&!s1&c0) | (a3&a2&!b3&b1&b0&s2&!s0&c0) | (a3&a2&b3
+    &!b1&!b0&s3&!s1&c0) | (a3&a1&!b3&b2&b0&s2&!s0&c0) | (a3&a1&b3&!b2&!b0
+    &s3&!s1&c0) | (a3&a2&a0&!b3&b1&s2&!s0&c0) | (a3&a2&a0&b3&!b1&s3&!s1
+    &c0) | (a3&!b3&b2&b1&b0&s2&!s0&c0) | (a3&b3&!b2&!b1&!b0&s3&!s1&c0) | (
+    a0&!b3&!b2&!b1&b0&s3&s1&!s0) | (a0&b3&b2&b1&!b0&s2&!s1&s0) | (a3&a1
+    &a0&!b3&b2&s2&!s0&c0) | (a3&a1&a0&b3&!b2&s3&!s1&c0) | (a3&a0&!b3&b2
+    &b1&s2&!s0&c0) | (a3&a0&b3&!b2&!b1&s3&!s1&c0) | (a3&a1&!b3&b2&b1&s2
+    &s1&!s0) | (a3&a1&b3&!b2&!b1&s3&!s1&s0) | (!a3&!a0&!m&!s3&!s2&!s1&!s0) | (
+    a3&!a2&!b3&b2&!m&!s2&s0) | (a3&!a2&b3&!b2&!m&!s3&s1) | (!a2&!a1&!b3
+    &!b1&!m&!s3&s0) | (!a2&!a1&b3&b1&!m&!s2&s1) | (!a3&!a2&!a1&b3&b1&!m
+    &!s2) | (!a3&!a2&!a1&!b3&!b1&!m&!s3) | (!a3&b3&!m&!s2&!s1&!s0&!c0) | (
+    !a3&!b3&!m&!s3&!s1&!s0&!c0) | (!a3&a0&!b0&s3&s2&s0&!c0) | (!a3&a0&b0
+    &s3&s2&s1&!c0) | (!a3&a2&a1&b3&b0&s2&c0) | (!a3&a2&a1&!b3&!b0&s3&c0) | (
+    !a3&a2&a1&a0&b3&s2&c0) | (!a3&a2&a1&a0&!b3&s3&c0) | (a3&a2&a1&a0&!b3
+    &!s0&c0) | (a3&a2&a1&a0&b3&!s1&c0) | (a0&!b3&b0&s3&s2&s1&!s0) | (a0
+    &b3&!b0&s3&s2&!s1&s0) | (!a3&a2&a0&b3&b1&s2&c0) | (!a3&a2&a0&!b3&!b1
+    &s3&c0) | (!a3&b3&b2&b1&b0&s2&c0) | (!a3&!b3&!b2&!b1&!b0&s3&c0) | (
+    a2&a1&!b3&!b0&s3&!s0&c0) | (a2&a1&b3&b0&s2&!s1&c0) | (!a3&a1&a0&b3&b2
+    &s2&c0) | (!a3&a1&a0&!b3&!b2&s3&c0) | (!a3&a1&b3&b2&s2&s1&s0) | (!a3
+    &a1&!b3&!b2&s3&s1&s0) | (a2&!b3&!b1&!b0&s3&!s0&c0) | (a2&b3&b1&b0&s2
+    &!s1&c0) | (a1&!b3&!b2&!b0&s3&!s0&c0) | (a1&b3&b2&b0&s2&!s1&c0) | (
+    a3&a2&a1&!b3&b1&s1&!s0) | (a3&a2&a1&b3&!b1&!s1&s0) | (a2&a0&!b3&!b1
+    &s3&!s0&c0) | (a2&a0&b3&b1&s2&!s1&c0) | (!b3&!b2&!b1&!b0&s3&!s0&c0) | (
+    b3&b2&b1&b0&s2&!s1&c0) | (a1&a0&!b3&!b2&s3&!s0&c0) | (a1&a0&b3&b2&s2
+    &!s1&c0) | (!a3&a1&!b3&!b2&!b1&s3&s0) | (!a3&a1&b3&b2&b1&s2&s1) | (
+    a0&!b3&!b2&!b1&s3&!s0&c0) | (a0&b3&b2&b1&s2&!s1&c0) | (a1&!b3&!b2&b1
+    &s3&s1&!s0) | (a1&b3&b2&!b1&s2&!s1&s0) | (!a2&!b3&!b2&!m&!s3&s0) | (
+    !a2&b3&b2&!m&!s2&s1) | (!a3&!a2&b3&b2&!m&!s2) | (!a3&!a2&!b3&!b2&!m
+    &!s3) | (!a3&a1&!b1&s3&s2&s0) | (!a3&a1&b1&s3&s2&s1) | (!a3&a2&b3&!b2
+    &s2&s0) | (!a3&a2&!b3&!b2&s3&s0) | (!a3&a2&b3&b2&s2&s1) | (!a3&a2&!b3
+    &b2&s3&s1) | (a3&a2&!b3&b2&s1&!s0) | (a3&a2&b3&!b2&!s1&s0) | (!a3&!a2
+    &!m&!s3&!s2) | (!b3&s3&s2&!s0&c0) | (b3&s3&s2&!s1&c0) | (!a3&b3&m&s2) | (
+    !a3&!b3&m&s3) | (a3&!b3&m&!s0) | (a3&b3&m&!s1) | (!a3&s3&s2&c0);
+
+f2 = (!a2&!a1&a0&b2&b1&!m&s1&s0) | (a2&a0&!b2&b1&b0&s2&s1&!s0) | (a2&a0
+    &b2&!b1&!b0&s3&!s1&s0) | (!a2&a1&a0&b2&b0&s2&s1) | (!a2&a1&a0&!b2&!b0
+    &s3&s0) | (!a2&!a1&a0&!b2&!b1&!m&s1&s0) | (a2&!a0&b2&!b1&!b0&!m&!s3
+    &s1&!s0) | (a2&!a0&!b2&b1&b0&!m&!s2&!s1&s0) | (a2&a1&a0&!b2&b0&s1&!s0) | (
+    a2&a1&a0&b2&!b0&!s1&s0) | (!a2&a1&!a0&b2&!b1&b0&!m&!s0&c0) | (!a2&a1
+    &!a0&!b2&b1&!b0&!m&!s1&c0) | (a2&!a1&!a0&!b2&b0&!m&!s2&s0) | (a2&!a1
+    &!a0&b2&!b0&!m&!s3&s1) | (!a2&!a1&!b2&!b0&!m&!s3&!s0&!c0) | (!a2&!a1
+    &b2&b0&!m&!s2&!s1&!c0) | (!a2&!a0&!b2&!b1&!m&!s3&!s0&!c0) | (!a2&!a0
+    &b2&b1&!m&!s2&!s1&!c0) | (!a0&b2&!b1&b0&!m&!s2&s1&!s0) | (!a0&!b2&b1
+    &!b0&!m&!s3&!s1&s0) | (b2&!b1&!b0&!m&!s2&s1&!s0&!c0) | (!b2&b1&b0&!m
+    &!s3&!s1&s0&!c0) | (!a2&!b2&!b1&!b0&!m&!s3&!s0&!c0) | (!a2&b2&b1&b0&!m
+    &!s2&!s1&!c0) | (a2&!a1&b2&!b0&!m&s1&!s0&!c0) | (a2&!a1&!b2&b0&!m&!s1
+    &s0&!c0) | (a2&!a0&b2&!b1&!m&s1&!s0&!c0) | (a2&!a0&!b2&b1&!m&!s1&s0
+    &!c0) | (!a2&!a1&!a0&!b2&!b0&!m&s2&c0) | (!a2&!a1&!a0&b2&b0&!m&s3&c0) | (
+    !a2&!a1&a0&!b2&!b1&!b0&!m&s0) | (!a2&!a1&a0&b2&b1&b0&!m&s1) | (a2&b2
+    &!b1&!b0&!m&s1&!s0&!c0) | (a2&!b2&b1&b0&!m&!s1&s0&!c0) | (!a2&!a0&!b2
+    &!b1&!b0&!m&!s0&c0) | (!a2&!a0&b2&b1&b0&!m&!s1&c0) | (!a2&!a0&!b1&!m
+    &!s3&!s2&!s0) | (!a2&!a0&b1&!m&!s3&!s2&!s1) | (!a2&!a1&!a0&b2&!m&!s2
+    &!c0) | (!a2&!a1&!a0&!b2&!m&!s3&!c0) | (!a1&!a0&!b2&!b0&!m&!s3&s0) | (
+    !a1&!a0&b2&b0&!m&!s2&s1) | (a0&!b2&!b1&b0&s3&s1&!s0) | (a0&b2&b1&!b0
+    &s2&!s1&s0) | (a2&a1&!b2&b0&s2&!s0&c0) | (a2&a1&b2&!b0&s3&!s1&c0) | (
+    a2&!a1&!b2&b1&!m&!s2&s0) | (a2&!a1&b2&!b1&!m&!s3&s1) | (a2&!b2&b1&b0
+    &s2&!s0&c0) | (a2&b2&!b1&!b0&s3&!s1&c0) | (a2&!a1&!a0&!b2&!m&s0&!c0) | (
+    a2&!a1&!a0&b2&!m&s1&!c0) | (a2&a0&!b2&b1&s2&!s0&c0) | (a2&a0&b2&!b1
+    &s3&!s1&c0) | (!a2&b2&!m&!s2&!s1&!s0&!c0) | (!a2&!b2&!m&!s3&!s1&!s0
+    &!c0) | (!a2&a1&b2&!b1&!m&s2&s0) | (!a2&a1&!b2&!b1&!m&s3&s0) | (!a2
+    &a1&b2&b1&!m&s2&s1) | (!a2&a1&!b2&b1&!m&s3&s1) | (!a2&!a1&!b2&!b1&!b0
+    &!m&c0) | (!a2&!a1&b2&b1&b0&!m&c0) | (a2&a1&!b2&b1&!m&s1&!s0) | (a2
+    &a1&b2&!b1&!m&!s1&s0) | (a2&a1&a0&!b2&!m&!s0&c0) | (a2&a1&a0&b2&!m&!s1
+    &c0) | (!a2&a0&!b0&s3&s2&s0) | (!a2&a0&b0&s3&s2&s1) | (!a2&a1&a0&b2
+    &s2&c0) | (!a2&a1&a0&!b2&s3&c0) | (!a2&a0&b2&b1&s2&c0) | (!a2&a0&!b2
+    &!b1&s3&c0) | (a1&!b2&!b0&s3&!s0&c0) | (a1&b2&b0&s2&!s1&c0) | (!a1&!b2
+    &!b1&!m&!s3&s0) | (!a1&b2&b1&!m&!s2&s1) | (!a2&!a1&b2&b1&!m&!s2) | (
+    !a2&!a1&!b2&!b1&!m&!s3) | (!b2&!b1&!b0&s3&!s0&c0) | (b2&b1&b0&s2&!s1
+    &c0) | (a0&!b2&!b1&s3&!s0&c0) | (a0&b2&b1&s2&!s1&c0) | (!a2&!a1&!m&!s3
+    &!s2) | (!b2&s3&s2&!s0&c0) | (b2&s3&s2&!s1&c0) | (!a2&b2&m&s2) | (!a2
+    &!b2&m&s3) | (a2&!b2&m&!s0) | (a2&b2&m&!s1) | (!a2&s3&s2&c0);
+
+f1 = (!a1&a0&b1&!b0&!m&!s2&!s0&!c0) | (!a1&a0&!b1&b0&!m&!s3&!s1&!c0) | (
+    !a1&a0&b1&!b0&s2&s0) | (!a1&a0&!b1&!b0&s3&s0) | (!a1&a0&b1&b0&s2&s1) | (
+    !a1&a0&!b1&b0&s3&s1) | (a1&a0&!b1&b0&s1&!s0) | (a1&a0&b1&!b0&!s1&s0) | (
+    a1&!a0&!b1&b0&!m&!s2&s0) | (a1&!a0&b1&!b0&!m&!s3&s1) | (!a1&!b1&!b0&!m
+    &!s3&!s0&!c0) | (!a1&b1&b0&!m&!s2&!s1&!c0) | (a1&b1&!b0&!m&s1&!s0&!c0) | (
+    a1&!b1&b0&!m&!s1&s0&!c0) | (!a1&!a0&b1&!m&!s2&!c0) | (!a1&!a0&!b1&!m
+    &!s3&!c0) | (!a0&!b1&!b0&!m&!s3&s0) | (!a0&b1&b0&!m&!s2&s1) | (a1&!b1
+    &b0&s2&!s0&c0) | (a1&b1&!b0&s3&!s1&c0) | (a1&!a0&!b1&!m&s0&!c0) | (
+    a1&!a0&b1&!m&s1&!c0) | (!a1&!a0&!b1&!b0&!m&c0) | (!a1&!a0&b1&b0&!m&c0) | (
+    !a1&a0&b1&!m&s2&c0) | (!a1&a0&!b1&!m&s3&c0) | (a1&a0&!b1&!m&!s0&c0) | (
+    a1&a0&b1&!m&!s1&c0) | (!a1&!a0&!m&!s3&!s2) | (!b1&!b0&s3&!s0&c0) | (
+    b1&b0&s2&!s1&c0) | (!a1&b1&m&s2) | (!a1&!b1&m&s3) | (a1&!b1&m&!s0) | (
+    a1&b1&m&!s1) | (!a1&s3&s2&c0);
+
+f0 = (!a0&b0&!m&!s2&!c0) | (!a0&!b0&!m&!s3&!c0) | (a0&!b0&!m&s0&!c0) | (
+    a0&b0&!m&s1&!c0) | (!a0&b0&m&s2) | (!a0&!b0&m&s3) | (a0&!b0&m&!s0) | (
+    a0&b0&m&!s1) | (!a0&b0&s2&c0) | (!a0&!b0&s3&c0) | (a0&!b0&!s0&c0) | (
+    a0&b0&!s1&c0);
+
