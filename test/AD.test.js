@@ -23,11 +23,12 @@ const X = 100n;
 const Y = 200n;
 const Z = 300n;
 const PCinitial = 0o123456n;
-const MQinitial = 0o000010n;
+const ARinitial = 0o654321n;
 const BRinitial = 0o246100n;
 const BRXinitial = 0o777777n;   // Must cause carry out if added to MQinitial
-const ARinitial = 0o654321n;
-const ARones = (1n << 18n) - 1n;
+const MQinitial = 0o000010n;
+const ARones = (1n << 38n) - 1n;
+const ARRones = (1n << 18n) - 1n;
 const ARXones = (1n << 36n) - 1n;
 const ones36 = 0o777777777777n;
 const ones38 = 0o3777777777777n;
@@ -66,7 +67,7 @@ describe('AD ALU', () => {
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
-      expect(AR.value.toString(8)).to.equal(((BRinitial + PCinitial) & ARones).toString(8));
+      expect(AR.value.toString(8)).to.equal(((BRinitial + PCinitial) & ARRones).toString(8));
     });
 
     it(`should add AR*4 and MQ to ARR and jump to Z`, () => {
@@ -85,7 +86,7 @@ describe('AD ALU', () => {
       ARR.value = ARinitial;
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
-      expect(AR.value.toString(8)).to.equal(((ARinitial*4n + MQinitial) & ARones).toString(8));
+      expect(AR.value.toString(8)).to.equal(((ARinitial*4n + MQinitial) & ARRones).toString(8));
     });
 
     it(`should add AR and BR*2 to ARR and jump to X`, () => {
@@ -102,7 +103,7 @@ describe('AD ALU', () => {
       CRADR.value = Z;
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.value.toString(8)).to.equal(((ARinitial + BRinitial*2n) & ARones).toString(8));
+      expect(AR.value.toString(8)).to.equal(((ARinitial + BRinitial*2n) & ARRones).toString(8));
     });
 
     it(desc('A+1'),           () => arithOp('A+1',    (a, b) => a + 1n));
@@ -118,7 +119,7 @@ describe('AD ALU', () => {
     it(desc('A-B-1'),         () => arithOp('A-B-1',  (a, b) => a - b - 1n));
     it(desc('A-B c=0'),       () => arithOp('A-B',    (a, b) => a - b - 1n, 0n));
     it(desc('A-B c=1'),       () => arithOp('A-B',    (a, b) => a - b - 0n, 1n));
-    it(desc('XCRY-1 c=0'),    () => arithOp('XCRY-1', (a, b) => ARones, 0n));
+    it(desc('XCRY-1 c=0'),    () => arithOp('XCRY-1', (a, b) => ARRones, 0n));
     it(desc('XCRY-1 c=1'),    () => arithOp('XCRY-1', (a, b) => 0n, 1n));
     it(desc('A-1 c=0'),       () => arithOp('A-1',    (a, b) => a - 1n, 0n));
     it(desc('A-1 c=1'),       () => arithOp('A-1',    (a, b) => a, 1n));
@@ -127,7 +128,7 @@ describe('AD ALU', () => {
     // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
     // Test for result calculated by opFunc.
     function arithOp(CRname, opFunc, cin = 0n) {
-      const sb = opFunc(ARinitial, BRinitial) & ARones;
+      const sb = opFunc(ARinitial, BRinitial) & ARRones;
       const arxA = cin ? 0o777777777770n : 0n; // Cause ARX to generate carry out
       const arxSB = (arxA + MQinitial) & ARXones;
 
@@ -167,14 +168,14 @@ describe('AD ALU', () => {
     it(desc('ORCB'),       () => boolOp('ORCB',  (a, b) => a | NOT(b)));
     it(desc('ANDCA'),      () => boolOp('ANDCA', (a, b) => NOT(a) & b));
     it(desc('ANDCB'),      () => boolOp('ANDCB', (a, b) => a & NOT(b)));
-    it(desc('ANDC (NOR)'), () => boolOp('ANDC',  (a, b) => NOT(a) & NOT(b)));
-    it(desc('ORC (NAND)'), () => boolOp('ORC',   (a, b) => NOT(a & b)));
+    it(desc('ANDC (NOR)'), () => boolOp('ANDC',  (a, b) => NOT(a | b)));
+    it(desc('ORC (NAND)'), () => boolOp('ORC',   (a, b) => NOT(a) | NOT(b)));
 
     
     // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
     // Test for result calculated by opFunc.
     function boolOp(CRname, opFunc) {
-      const sb = opFunc(ARinitial, BRinitial) & ARones;
+      const expected = opFunc(ARinitial, BRinitial) & ARRones;
 
       // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
       CR.value = 0n;
@@ -188,7 +189,8 @@ describe('AD ALU', () => {
       CRADR.value = Z;
       EBOX.cycle();
       expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.value.toString(8)).to.equal(sb.toString(8));
+      expect(AR.value.toString(8)).to
+        .equal(expected.toString(8), `op was ${oct6(ARinitial)} ${CRname} ${oct6(BRinitial)}`);
     }
   });
 });
