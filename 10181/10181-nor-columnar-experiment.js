@@ -1,7 +1,5 @@
 'use strict';
 const util = require('util');
-const _ = require('lodash');
-
 // 10181 netlist
 // All references are to F10181.pdf p. 7-107 schematic.
 
@@ -9,7 +7,7 @@ const _ = require('lodash');
 const growTrees = false;
 
 // If true, build array trees of ops.
-const growATrees = false;
+const growATrees = true;
 
 // If true, use lisp style ops.
 const beLispy = false;
@@ -59,8 +57,6 @@ function do10181(a, b, m, s, c0) {
 
   // bXx = aXa ^ aXb
 
-  // 
-
   // Middle tier XOR gates
   const b3x = XOR(a3a, a3b);
   const b2x = XOR(a2a, a2b);
@@ -68,24 +64,22 @@ function do10181(a, b, m, s, c0) {
   const b0x = XOR(a0a, a0b);
 
   // Third tier of NOR gates.
-  const m3a = NOR(a3a, a2a, a1a, a0a, c0);
-  const m3b = NOR(a3a, a2a, a1a, a0b);
-  const m3c = NOR(a3a, a2a, a1b);
-  const m3d = NOR(a3a, a2b);
-  const m3e = NOT(a3b);
-  const m3f = NOR(a3a, a2a, a1a, a0a);
-
-  const m2a = NOR(c0, a0a, a1a, a2a, m);
-  const m2b = NOR(a0b, a1a, a2a, m);
-  const m2c = NOR(a1b, a2a, m);
-  const m2d = NOR(a2b, m);
-
-  const m1a = NOR(c0, a1a, a0a, m);
-  const m1b = NOR(a0b, a1a, m);
-  const m1c = NOR(a1b, m);
-
-  const m0a = NOR(c0, a0a, m);
-  const m0b = NOR(a0b, m);
+  //              c0  m  a3a  a2a  a1a  a0a  a3b  a2b  a1b  a0b
+  const m3f = NOR( 0, 0, a3a, a2a, a1a, a0a,   0,   0,   0,   0);
+  const m3a = NOR(c0, 0, a3a, a2a, a1a, a0a,   0,   0,   0,   0);
+  const m2a = NOR(c0, m,   0, a2a, a1a, a0a,   0,   0,   0,   0);
+  const m1a = NOR(c0, m,   0,   0, a1a, a0a,   0,   0,   0,   0);
+  const m0a = NOR(c0, m,   0,   0,   0, a0a,   0,   0,   0,   0);
+  const m3b = NOR( 0, 0, a3a, a2a, a1a,   0,   0,   0,   0, a0b);
+  const m2b = NOR( 0, m,   0, a2a, a1a,   0,   0,   0,   0, a0b);
+  const m1b = NOR( 0, m,   0,   0, a1a,   0,   0,   0,   0, a0b);
+  const m0b = NOR( 0, m,   0,   0,   0,   0,   0,   0,   0, a0b);
+  const m3c = NOR( 0, 0, a3a, a2a,   0,   0,   0,   0, a1b,   0);
+  const m2c = NOR( 0, m,   0, a2a,   0,   0,   0,   0, a1b,   0);
+  const m1c = NOR( 0, m,   0,   0,   0,   0,   0,   0, a1b,   0);
+  const m3d = NOR( 0, 0, a3a,   0,   0,   0,   0, a2b,   0,   0);
+  const m2d = NOR( 0, m,   0,   0,   0,   0,   0, a2b,   0,   0);
+  const m3e = NOT( 0, 0,   0,   0,   0,   0, a3b,   0,   0,   0);
 
   // Fourth tier of OR gates
   const n3 = OR(m3b, m3c, m3d, m3e);
@@ -198,10 +192,9 @@ function bitSplit(p) {
 
 
 function do1(a, b, m, s, c0) {
-//  const {c4, g, p, f} = do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
-  return do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
+  const {c4, g, p, f} = do10181(bitSplit(a), bitSplit(b), m, bitSplit(s), c0);
+  console.log(`f=${f.map(b => +b).join('')} c4=${+c4} g=${+g} p=${+p}`);
 }
-
 
 module.exports = {
   do1, bitSplit, NOR, do10181,
@@ -240,37 +233,13 @@ function demorgan(n) {
 }
 
 
-function toBin(v, w=4) {
-  return _.padStart(v.toString(2), w, '0');
-}
-
-
-function genTruthTable() {
-  _.range(2).forEach(c0 => {
-    _.range(2).forEach(m => {
-      _.range(16).forEach(s => {
-        _.range(16).forEach(a => {
-          _.range(16).forEach(b => {
-            const {c4, g, p, f} = do1(a, b, m, s, c0);
-            //            ei.push([bitSplit(a), bitSplit(b), m, bitSplit(s), c0], [+g, +p, +c4, ...f]);
-            console.log([bitSplit(a), bitSplit(b), m, bitSplit(s), c0].join('')
-                        + ' '
-                        + [+g, +p, +c4, ...(f.map(b => +b))].join(''));
-          });
-        });
-      });
-    });
-  });
-}
-
-
 function main() {
-/*
   const {c4, g, p, f} = do10181('a3,a2,a1,a0'.split(/,/),
                                 'b3,b2,b1,b0'.split(/,/),
                                 'm',
                                 's3,s2,s1,s0'.split(/,/),
                                 'c0');
+/*
   console.log(`const NORtree = {`);
   dump('c4', c4);
   dump('g', g);
@@ -280,7 +249,7 @@ function main() {
   dump('f1', f[1]);
   dump('f0', f[0]);
   console.log(`};`);
-
+*/  
   console.log(`const ANDCtree = {`);
   dump('c4', demorgan(c4));
   dump('g', demorgan(g));
@@ -292,8 +261,6 @@ function main() {
   console.log(`};`);
 
   console.log(`module.exports = {ANDCtree};`);
-*/
-  genTruthTable();
 }
 
 main();
