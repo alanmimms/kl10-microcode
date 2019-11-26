@@ -31,11 +31,10 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const Named = StampIt({name: 'Named'}).statics({
   units: {},                    // Dictionary of all Named instances
 
-  // Replace (by declaring via `statics()`) this static property in
-  // child stamps with array of property names that should be fixed
-  // up. That is, replace their string values with the result of
-  // evaluating that string at the end of the module.
-  mayFixup: ['input', 'inputs', 'func', 'control', 'addr', 'matchValue', 'enableF'],
+  // This is the list of property names that should be fixed up. That
+  // is, replace their string values with the result of evaluating
+  // that string at the end of the module.
+  mayFixup: `input,inputs,func,control,addr,matchValue,enableF,loBits,hiBits`.split(/,\s*/),
 
   // This is the STAMP (not instance) method invoked at the end of
   // this module to fix up all of the `mayFixup` properties on all
@@ -183,8 +182,8 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
   function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock}) {
     this.name = name;
     this.clock = clock;
-    this.input = input;         // We can use singular OR plural but not both (`input` wins over `inputs`)
-    this.inputs = inputs;
+    this.input = input;         // We can use singular OR plural
+    this.inputs = inputs;       //  but not both (`input` wins over `inputs`)
     this.func = func;
     this.control = control;
     this.addr = addr;
@@ -204,13 +203,10 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
     },
 
     // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
-    getAddress() { assert(this.addr, `this.addr not null in ${this.name}`); return this.addr.get() },
-    getFunc() { assert(this.func, `this.func not null in ${this.name}`); return this.func.get() },
-    getControl() { assert(this.control, `this.control not null in ${this.name}`); return this.control.get() },
-    getInputs() {
-      assert(this.control, `this.control not null in ${this.name}`);
-      return this.input.get() & this.ones;
-    },
+    getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
+    getFunc()    { assert(this.func, `${this.name}.func not null`); return this.func.get() },
+    getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
+    getInputs()  { assert(this.input, `${this.name}.input not null`); return this.input.get() & this.ones },
     getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
     getRH(v = this.value) { return BigInt.asUintN(18, v) },
     joinHalves(lh, rh) { return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh) },
@@ -259,7 +255,11 @@ module.exports.EBOX = EBOX;
 // Use this mixin to define a Combinatorial unit that is unclocked.
 const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
   latch() { },
-  get() { return this.value = this.getInputs() & this.ones },
+
+  get() { 
+    assert(typeof this.getInputs() === 'bigint', `${this.name}.getInputs returned non-BigInt`);
+    return this.value = this.getInputs() & this.ones;
+  },
 });
 
 
@@ -283,7 +283,7 @@ const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, 
 }).methods({
 
   reset() {
-    assert(this.input, `this.input not null in ${this.name}`);
+    assert(this.input, `${this.name}.input not null`);
     this.wordWidth = Number(this.input.bitWidth);
     this.shift = shiftForBit(this.e, this.input.bitWidth);
     this.ones = (1n << this.bitWidth) - 1n;
@@ -325,7 +325,8 @@ module.exports.ONES = ONES;
 const BitCombiner = Combinatorial.compose({name: 'BitCombiner'}).methods({
 
   getInputs() {
-    const combined = this.input.reduce((v, i) => (v << i.bitWidth) | i.get(), 0n);
+    assert(this.inputs, `${this.name}.inputs not null`);
+    const combined = this.inputs.reduce((v, i) => (v << i.bitWidth) | i.get(), 0n);
     return this.value = combined & this.ones;
   },
 });
@@ -356,14 +357,14 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
   },
 
   latch() {
-    this.addr = this.getAddress();
+    this.latchedAddr = this.getAddress();
     const isWrite = !this.getControl(); // Active-low /WRITE control
 
     if (isWrite) {
       this.value = this.get();
-      this.data[this.addr] = this.value;
+      this.data[this.latchedAddr] = this.value;
     } else {
-      this.value = this.data[this.addr];
+      this.value = this.data[this.latchedAddr];
     }
 
     return this.value;
@@ -422,6 +423,7 @@ const Mux = Combinatorial.compose({name: 'Mux'}).init(function({enableF = () => 
   get() {
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
+    assert(this.enableF, `${this.name}.enableF not null`);
     return this.enableF() ? input.get() & this.ones : 0n;
   },
 });
@@ -459,10 +461,12 @@ module.exports.LogicUnit = LogicUnit;
 const ShiftMult = Combinatorial.compose({name: 'ShiftMult'})
       .init(function({shift = 1, loBits = ZERO}) {
         this.shift = BigInt(shift);
+        this.loBits = loBits;
       }).methods({
 
         get() {
           const inp = this.input.get();
+          assert(this.loBits, `${this.name}.loBits not null`);
           const loBits = this.loBits.get() >> (this.loBits.bitWidth - this.shift);
           return (inp << this.shift | loBits) & this.ones;
         },
@@ -476,9 +480,11 @@ module.exports.ShiftMult = ShiftMult;
 const ShiftDiv = Combinatorial.compose({name: 'ShiftDiv'})
       .init(function({shift = 1, hiBits = ZERO}) {
         this.shift = BigInt(shift);
+        this.hiBits = hiBits;
       }).methods({
 
         getInputs() {
+          assert(this.hiBits, `${this.name}.hiBits not null`);
           const hiBits = this.hiBits.get() << (this.hiBits.bitWidth - this.shift);
           return ((this.input.get() | hiBits) >> this.shift) & this.ones;
         },
@@ -490,7 +496,7 @@ module.exports.ShiftDiv = ShiftDiv;
 // RAMs
 
 // Control RAM: Readonly by default
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n, input: `CRADR`, control: `ONES`});
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n, input: `CRADR`, control: `ONES`, addr: `CRADR`});
 const CR = Reg({name: 'CR', bitWidth: 84n, input: `CRAM`});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
@@ -742,7 +748,7 @@ const FM_ADR = LogicUnit.methods({
   },
 }) ({name: 'FM_ADR', bitWidth: 4n, input: `[IRAC, ARX, VMA, MAGIC_NUMBER]`});
 
-const FMA = BitCombiner({name: 'FMA', bitWidth: 7n, input: `[CR.ACB, FM_ADR]`});
+const FMA = BitCombiner({name: 'FMA', bitWidth: 7n, inputs: `[CR.ACB, FM_ADR]`});
 const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36n, input: `AR`, addr: `FM`,
                 control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`,
                                 matchValue: `CR.COND['FM WRITE']`})});
@@ -851,10 +857,15 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
   },
 
   get() {
+    assert(this.inputs, `${this.name}.inputs not null`);
+    assert(this.inputs[0], `${this.name}.inputs[0] not null`);
+    assert(this.inputs[1], `${this.name}.inputs[1] not null`);
     const func = this.getFunc();
     const f = Number(func) & 0o37;
     const a = this.inputs[0].get();
+    assert(typeof a === 'bigint', `${this.name}.inputs[0].get() is BigInt`);
     const b = this.inputs[1].get();
+    assert(typeof b === 'bigint', `${this.name}.inputs[1].get() is BigInt`);
 
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
@@ -910,7 +921,7 @@ const ADX = DataPathALU.compose({name: 'ADX'}).methods({
 // 			;is 0, clear AR left; otherwise, poke ARL select
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
-const AD = DataPathALU({name: 'AD', bitWidth: 38n, input: `[ADA, ADB, ZERO]`, func: `CR.AD`});
+const AD = DataPathALU({name: 'AD', bitWidth: 38n, inputs: `[ADA, ADB, ZERO]`, func: `CR.AD`});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, input: `AD`});
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, input: `AD`});
 
@@ -1053,10 +1064,10 @@ const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, input: `AR`});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult({name: 'BRx2', shift: 1, bitWidth: 36n, input: 'BR'});
-const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36n, input: 'AR'});
-const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36n, input: 'BRX'});
-const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36n, input: 'ARX'});
+const BRx2 = ShiftMult({name: 'BRx2', shift: 1, bitWidth: 36n, input: 'BR', loBits: `ARX`});
+const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36n, input: 'AR', loBits: `ARX`});
+const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36n, input: 'BRX', loBits: `MQ`});
+const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36n, input: 'ARX', loBits: `MQ`});
 
 // SCAD CONTROL
 // 0    A
@@ -1085,7 +1096,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
 
     switch(func) {
     default:
-    case CR.SCAD.A:        result = this.alu.do(0o00n, a, b);            break;
+    case CR.SCAD.A:        result = a;                                   break;
     case CR.SCAD['A-B-1']: result = this.alu.do(0o11n, a, b);            break;
     case CR.SCAD['A+B']:   result = this.alu.do(0o06n, a, b);            break;
     case CR.SCAD['A-1']:   result = this.alu.do(0o17n, a, b);            break;
@@ -1095,6 +1106,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
     case CR.SCAD.AND:      result = this.alu.do(0o16n, a, b, 1n);        break;
     }
 
+    assert(typeof result === 'bigint', `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
     return result;
   },
 }) ({name: 'SCAD', bitWidth: 10n, inputs: `[SCADA, SCADB, ZERO]`, func: `CR.SCAD`});
@@ -1181,7 +1193,7 @@ const ARSIGN_SMEAR = LogicUnit.methods({
 const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, input: `SCAD`});
 const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, input: `SCAD`});
 
-const MAGIC_NUMBER = BitCombiner({name: 'MAGIC_NUMBER', bitWidth: 9n, input: `[CR['#']]`});
+const MAGIC_NUMBER = BitCombiner({name: 'MAGIC_NUMBER', bitWidth: 9n, inputs: `[CR['#']]`});
 
 const ARMML = Mux({name: 'ARMML', bitWidth: 9n,
                    inputs: `[MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS]`, control: `CR.ARMM`});
@@ -1191,8 +1203,9 @@ const ARMMR = Mux.methods({
 }) ({name: 'ARMMR', bitWidth: 17n - 13n + 1n, inputs: `[PC_13_17, VMA_PREV_SECT_13_17]`, control: `CR.VMAX`});
 
 const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36n, input: 'AD', loBits: 'ADX'});
-const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36n, input: 'AD'});
 const ADXx2 = ShiftMult({name: 'ADXx2', shift: 1, bitWidth: 36n, input: 'ADX', loBits: 'MQ'});
+
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36n, input: 'AD', hiBits: `ZERO`});
 const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', shift: 2, bitWidth: 36n, input: 'ADX', hiBits: 'AD'});
 
 const SERIAL_NUMBER = ConstantUnit.methods({
@@ -1411,6 +1424,7 @@ function matcherFactory(fieldName) {
 
 // Substitute real object references for strings we placed in
 // properties whose names are in `unit.stamp.mayFixup`.
+console.log(`Fixing up forward references.`);
 Named.fixupForwardReferences();
 
 // Export every EBOXUnit
