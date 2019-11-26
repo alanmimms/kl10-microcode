@@ -1,6 +1,7 @@
 'use strict';
 const _ = require('lodash');
 const util = require('util');
+const {assert} = require('chai');
 const StampIt = require('@stamp/it');
 
 const {
@@ -34,7 +35,7 @@ const Named = StampIt({name: 'Named'}).statics({
   // child stamps with array of property names that should be fixed
   // up. That is, replace their string values with the result of
   // evaluating that string at the end of the module.
-  mayFixup: [],
+  mayFixup: ['input', 'inputs', 'func', 'control', 'addr', 'matchValue', 'enableF'],
 
   // This is the STAMP (not instance) method invoked at the end of
   // this module to fix up all of the `mayFixup` properties on all
@@ -58,13 +59,11 @@ const Named = StampIt({name: 'Named'}).statics({
     const that = this;
 
     this.stamp.mayFixup
-      .filter(prop => typeof prop === typeof 'string')
+      .filter(prop => typeof that[prop] === typeof 'string')
       .forEach(prop => {
-        try {
-          that[prop] = eval(that[prop]);
-        } catch(e) {
-          console.error(`Error in mayFixup for "${prop}": ${e}`);
-        }
+        const asString = that[prop];
+        that[prop] = eval(asString);
+        console.log(`${that.name}.${prop} = ${asString}`);
       });
   },
 });
@@ -190,7 +189,6 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.control = control;
     this.addr = addr;
     this.bitWidth = BigInt(bitWidth || 0);
-    this.stamp.mayFixup.push('input', 'inputs', 'func', 'control', 'addr');
     this.wrappableMethods = `\
 reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
 `.trim().split(/,\s*/);
@@ -206,11 +204,11 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
     },
 
     // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
-    getAddress() { return this.addr.get() },
-    getFunc() { return this.func.get() },
-    getControl() { return this.control.get() },
+    getAddress() { assert(this.addr, `this.addr not null in ${this.name}`); return this.addr.get() },
+    getFunc() { assert(this.func, `this.func not null in ${this.name}`); return this.func.get() },
+    getControl() { assert(this.control, `this.control not null in ${this.name}`); return this.control.get() },
     getInputs() {
-      if (typeof this.input.get !== typeof (() => 0)) debugger;
+      assert(this.control, `this.control not null in ${this.name}`);
       return this.input.get() & this.ones;
     },
     getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
@@ -285,6 +283,7 @@ const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, 
 }).methods({
 
   reset() {
+    assert(this.input, `this.input not null in ${this.name}`);
     this.wordWidth = Number(this.input.bitWidth);
     this.shift = shiftForBit(this.e, this.input.bitWidth);
     this.ones = (1n << this.bitWidth) - 1n;
@@ -385,7 +384,6 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
         this.matchValue = matchValue;
         this.matchF = matchF;
         this.bitWidth = bitWidth;
-        this.stamp.mayFixup.push('matchValue');
       }).methods({
 
         getInputs() {
@@ -401,7 +399,6 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
         this.input = input;
         this.matchValue = matchValue;
         this.matchF = matchF || matchFDefault;
-        this.stamp.mayFixup.push('input', 'matchValue');
         EBOXClock.addUnit(this);
       }).methods({
 
@@ -420,7 +417,6 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
 // the value of the selected input on the output.
 const Mux = Combinatorial.compose({name: 'Mux'}).init(function({enableF = () => 1n}) {
   this.enableF = enableF;
-  this.stamp.mayFixup.push('enableF');
 }).methods({
 
   get() {
@@ -1360,7 +1356,7 @@ function defineBitFields(input, s, ignoreFields = []) {
         const bitWidth = BigInt(e - s + 1);
         const bfName = `${input.name}['${fieldName}']`;
         const inputClosure = input;   // Create closure variable
-        curField = BitField({name: bfName, s, e, inputClosure, bitWidth});
+        curField = BitField({name: bfName, s, e, input: inputClosure, bitWidth});
         const thisField = curField; // Create closure variable for getter
 
         Object.defineProperty(input, fieldName, {
