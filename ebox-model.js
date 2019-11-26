@@ -814,22 +814,22 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
     case 0o17: return this.sub(a, 1n, cin);
 
     // BOOLEAN
-    case 0o20: return BOOL(cin ? NOT(a) : a);
-    case 0o21: return BOOL(cin ? NOT(a) | NOT(b) : this.add(a, a & NOT(b)));
-    case 0o22: return BOOL(cin ? NOT(a) | b : this.add(a, a & b));
-    case 0o23: return BOOL(cin ? 1n : this.add(a, a));
-    case 0o24: return BOOL(cin ? a & b : a | b);
-    case 0o25: return BOOL(cin ? NOT(b) : this.add(a & NOT(b), a | b));
-    case 0o26: return BOOL(cin ? NOT(a ^ b) : this.add(a, b));
-    case 0o27: return BOOL(cin ? a | NOT(b) : this.add(a, a | b));
-    case 0o30: return BOOL(cin ? NOT(a) & b : a | NOT(b));
-    case 0o31: return BOOL(cin ? a ^ b : this.sub(a, b, 1n));
-    case 0o32: return BOOL(cin ? b : this.add(a | NOT(b), a & b));
-    case 0o33: return BOOL(cin ? a | b : this.add(a, a | NOT(b)));
-    case 0o34: return BOOL(cin ? 0n : ones);
-    case 0o35: return BOOL(cin ? a & NOT(b) : this.sub(a & NOT(b), 1n));
-    case 0o36: return BOOL(cin ? a & b : this.sub(a & b, 1n));
-    case 0o37: return BOOL(cin ? a : this.sub(a, 1n));
+    case 0o20: return BOOL(!cin ? NOT(a) : a);
+    case 0o21: return BOOL(!cin ? NOT(a) | NOT(b) : this.add(a, a & NOT(b)));
+    case 0o22: return BOOL(!cin ? NOT(a) | b : this.add(a, a & b));
+    case 0o23: return BOOL(!cin ? ones : this.add(a, a));
+    case 0o24: return BOOL(!cin ? NOT(a | b) : a & b);
+    case 0o25: return BOOL(!cin ? NOT(b) : this.add(a & NOT(b), a | b));
+    case 0o26: return BOOL(!cin ? NOT(a ^ b) : this.add(a, b));
+    case 0o27: return BOOL(!cin ? a | NOT(b) : this.add(a, a | b));
+    case 0o30: return BOOL(!cin ? NOT(a) & b : a | NOT(b));
+    case 0o31: return BOOL(!cin ? a ^ b : this.sub(a, b, 1n));
+    case 0o32: return BOOL(!cin ? b : this.add(a | NOT(b), a & b));
+    case 0o33: return BOOL(!cin ? a | b : this.add(a, a | NOT(b)));
+    case 0o34: return BOOL(!cin ? 0n : ones);
+    case 0o35: return BOOL(!cin ? a & NOT(b) : this.sub(a & NOT(b), 1n));
+    case 0o36: return BOOL(!cin ? a & b : this.sub(a & b, 1n));
+    case 0o37: return BOOL(!cin ? a : this.sub(a, 1n));
     }
 
 
