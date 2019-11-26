@@ -116,6 +116,8 @@ describe('Clocking/latching', () => {
 });
 
 
+// Note we cannot use string forward references here unless we call
+// Named.fixupForwardReferences() again.
 describe('Mux+Reg', () => {
   const CLK = Clock({name: 'CLK'});
   const Mcontrol = ConstantUnit({name: 'Mcontrol', bitWidth: 36n, value: 0n});
@@ -126,7 +128,7 @@ describe('Mux+Reg', () => {
   const E = ConstantUnit({name: 'E', bitWidth: 36n, value: 69n});
   const M = Mux({name: 'M', bitWidth: 36n, clock: CLK,
                  inputs: [A,B,C,D,E], control: Mcontrol});
-  const R = Reg({name: 'R', bitWidth: 36n, clock: CLK, inputs: M});
+  const R = Reg({name: 'R', bitWidth: 36n, clock: CLK, input: M});
 
   beforeEach('Reset EBOX', () => {
     EBOX.reset();
