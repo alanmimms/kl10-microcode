@@ -63,7 +63,7 @@ const Named = StampIt({name: 'Named'}).statics({
       .forEach(prop => {
         const asString = that[prop];
         that[prop] = eval(asString);
-        console.log(`${that.name}.${prop} = ${asString}`);
+//      console.log(`${that.name}.${prop} = ${asString}`);
       });
   },
 });
@@ -201,6 +201,7 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
       this.value = 0n;
       this.bitWidth = BigInt(this.bitWidth || 1n);
       this.ones = (1n << this.bitWidth) - 1n;
+      this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
     },
 
     // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
@@ -208,9 +209,9 @@ reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
     getFunc()    { assert(this.func, `${this.name}.func not null`); return this.func.get() },
     getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
     getInputs()  { assert(this.input, `${this.name}.input not null`); return this.input.get() & this.ones },
-    getLH(v = this.value) { return BigInt.asUintN(18, v >> 18n) },
-    getRH(v = this.value) { return BigInt.asUintN(18, v) },
-    joinHalves(lh, rh) { return (BigInt.asUintN(18, lh) << 18n) | BigInt.asUintN(18, rh) },
+    getLH(v = this.value) { return (v >> 18n) & this.halfOnes },
+    getRH(v = this.value) { return v & this.halfOnes },
+    joinHalves(lh, rh) { return (lh << 18n) | (rh & this.halfOnes) },
   });
 module.exports.EBOXUnit = EBOXUnit;
 
@@ -296,7 +297,7 @@ const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, 
 
   getInputs() {
     const v = this.input.get();
-    const shifted = BigInt.asUintN(this.wordWidth + 1, v) >> BigInt(this.shift);
+    const shifted = v >> BigInt(this.shift);
     return shifted & this.ones;
   },
 });
@@ -309,7 +310,8 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
       .init(function ({value = 0, bitWidth}) {
         value = BigInt(value);
         this.bitWidth = BigInt(bitWidth);
-        this.value = value >= 0n ? value : BigInt.asUintN(Number(bitWidth), value);
+        this.ones = (1n << this.bitWidth) - 1n;
+        this.value = value >= 0n ? value : value & this.ones;
       }).methods({
         getInputs() {return this.value},
         get() {return this.value},
@@ -394,7 +396,7 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 
         getInputs() {
           const cur = this.input.get();
-          return this.value = BigInt(this.matchF(cur)) & this.ones;
+          return this.value = BigInt(!!this.matchF(cur));
         },
       });
 
@@ -841,6 +843,7 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
 });
 
 
+// Takes THREE inputs: A, B, and carry-in.
 const DataPathALU = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 
@@ -878,7 +881,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
     const bw = this.bitWidth;
-    const unsigned = x => BigInt.asUintN(bw, a);
+    const unsigned = x => a & allOnes;
 
     // If 0o40 mask is lit, force cin.
     const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
@@ -893,12 +896,13 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     let result = 0n;
 
     result = this.do(f, a, b, cin);
-    console.log(`${this.name} f=${f.toString(8)} func=${func.toString(8)} result=${result}`);
+    if (f === 0o21) console.log(`${this.name} f=${octal(f)} func=${octal(func)} \
+a=${octW(a)} b=${octW(b)} cin=${cin} result=${octW(result)}`);
     return result & allOnes;
   },
 });
 
-// XXX cin (ADXCRY36) needs to be correctly defined.
+// XXX cin needs to be correctly defined.
 const ADX = DataPathALU.compose({name: 'ADX'}).methods({
 
   // XXX this needs an implementation
@@ -1009,10 +1013,11 @@ const VMA = Reg.compose({name: 'VMA'})
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, input: `VMA`});
 const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n, input: `AD_13_17`});
 const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17, input: `VMA_PREV_SECT`});
-// XXX VERY temporary inputs
+// XXX VERY temporary input
 const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13n, input: ZERO});
 
-const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36n, inputs: `[VMA_FLAGS, VMA_HELD]`});
+const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36n,
+                                    inputs: `[VMA_FLAGS, VMA_HELD]`});
 const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n, input: `VMA`});
 
 const VMA_HELD_OR_PC = Mux.methods({
@@ -1033,7 +1038,8 @@ const COND_DIAG_FUNC = CR.COND['DIAG FUNC'];
 const ADR_BREAK_matchF = (cur => cur === COND_DIAG_FUNC && DIAG_FUNC.get() === DATAO_APR);
 const ADR_BREAK_CLOCK = FieldMatchClock({name: 'ADR_BREAK_CLOCK', input: DIAG_FUNC,
                                          matchF: ADR_BREAK_matchF, matchValue: DATAO_APR});
-const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n, input: `AD_13_35`, clock: ADR_BREAK_CLOCK});
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n,
+                       input: `AD_13_35`, clock: ADR_BREAK_CLOCK});
 
 const MQ = Reg.methods({
 
@@ -1160,6 +1166,7 @@ const SH = Reg.methods({
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
       result = (count < 0 || count > 35) ? arx0 : src0 << count;
+      console.log(`SH count=${count} result=${octW(result)}`);
       break;
 
     case 1:
@@ -1172,7 +1179,7 @@ const SH = Reg.methods({
 
     case 3:
       const src3 = AR.get();
-      result = (src3 >> 18) | (src3 << 18);
+      result = (src3 >> 18n) | (src3 << 18n);
       break;
     }
 
@@ -1237,12 +1244,12 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => !!(cur & ARL_LOADmask)})});
+                                         matchF: cur => cur & ARL_LOADmask})});
 
 const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => !!(cur & ARR_LOADmask)})});
+                                         matchF: cur => cur & ARR_LOADmask})});
 
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n, inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
@@ -1398,7 +1405,7 @@ function defineBitFields(input, s, ignoreFields = []) {
           if (curField) {
             curField[defName] = BigInt(parseInt(value, 8));
           } else {
-            console.log(`ERROR: no field context for value definition in "${line}"`);
+            console.error(`ERROR: no field context for value definition in "${line}"`);
           }
         } else {
           // Ignore lines that do not match either regexp.
