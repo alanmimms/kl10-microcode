@@ -9,6 +9,7 @@ const {
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask,
   wrapMethod, unwrapMethod,
+  typeofFunction,
 } = require('./util');
 
 // Read our defines.mic and gobble definitions for fields and
@@ -228,6 +229,10 @@ const EBOX = StampIt.compose(Named, {
 }).methods({
 
   reset() {
+    // Substitute real object references for strings we placed in
+    // properties whose names are in `unit.stamp.mayFixup`.
+    Named.fixupForwardReferences();
+
     this.resetActive = true;
     this.ucodeRun = false;
     this.run = false;
@@ -777,13 +782,16 @@ const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
 
   // This side-effect sets this.cout for carry and returns the value.
   do(func, a, b, cin = 0n) {
+    assert(typeof a === 'bigint', `a is BigInt (was ${a})`);
+    assert(typeof b === 'bigint', `b is BigInt (was ${b})`);
     const ones = this.ONES;
     const NOT = x => x ^ ones;
 
-    if (!cin) {            // Without hard knowledge of cin, get it from ARX cout
-      const ARXresult = ARX.get();
-      cin = ARX.cout;
+    if (!cin) {            // Without hard knowledge of cin, get it from ADX cout
+      cin = ADX.cout;
     }
+
+    assert(typeof cin === 'bigint', `cin is BigInt (was ${cin})`);
 
     switch (func) {
     // ARITHMETIC
@@ -863,9 +871,9 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const func = this.getFunc();
     const f = Number(func) & 0o37;
     const a = this.inputs[0].get();
-    assert(typeof a === 'bigint', `${this.name}.inputs[0].get() is BigInt`);
+    assert(typeof a === 'bigint', `${this.name} A is BigInt`);
     const b = this.inputs[1].get();
-    assert(typeof b === 'bigint', `${this.name}.inputs[1].get() is BigInt`);
+    assert(typeof b === 'bigint', `${this.name} B is BigInt`);
 
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
@@ -1421,11 +1429,6 @@ function fieldIs(fieldName, fieldValueName) {
 function matcherFactory(fieldName) {
   return name => BigInt(CR[fieldName].get() === CR[fieldName][name]);
 }
-
-// Substitute real object references for strings we placed in
-// properties whose names are in `unit.stamp.mayFixup`.
-console.log(`Fixing up forward references.`);
-Named.fixupForwardReferences();
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, Named.units);
