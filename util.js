@@ -22,6 +22,8 @@ const octW = module.exports.octW = n => octal(n, 12, 6, ',,');
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of
 // width `w`.
 function maskForBit(n, w = 36) {
+  n = Number(n);
+  w = Number(w);
   return 1n << shiftForBit(n, w);
 }
 module.exports.maskForBit = maskForBit;
@@ -30,6 +32,8 @@ module.exports.maskForBit = maskForBit;
 // In a PDP10 word of `w` bits, return the shift right count to get
 // bit #n into LSB.
 function shiftForBit(n, w = 36) {
+  w = Number(w);
+  n = Number(n);
   return BigInt(w - 1 - n);
 }
 module.exports.shiftForBit = shiftForBit;
@@ -38,8 +42,11 @@ module.exports.shiftForBit = shiftForBit;
 // Return a BigInt mask for PDP10 numbered bit positions within `w` bit word
 // of `s`..`e`. 
 function fieldMask(s, e, w = 36) {
-  const sMask = maskForBit(s - 1, w) - 1n;
-  const rightMask = maskForBit(e, w) - 1n;
+  s = Number(s);
+  e = Number(e);
+  w = Number(e);
+  const sMask = maskForBit(Number(s) - 1, Number(w)) - 1n;
+  const rightMask = maskForBit(Number(e), Number(w)) - 1n;
   return sMask - rightMask;
 }
 module.exports.fieldMask = fieldMask;
@@ -49,7 +56,12 @@ module.exports.fieldMask = fieldMask;
 // at PDP10 numbered bit positions within `v` of `s`..`e`. Returns
 // BigInt.
 function fieldInsert(v, n, s, e, w = 36) {
-  return v & ~fieldMask(s, e, w) | (BigInt(n) << shiftForBit(e, w));
+  v = BigInt(v);
+  n = BigInt(n);
+  s = Number(s);
+  e = Number(e);
+  w = Number(w);
+  return v & ~fieldMask(s, e, w) | (n << shiftForBit(e, w));
 }
 module.exports.fieldInsert = fieldInsert;
 
@@ -57,6 +69,10 @@ module.exports.fieldInsert = fieldInsert;
 // Return BigInt extracted from BigInt `v` whose full width is `w`
 // bits the PDP10 numbered bitfield `s`..`e`.
 function fieldExtract(v, s, e, w = 36) {
+  v = BigInt(v);
+  s = Number(s);
+  e = Number(e);
+  w = Number(w);
   return (v & fieldMask(s, e, w)) >> shiftForBit(e, w);
 }
 module.exports.fieldExtract = fieldExtract;
