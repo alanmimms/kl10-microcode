@@ -57,10 +57,10 @@ describe('EBOX', () => {
     PC.value = 0o123456n;
     EBOX.reset();
     expect(CRAM.data[123]).to.equal(0n);
-    expect(CRADR.value).to.equal(0n);
+    expect(CRADR.get()).to.equal(0n);
     expect(CRADR.stack.length).to.equal(0);
-    expect(IR.value).to.equal(0n);
-    expect(PC.value).to.equal(0n);
+    expect(IR.get()).to.equal(0n);
+    expect(PC.get()).to.equal(0n);
   });
 
   it(`should reflect its serial number`, () => {
