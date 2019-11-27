@@ -893,12 +893,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     //
     // Also note the schematic symbols XXX CRY 36 mean the carry INTO
     // the LSB of the adder for XXX (i.e., from a bit to the right).
-    let result = 0n;
-
-    result = this.do(f, a, b, cin);
-    if (f === 0o21) console.log(`${this.name} f=${octal(f)} func=${octal(func)} \
-a=${octW(a)} b=${octW(b)} cin=${cin} result=${octW(result)}`);
-    return result & allOnes;
+    return this.do(f, a, b, cin) & allOnes;
   },
 });
 
@@ -1166,7 +1161,6 @@ const SH = Reg.methods({
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
       result = (count < 0 || count > 35) ? arx0 : src0 << count;
-      console.log(`SH count=${count} result=${octW(result)}`);
       break;
 
     case 1:
