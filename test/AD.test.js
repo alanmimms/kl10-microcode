@@ -64,10 +64,11 @@ describe('AD ALU', () => {
       CRAM.data[X] = CR.value;
 
       CRADR.value = X;
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8), `CRADR.get() before cycle`);
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
-      expect(AR.get().toString(8)).to.equal(((BRinitial + PCinitial) & ARRones).toString(8));
+      expect(CRADR.get().toString(8)).to.equal(Y.toString(8), `CRADR.get() after cycle`);
+      expect(AR.get().toString(8)).to
+        .equal(((BRinitial + PCinitial) & ARRones).toString(8), `AR.get()`);
     });
 
     it(`should add AR*4 and MQ to ARR and jump to Z`, () => {
@@ -85,9 +86,9 @@ describe('AD ALU', () => {
       CRADR.value = Y;
       ARR.value = ARinitial;
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      expect(CRADR.get().toString(8)).to.equal(Z.toString(8), `CRADR.get()`);
       expect(AR.get().toString(8)).to
-        .equal(((ARinitial*4n + MQinitial) & ARRones).toString(8));
+        .equal(((ARinitial*4n + MQinitial) & ARRones).toString(8), `AR.get()`);
     });
 
     it(`should add AR and BR*2 to ARR and jump to X`, () => {
@@ -103,9 +104,9 @@ describe('AD ALU', () => {
 
       CRADR.value = Z;
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8), `CRADR.get()`);
       expect(AR.get().toString(8)).to
-        .equal(((ARinitial + BRinitial*2n) & ARRones).toString(8));
+        .equal(((ARinitial + BRinitial*2n) & ARRones).toString(8), `AR.get()`);
     });
 
     it(desc('A+1'),           () => arithOp('A+1',    (a, b) => a + 1n));
@@ -148,9 +149,9 @@ describe('AD ALU', () => {
       CRAM.data[Z] = CR.value;
       CRADR.value = Z;
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
-      expect(AR.get().toString(8)).to.equal(sb.toString(8));
-      expect(ADX.cout.toString(8)).to.equal(cin.toString(8));
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8), `CRADR.get()`);
+      expect(AR.get().toString(8)).to.equal(sb.toString(8), `AR.get()`);
+      expect(ADX.cout.toString(8)).to.equal(cin.toString(8), `ADX.cout`);
     }
   });
 
@@ -190,7 +191,7 @@ describe('AD ALU', () => {
       CRAM.data[Z] = CR.value;
       CRADR.value = Z;
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().toString(8)).to.equal(X.toString(8), `CRADR.get()`);
       expect(ARR.get().toString(8)).to
         .equal(expected.toString(8), `op was ${oct6(ARinitial)} ${CRname} ${oct6(BRinitial)}`);
     }
