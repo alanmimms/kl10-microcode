@@ -1115,7 +1115,8 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
     case CR.SCAD.AND:      result = this.alu.do(0o16n, a, b, 1n);        break;
     }
 
-    assert(typeof result === 'bigint', `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
+    assert(typeof result === 'bigint',
+           `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
     return result;
   },
 }) ({name: 'SCAD', bitWidth: 10n, inputs: `[SCADA, SCADB, ZERO]`, func: `CR.SCAD`});
