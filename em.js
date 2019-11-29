@@ -24,7 +24,7 @@ const cramLines = require('./cram-lines.js');
 const {
   EBOX, MBOX,
   CRADR, CRAM, CR, DRAM, DR,
-  AR, ARX, BR, BRX, MQ, VMA, PC,
+  AR, ARX, BR, BRX, MQ, VMA, PC, IR,
   Named, EBOXUnit,
 } = EBOXmodel;
 
@@ -234,7 +234,7 @@ function curInstruction() {
 
 
 function doDump(words) {
-  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC]
+  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
         .map(r => `${r.name}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '\n' : '  '), '');
   
@@ -262,15 +262,14 @@ function doGo(words) {
 
 
 function doCPUGo(words) {
-  console.log(`[Running from ${octal(PC.get())}]`);
   EBOX.run = true;
-  run();
+  console.log(`[CPU Running from ${octal(PC.get())}, EBOX waiting]`);
 }
 
 
 function doCPUStop(words) {
-  console.log(`[Stopping CPU at ${octal(PC.get())}]`);
   EBOX.run = false;
+  console.log(`[Stopping CPU at ${octal(PC.get())}, EBOX waiting]`);
 }
 
 
@@ -285,7 +284,18 @@ function doAddressBreak(words) {
 
 
 function doExamine(words) {
-  console.log(`Not yet implemented.`);
+
+  if (words.length > 1) {
+    const result = EBOX.eval(words.slice(1).join(' '));
+
+    if (typeof result === 'bigint' || typeof result === 'number') {
+      console.log(octW(result));
+    } else {
+      console.log(result);
+    }
+  } else {
+    console.log(`Examine what?`);
+  }
 }
 
 
