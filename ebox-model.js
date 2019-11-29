@@ -227,6 +227,9 @@ const EBOX = StampIt.compose(Named, {
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
   run: false,
+
+  memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
+  fetchCycle: false,            // Initated by MEM/IFET, cleared by MEM/MB WAIT
 }).methods({
 
   reset() {
@@ -253,7 +256,12 @@ const EBOX = StampIt.compose(Named, {
     this.clock.cycle();
     ++this.microInstructionsExecuted;
   },
-  
+
+  // Used by doExamine to allow arbitrary expression evaluation for
+  // debugging.
+  eval(s) {
+    return eval(s);
+  },
 }) ({name: 'EBOX', serialNumber: 0o6543n});
 module.exports.EBOX = EBOX;
 
@@ -365,7 +373,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
 
   latch() {
     this.latchedAddr = this.getAddress();
-    const isWrite = !this.getControl(); // Active-low /WRITE control
+    const isWrite = this.isWrite();
 
     if (isWrite) {
       this.value = this.get();
@@ -375,6 +383,11 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     }
 
     return this.value;
+  },
+
+  // Default behavior
+  isWrite() {
+    return !this.getControl();          // Active-low /WRITE control
   },
 });
 module.exports.RAM = RAM;
@@ -509,6 +522,13 @@ const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
 
 
+// Mask for I bit in instruction word
+const INDEXED_MASK = maskForBit(13);
+
+// Mask for index register number in instruction word
+const X_NONZERO_MASK = maskForBit(14) - maskForBit(18);
+
+
 // Complex CRAM address calculation logic goes here...
 const CRADR = Clocked.init(function({stackDepth = 4}) {
   this.stackDepth = stackDepth;
@@ -593,32 +613,36 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
                                 // is (ARX0 or -LONG EN) for second case.  If ARX18
                                 // is 0, clear AR left; otherwise, poke ARL select
                                 // to set bit 2 (usually gates AD left into ARL)
+        // XXX this needs to be conditional on instructtion word
+        // format for byte pointers, etc.
+        if (IR.get() & X_NONZERO_MASK) orBits |= 0o01n;
+        if (ARX.get() & INDEXED_MASK) orBits |= 0o02n;
         break;
 
       case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
 
         if (EBOX.piCyclePending) {
-          break;                          // orBits |= 0;
+          break;                                // CON PI CYCLE
         } else if (!EBOX.run) {
-          orBits |= 0o02n;
+          orBits |= 0o02n;                      // -CON RUL (halt)
           break;
         } else if (EBOX.mtrIntReq) {
-          orBits |= 0o04n;
+          orBits |= 0o04n;                      // MTR INT REQ (meter interrupt)
           break;
         } else if (EBOX.intReq) {
-          orBits |= 0o06n;
+          orBits |= 0o06n;                      // INT REQ (interrupt)
           break;
         } else if (EBOX.ucodeState05) {
-          orBits |= 0o10n;
-          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+          orBits |= 0o10n;                      // STATE 05 Tracks enable
+          if (EBOX.trapReq) orBits |= 1n;       // STATE 05 Tracks enable+TRAP
           break;
-        } else if (EBOX.vmaACRef) {
-          orBits |= 0o12n;
-          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+        } else if (!EBOX.vmaACRef) {
+          orBits |= 0o12n;                      // Normal instruction
+          if (EBOX.trapReq) orBits |= 1n;       // normal instruction=TRAP
           break;
         } else {
-          orBits |= 0o16n;                // Nothing pending
-          if (EBOX.trapReq) orBits |= 1n; // This is from klx NICOND comments
+          orBits |= 0o16n;                      // AC ref and not PI cycle
+          if (EBOX.trapReq) orBits |= 1n;       // AC ref and not PI cycle+TRAP
           break;
         }
 
@@ -698,24 +722,25 @@ const DR = Reg.methods({name: 'DR', bitWidth: 24n, clock: DR_CLOCK, input: `DRAM
 defineBitFields(DR, DRAMdefinitions);
 
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
-const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n, clock: LOAD_AC_BLOCKS, input: `EBUS`});
-
-// This clock is pulsed when an instruction is on AD, ready for IR to
-// latch it for decoding and execution.
-const IR_CLOCK = Clock({name: 'IR_CLOCK'});
+const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n,
+                           clock: LOAD_AC_BLOCKS, input: `EBUS`});
 
 // Instruction register. This flows from CACHE (eventually) and AD.
 // This is ECL 10173 with flow through input to output while !HOLD
 // (HOLD DRAM B) whose rising edge latches input.
+//
+// MCL VMA FETCH & CON5 MEM CYCLE ==> CON5 FETCH CYCLE H (p.162).
+//
+// It looks to be clearer and simpler to just latch IR.value from the
+// various sources (MBOX, COND/LOAD IR) while also driving the full
+// instruction into ARX. We let IR_CLOCK handle the COND/LOAD IR
+// condition normally while forcing the IR.value from the external
+// sources when appropriate.
+const COND_LOAD_IR = CR.COND['LOAD IR'];
 const IR = Reg.methods({
-
-  latch() {
-    if (this.getControl()) this.value = this.getInputs();
-    return this.value;
-  },
-}) ({name: 'IR', bitWidth: 12n, clock: IR_CLOCK, input: `AD`,
-     control: FieldMatcher({name: 'IR_WRITE', input: 'CR.COND',
-                            matchValue: CR.COND['LOAD IR']})});
+}) ({name: 'IR', bitWidth: 12n, input: `MBOX`,
+     clock: FieldMatchClock({name: 'IR_CLOCK', input: 'CR.COND',
+                             matchValue: 'COND_LOAD_IR'})});
 
 // AC subfield of IR.
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12, input: `IR`});
@@ -1226,9 +1251,6 @@ module.exports.SERIAL_NUMBER = SERIAL_NUMBER;
 // XXX very temporary. Needs implementation.
 const EBUS = ZERO;
 
-// XXX very temporary. Needs implementation.
-const CACHE = ZERO;
-
 // XXX This is wrong in many cases
 const ARML = Mux({name: 'ARML', bitWidth: 18n,
                   inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`, control: `CR.AR`});
@@ -1309,44 +1331,79 @@ const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13n,
 //
 // The `control` input is the EBOX request type, directly accessed out
 // of the CR.MEM field.
-const MBOX = RAM.methods({
+const MBOX = RAM.props({
+  writeCycle: false,
+}).methods({
+
+  isWrite() {
+    return this.writeCycle;
+  },
 
   get() {
     const op = this.getControl(); // MEM/op
+    const addr = this.getAddress();
     let result = 0n;
 
     switch(op) {
     default:
     case CR.MEM['NOP']:		// DEFAULT
+      break;
+
     case CR.MEM['ARL IND']:	// CONTROL AR LEFT MUX FROM # FIELD
-    case CR.MEM['MB WAIT']:	// WAIT FOR MBOX RESP IF PENDING
     case CR.MEM['RESTORE VMA']:	// AD FUNC WITHOUT GENERATING A REQUEST
     case CR.MEM['A RD']:	// OPERAND READ and load PXCT bits
-    case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
     case CR.MEM['REG FUNC']:	// MBOX REGISTER FUNCTIONS
     case CR.MEM['AD FUNC']:	// FUNCTION LOADED FROM AD LEFT
     case CR.MEM['EA CALC']:	// FUNCTION DECODED FROM # FIELD
     case CR.MEM['LOAD AR']:
     case CR.MEM['LOAD ARX']:
+      break;
+
+    case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
     case CR.MEM['RW']:		// READ, TEST WRITABILITY
     case CR.MEM['RPW']:		// READ-PAUSE-WRITE
     case CR.MEM['WRITE']:	// FROM AR TO MEMORY
+      console.log(`================ MBOX writeCycle start`);
+      this.writeCycle = true;
+      break;
+
+    case CR.MEM['MB WAIT']:	// WAIT FOR MBOX RESP IF PENDING
+      result = this.data[addr];
+
+      if (EBOX.fetchCycle) {
+        IR.value = result;      // XXX HACK?
+        ARX.value = result;     // XXX HACK?
+        console.log(`\
+MBOX op=${octal(op)} addr=${octW(addr)} \
+result=${octW(result)} stored to IR and ARX`);
+      }
+      
+      console.log(`================ MBOX cycle end`);
+      EBOX.fetchCycle = false;  // Wait is over.
+      EBOX.memCycle = false;
+      this.writeCycle = false;
       break;
 
     case CR.MEM['IFET']:	// UNCONDITIONAL instruction FETCH
-      result = this.data[this.getAddress()];
-      break;
-
     case CR.MEM['FETCH']:	// LOAD NEXT INSTR TO ARX (CONTROL BY #)
+      console.log(`================ MBOX fetchCycle start`);
+      EBOX.fetchCycle = true;   // Start a memory cycle
+      result = 0n;
       break;
     }
 
+    console.log(`MBOX op=${octal(op)} addr=${octW(addr)} result=${octW(result)}`);
     return result;
   },
 }) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36n, 
      input: 'MBUS', addr: 'VMA', control: 'CR.MEM'});
 
-const MBUS = Reg({name: 'MBUS', bitWidth: 36n, input: 'ZERO'});
+// Use MBOX as input here to force MBOX to issue a `get()` each cycle
+// since its decoding drives the IR/ARX latching of instructions.
+const MBUS = Reg({name: 'MBUS', bitWidth: 36n, input: 'MBOX'});
+
+// XXX very temporary. Needs implementation.
+const CACHE = MBUS;
 
 
 // Simplify grabbing a CR field object (for retrieving properties
