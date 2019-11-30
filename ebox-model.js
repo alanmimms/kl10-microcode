@@ -617,6 +617,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         // format for byte pointers, etc.
         if (IR.get() & X_NONZERO_MASK) orBits |= 0o01n;
         if (ARX.get() & INDEXED_MASK) orBits |= 0o02n;
+        orBits |= DR.J.get();
         break;
 
       case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
@@ -717,8 +718,51 @@ const DRADR = ConstantUnit.methods({
 }) ({name: 'DRADR', bitWidth: 9n});
 
 // Dispatch RAM: readonly by default
-const DRAM = RAM({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `DRADR`});
-const DR = Reg.methods({name: 'DR', bitWidth: 24n, clock: DR_CLOCK, input: `DRAM`});
+const DRAM = RAM.methods({
+
+  // Special method to use weird DRAM addressing to get DRAM word.
+  getAddress() {
+    const ir = IR.get();
+    const op = ir >> 4n;
+    const a00_02 = Number(fieldExtract(ir, 0, 2));
+    let a03_05 = 0;
+    let a06_08 = 0;
+
+    if (a00_02 === 0o07) {      // IO instruction
+      a03_05 = Number(fieldExtract(ir, 7, 9));
+      a06_08 = Number(fieldExtract(ir, 10, 12));
+    } else {                    // Non-IO instruction
+      const aLo = Number(fieldExtract(ir, 3, 8));
+      a03_05 = aLo >> 3;
+      a06_08 = aLo & 7;
+    }
+
+    const result = this.value = a00_02 << 6 | a03_05 << 3 | a06_08 << 0;
+    console.log(`DRAM getAddress ir=${octW(ir)} op=${octal(op)} result=${oct6(result)}`);
+    return result;
+  },
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `DRADR`});
+
+const DR = Reg.methods({
+
+  // Special override to handle special cases for DRAM read/dispatch
+  // logic.
+  get() {
+    const op = Number(IR.OP);
+    const ac = Number(IR.AC);
+    const indirect = Number(IR.INDIRECT);
+    const x = Number(IR.X);
+    let dw = DRAM.get();
+
+    if (op === 0o254) {         // JRST
+      // JRST case clears J4,J7-10 and then substitutes AC number from
+      // IR for J7-10.
+      dw = dw & ~0o37 | ac;
+    }
+
+    return dw;
+  },
+}) ({name: 'DR', bitWidth: 24n, clock: DR_CLOCK, input: `DRAM`});
 defineBitFields(DR, DRAMdefinitions);
 
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
@@ -737,10 +781,33 @@ const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n,
 // condition normally while forcing the IR.value from the external
 // sources when appropriate.
 const COND_LOAD_IR = CR.COND['LOAD IR'];
-const IR = Reg.methods({
+const IR = Reg.init(function() {
+  const fields = {
+    op: {s: 0, e: 8},
+    ac: {s: 9, e: 12},
+    indirect: {s: 13, e: 13},
+    x: {s: 14, e: 17},
+    y: {s: 18, e: 35},
+  };
+
+  const that = this;   // Create closure variable
+
+  // NOTE The fields we define here have getter/setter so you can
+  // directly reference them as IR members without using
+  // fieldName.get().
+  Object.entries(fields).forEach((name, field) => {
+    const {s, e} = field;
+
+    Object.defineProperty(that, name, {
+      configurable: true,
+      enumerable: true,
+      get() {return fieldExtract(that.value, s, e)},
+      set(v) {that.value = fieldInsert(that.value, v, s, e, that.bitWidth)},
+    });
+  });
 }) ({name: 'IR', bitWidth: 12n, input: `MBOX`,
-     clock: FieldMatchClock({name: 'IR_CLOCK', input: 'CR.COND',
-                             matchValue: 'COND_LOAD_IR'})});
+                clock: FieldMatchClock({name: 'IR_CLOCK', input: 'CR.COND',
+                                        matchValue: 'COND_LOAD_IR'})});
 
 // AC subfield of IR.
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12, input: `IR`});
