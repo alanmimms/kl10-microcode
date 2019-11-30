@@ -516,7 +516,8 @@ module.exports.ShiftDiv = ShiftDiv;
 // RAMs
 
 // Control RAM: Readonly by default
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n, input: `CRADR`, control: `ONES`, addr: `CRADR`});
+const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n,
+                  input: `ZERO`, control: `ONES`, addr: `CRADR`});
 const CR = Reg({name: 'CR', bitWidth: 84n, input: `CRAM`});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
@@ -541,7 +542,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     this.ones = (1n << this.bitWidth) - 1n;
   },
 
-  getInputs() {
+  get() {
     const prevValue = this.value;                 // Save in case of CALL
 
     if (this.force1777) {
@@ -616,8 +617,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         // XXX this needs to be conditional on instructtion word
         // format for byte pointers, etc.
         if (IR.get() & X_NONZERO_MASK) orBits |= 0o01n;
-        if (ARX.get() & INDEXED_MASK) orBits |= 0o02n;
-        orBits |= DR.J.get();
+        if (IR.get() & INDEXED_MASK) orBits |= 0o02n;
         break;
 
       case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
@@ -649,8 +649,26 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
         break;
 
-      case CR.DISP['DIAG']:
       case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
+        const a = DR.A.get();   // Dispatch on DRAM A
+
+        if (a & 0o06n) {        // A00 and/or A01 is nonzero: Modifier selected.
+          if (a & 0o01n) orBits |= 1n; // J10 <- A02 
+
+          switch(a >> 1n) {
+          case 1n: orBits |= 0o0002n; break;     // A01
+          case 2n: orBits |= 0o0044n; break;     // A00
+          case 3n: orBits |= 0o0046n; break;     // A00+A01
+          default:                  break;       // Should be impossible
+          }
+        } else {
+          orBits |= DR.J.get();
+        }
+
+        console.log(`DRAM A RD A=${octal(a)} orBits=${octal(orBits)}`);
+        break;
+
+      case CR.DISP['DIAG']:
       case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
       case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
       case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
@@ -671,56 +689,17 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
       return this.value;
     }
   },
-}) ({name: 'CRADR', bitWidth: 11n});
+}) ({name: 'CRADR', bitWidth: 11n, input: 'ZERO'});
 
 // This clock is pulsed in next cycle after IR is stable but not on
 // prefetch.
 const DR_CLOCK = Clock({name: 'DR_CLOCK'});
 
-// Complex DRAM address calculation logic goes here...
-const DRADR = ConstantUnit.methods({
-
-  // From EK-EBOX--all-OCR p. 19: Figure 1-4 illustrates the
-  // organization of the DRAM. By sharing portions of the DRAM between
-  // even/odd instruction, the shared pieces become half the
-  // nonshared. Therefore, the A, B, and J7-10 portions consist of 10
-  // X 512 words and the P, J4, J1-3 portions consist of 5 X 256
-  // words. This saves essentially 5 X 256 words of DRAMstorage. In
-  // addition, for JRST DRAM COMMON, bit 4 is made zero and DRAM J7-10
-  // is replaced by IR 9-12, again yielding a savings. Here the
-  // savings is 5 X 16 words of DRAMstorage. The areas allocated by
-  // the DRAMare indicated in Figure 1-3.
-  getInputs() {
-    const addrWidth = 11;
-    //     +----OP----+-AC-+
-    // IR: 0 123 456 789 abc
-    const ir = IR.get();
-    const op = ir >> 4n;
-    const ac = IRAC.get();
-    let a = op;
-    
-    // 012 345 678
-    if (op === 0o254n) {                  // JRST
-      // Replace DRADR4-10 with IRAC
-      a = fieldInsert(a, ac, 4, 10, addrWidth);
-    } else if ((op & 0o774n) === 0o700n) { // I/O instruction to internal dev
-      // DRADR3-5 = 7 (x on Fig 1-4 p. 19)
-      a = fieldInsert(a, 7, 3, 5, addrWidth);
-      // DRADR6-8 = IR10-12
-      a = fieldInsert(a, fieldExtract(ir, 10, 12, IR.bitWidth), 6, 8, addrWidth);
-    } else if ((op & 0o700n) === 0o700n) { // I/O instruction to external dev
-      // DRADR3-5,6-8 = IR7-9,10-12 (x on Fig 1-4 p. 19)
-      a = fieldInsert(a, fieldExtract(ir, 7, 12, IR.bitWidth), 3, 8, addrWidth);
-    }
-
-    return a;
-  },
-}) ({name: 'DRADR', bitWidth: 9n});
-
 // Dispatch RAM: readonly by default
 const DRAM = RAM.methods({
 
   // Special method to use weird DRAM addressing to get DRAM word.
+  // We ignore this.addr.
   getAddress() {
     const ir = IR.get();
     const op = ir >> 4n;
@@ -741,7 +720,7 @@ const DRAM = RAM.methods({
     console.log(`DRAM getAddress ir=${octW(ir)} op=${octal(op)} result=${oct6(result)}`);
     return result;
   },
-}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `DRADR`});
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `CR.J`});
 
 const DR = Reg.methods({
 
@@ -1079,16 +1058,16 @@ const VMA = Reg.compose({name: 'VMA'})
 
           // VMA
           switch (CR.VMA.get()) {
-          case 0:                     // VMA (noop)
+          case 0n:                     // VMA (noop)
             break;
-          case 1:                     // PC or LOAD
+          case 1n:                     // PC or LOAD
             // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
             this.value = PC.value;
             break;
-          case 2:                     // PC+1
+          case 2n:                     // PC+1
             this.value = this.joinHalves(this.getLH(), PC.value + 1n);
             break;
-          case 3:                     // AD (ENTIRE VMA, INCLUDING SECTION)
+          case 3n:                     // AD (ENTIRE VMA, INCLUDING SECTION)
             this.value = AD.value;
             break;
           }
@@ -1250,21 +1229,21 @@ const SH = Reg.methods({
 
     switch (func) {
     default:
-    case 0:
+    case 0n:
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
       result = (count < 0 || count > 35) ? arx0 : src0 << count;
       break;
 
-    case 1:
+    case 1n:
       result = AR.get();
       break;
 
-    case 2:
+    case 2n:
       result = ARX.get();
       break;
 
-    case 3:
+    case 3n:
       const src3 = AR.get();
       result = (src3 >> 18n) | (src3 << 18n);
       break;
