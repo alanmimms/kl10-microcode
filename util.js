@@ -32,8 +32,8 @@ module.exports.maskForBit = maskForBit;
 // In a PDP10 word of `w` bits, return the shift right count to get
 // bit #n into LSB.
 function shiftForBit(n, w = 36) {
-  w = Number(w);
   n = Number(n);
+  w = Number(w);
   return BigInt(w - 1 - n);
 }
 module.exports.shiftForBit = shiftForBit;
@@ -44,10 +44,10 @@ module.exports.shiftForBit = shiftForBit;
 function fieldMask(s, e, w = 36) {
   s = Number(s);
   e = Number(e);
-  w = Number(e);
-  const sMask = maskForBit(Number(s) - 1, Number(w)) - 1n;
-  const rightMask = maskForBit(Number(e), Number(w)) - 1n;
-  return sMask - rightMask;
+  w = Number(w);
+  const sMask = (maskForBit(s, w) << 1n) - 1n;
+  const eMask = maskForBit(e, w) - 1n;
+  return sMask - eMask;
 }
 module.exports.fieldMask = fieldMask;
 
