@@ -593,6 +593,16 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 }
 
 
+function assemble(op, a, i, x, y) {
+  return 0n |
+    BigInt(op) << shiftForBit(8) |
+    BigInt(a) << shiftForBit(12) |
+    BigInt(i) << shiftForBit(13) |
+    BigInt(x) << shiftForBit(17) |
+    BigInt(y);
+}
+
+
 function doReset() {
   // Reset
   EBOX.reset();
@@ -603,26 +613,14 @@ function doReset() {
   // Load DRAM from our Microcode
   DRAMwords.forEach((dw, addr) => DRAM.data[addr] = dw);
 
-  // HRROI 13,01234567
-  MBOX.data[0] = 0o1234567n << 0n |
-    0n << 18n |
-    0n << 13n |
-    13n << 12n |
-    0o561n << shiftForBit(6);
+  // HRROI 13,123456
+  MBOX.data[0] = assemble(0o561, 0o13, 0, 0, 0o123456n);
 
   // HRLZI 12,1234
-  MBOX.data[1] = 0o1234n << 0n |
-    0n << 18n |
-    0n << 13n |
-    12n << 12n |
-    0o555n << shiftForBit(6);
+  MBOX.data[1] = assemble(0o555, 0o12, 0, 0, 0o1234n);
 
   // ADDI 11,4321
-  MBOX.data[2] = 0o4321n << 0n |
-    0n << 18n |
-    0n << 13n |
-    11n << 12n |
-    0o271n << shiftForBit(6);
+  MBOX.data[2] = assemble(0o271, 0o11, 0, 0, 0o4321n);
 }
 
 
