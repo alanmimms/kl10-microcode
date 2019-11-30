@@ -650,6 +650,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         break;
 
       case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
+        // XXX Model B is different from how this is implemented right now
         const a = DR.A.get();   // Dispatch on DRAM A
 
         if (a & 0o06n) {        // A00 and/or A01 is nonzero: Modifier selected.
@@ -665,7 +666,9 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
           orBits |= DR.J.get();
         }
 
-        console.log(`DRAM A RD A=${octal(a)} orBits=${octal(orBits)}`);
+        console.log(`\
+DRAM A RD A=${octal(a)} B=${octal(DR.B.get())} J=${oct6(DR.J.get())} \
+orBits=${octal(orBits)}`);
         break;
 
       case CR.DISP['DIAG']:
@@ -702,7 +705,6 @@ const DRAM = RAM.methods({
   // We ignore this.addr.
   getAddress() {
     const ir = IR.get();
-    const op = ir >> 4n;
     const a00_02 = Number(fieldExtract(ir, 0, 2));
     let a03_05 = 0;
     let a06_08 = 0;
@@ -717,7 +719,7 @@ const DRAM = RAM.methods({
     }
 
     const result = this.value = a00_02 << 6 | a03_05 << 3 | a06_08 << 0;
-    console.log(`DRAM getAddress ir=${octW(ir)} op=${octal(op)} result=${oct6(result)}`);
+    console.log(`DRAM getAddress ir=${octW(ir)} result=${oct6(result)}`);
     return result;
   },
 }) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `CR.J`});
