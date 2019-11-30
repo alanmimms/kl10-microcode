@@ -537,7 +537,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
   reset() {
     this.value = 0n;
-    this.force1777 = false;
+    this.force1777 = false;     // Set by page fault conditions
     this.stack = [];
     this.ones = (1n << this.bitWidth) - 1n;
   },
@@ -545,6 +545,13 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
   get() {
     const prevValue = this.value;                 // Save in case of CALL
 
+    // XXX Still remaining:
+    // * A7: The conditions from Muxes E1,E32 CRA2
+    // * A8: The conditions from Muxes E2,E16 CRA2
+    // * A9: The conditions from Muxes E6,E26 CRA2
+    // * A10: The conditions from Muxes E22,E31,E36,E39 CRA2
+    // * A10: CON COND ADR 10 CRA2
+ 
     if (this.force1777) {
       this.force1777 = false;
 
@@ -650,21 +657,11 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         break;
 
       case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
-        // XXX Model B is different from how this is implemented right now
+        // 01 234 567 89A
         const a = DR.A.get();   // Dispatch on DRAM A
 
-        if (a & 0o06n) {        // A00 and/or A01 is nonzero: Modifier selected.
-          if (a & 0o01n) orBits |= 1n; // J10 <- A02 
-
-          switch(a >> 1n) {
-          case 1n: orBits |= 0o0002n; break;     // A01
-          case 2n: orBits |= 0o0044n; break;     // A00
-          case 3n: orBits |= 0o0046n; break;     // A00+A01
-          default:                  break;       // Should be impossible
-          }
-        } else {
-          orBits |= DR.J.get();
-        }
+        // This condition matches CRA3 A .GE. 3 L
+        orBits |= a >= 3n ? a : (DR.J.get() & 0o1777n);
 
         console.log(`\
 DRAM A RD A=${octal(a)} B=${octal(DR.B.get())} J=${oct6(DR.J.get())} \
@@ -702,24 +699,24 @@ const DR_CLOCK = Clock({name: 'DR_CLOCK'});
 const DRAM = RAM.methods({
 
   // Special method to use weird DRAM addressing to get DRAM word.
-  // We ignore this.addr.
+  // We ignore `this.addr`.
+  //
+  // IR1 p. 128 shows DRAM address generation.
+  // DR ADR 00-02 = IR00-02.
+  // DR ADR 03-05 = INSTR 7XX ? (IR03-06 !== 0b1111 ? IR07-09<<1 :
+  // 012 345 678
   getAddress() {
     const ir = IR.get();
-    const a00_02 = Number(fieldExtract(ir, 0, 2));
-    let a03_05 = 0;
-    let a06_08 = 0;
+    const op = fieldExtract(ir, 0, 8);
+    let result = op;
 
-    if (a00_02 === 0o07) {      // IO instruction
-      a03_05 = Number(fieldExtract(ir, 7, 9));
-      a06_08 = Number(fieldExtract(ir, 10, 12));
-    } else {                    // Non-IO instruction
-      const aLo = Number(fieldExtract(ir, 3, 8));
-      a03_05 = aLo >> 3;
-      a06_08 = aLo & 7;
+    if ((op & 0o700n) === 0o700n) {     // IO instructions are special
+      result = 0o700n | fieldExtract(ir, 7, 12);
+      if ((op & 0o074n) === 0o074n) result |= 0o070n; // A03-05
     }
 
-    const result = this.value = a00_02 << 6 | a03_05 << 3 | a06_08 << 0;
-    console.log(`DRAM getAddress ir=${octW(ir)} result=${oct6(result)}`);
+    this.value = result;
+    console.log(`DRAM getAddress op=${octal(op, 3, 3)} ir=${octW(ir)} result=${oct6(result)}`);
     return result;
   },
 }) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `CR.J`});
@@ -786,7 +783,7 @@ const IR = Reg.init(function() {
       set(v) {that.value = fieldInsert(that.value, v, s, e, that.bitWidth)},
     });
   });
-}) ({name: 'IR', bitWidth: 12n, input: `MBOX`,
+}) ({name: 'IR', bitWidth: 36n, input: `MBOX`,
                 clock: FieldMatchClock({name: 'IR_CLOCK', input: 'CR.COND',
                                         matchValue: 'COND_LOAD_IR'})});
 
