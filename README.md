@@ -81,3 +81,15 @@ would have slowed me down considerably. The whole C/C++ edit, compile,
 link, debug loop is much slower than my JavaScript debugging process,
 and the JavaScript language is extremely expressive. It's just faster
 to get concepts from brain to working code.
+
+
+# Thanks
+Many _many_ thanks to Al Kossow of the Computer History Museum for
+having read magtapes, imaged documents, and generally supported the
+DEC historical community for projects like this one. Much of the
+information on my Google Drive folder and stuff I have used in various
+ways during this project came from his archive at 
+
+http://www.bitsavers.org/pdf/dec/pdp10/
+
+of which there are fortunately many mirrors.
