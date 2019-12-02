@@ -162,6 +162,7 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 //   │         ^                       ^
 //   └─────────┴───────────────────────┴──────────────`unlatch()`: `toLatch = input.get()`
 //                                                      (non-regs see stable reg state)
+//                                                      (regs get non-reg state recrusively)
 
 
 ////////////////////////////////////////////////////////////////
@@ -218,6 +219,11 @@ reset,getAddress,getFunc,getControl,getInputs,get,latch,unlatch,cycle
       this.bitWidth = BigInt(this.bitWidth || 1n);
       this.ones = (1n << this.bitWidth) - 1n;
       this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
+    },
+
+    cycle() {
+      this.unlatch();
+      this.latch();
     },
 
     // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
@@ -449,7 +455,10 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
           this.value = BigInt(this.matchF(cur));
 
           if (this.value) {
-            this.drives.forEach(unit => unit.cycle());
+            this.drives.forEach(unit => {
+              assert(typeof unit.cycle === typeofFunction, `${unit.name}.cycle must be a function`);
+              unit.cycle();
+            });
           }
         },
       });
