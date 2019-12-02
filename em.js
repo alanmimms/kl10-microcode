@@ -22,7 +22,7 @@ const DRAMwords = require('./dram.js');
 const cramLines = require('./cram-lines.js');
 
 const {
-  EBOX, MBOX,
+  EBOX, MBOX, FM,
   CRADR, CRAM, CR, DRAM, DR,
   AR, ARX, BR, BRX, MQ, VMA, PC, IR,
   Named, EBOXUnit,
@@ -76,8 +76,13 @@ microcode on simulated hardware`,
 // NAME.
 const commands = [
   {name: 'dump',
-   description: 'Dump frequently used processor state including ACs',
+   description: 'Dump frequently used microcode state',
    doFn: doDump,
+  },
+  
+  {name: 'cdump',
+   description: 'Dump CPU level frequently used processor state including ACs',
+   doFn: doCDump,
   },
   
   {name: 'step',
@@ -237,6 +242,15 @@ function doDump(words) {
   const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
         .map(r => `${r.name}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '\n' : '  '), '');
+  
+  console.log(dump);
+}
+
+
+function doCDump(words) {
+  const dump = _.range(16)
+        .map(rn => `${octal(rn, 2)}=${octW(FM.data[rn])}`)
+        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
 }
