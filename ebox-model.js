@@ -666,11 +666,14 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         // This condition matches CRA3 A .GE. 3 L
         orBits |= a >= 3n ? a : (DR.J.get() & 0o1777n);
 
-/*
-        console.log(`\
-DRAM A RD A=${octal(a)} B=${octal(DR.B.get())} J=${oct6(DR.J.get())} \
-orBits=${octal(orBits)}`);
-*/
+        // If DR.A is IMMED-PF or READ-PF, prefetch next instruction.
+        switch(a) {
+        case DR.A['IMMED-PF']:
+        case DR.A['READ-PF']:
+          MBOX.startFetch();
+          break;
+        }
+        
         break;
 
       case CR.DISP['DIAG']:
@@ -1405,6 +1408,12 @@ const MBOX = RAM.props({
     return this.writeCycle;
   },
 
+  startFetch() {
+    if (EBOX.fetchCycle) return;
+    console.log(`================ MBOX fetchCycle start from ${octW(this.getAddress())}`);
+    EBOX.fetchCycle = true;   // Start a memory cycle
+  },
+
   get() {
     const op = this.getControl(); // MEM/op
     const addr = this.getAddress();
@@ -1452,7 +1461,7 @@ MBOX op=${octal(op)} addr=${octW(addr)} \
 result=${octW(result)} stored to IR and ARX`);
       }
       
-      console.log(`================ MBOX cycle end`);
+      console.log(`================ MBOX cycle end ${EBOX.fetchCycle ? 'FETCH' : 'non-FETCH'} ${octW(addr)}=${octW(result)}`);
       EBOX.fetchCycle = false;  // Wait is over.
       EBOX.memCycle = false;
       this.writeCycle = false;
@@ -1460,8 +1469,7 @@ result=${octW(result)} stored to IR and ARX`);
 
     case CR.MEM['IFET']:	// UNCONDITIONAL instruction FETCH
     case CR.MEM['FETCH']:	// LOAD NEXT INSTR TO ARX (CONTROL BY #)
-      console.log(`================ MBOX fetchCycle start`);
-      EBOX.fetchCycle = true;   // Start a memory cycle
+      this.startFetch();
       result = 0n;
       break;
     }
