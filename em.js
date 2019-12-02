@@ -346,8 +346,7 @@ function doDebug(words) {
       .forEach(u => wrappedMethods(u)
                .forEach(method => console.log(`  debug logging on ${u.name} ${method}`)));
 
-    // XXX Display all our debug flags.
-
+    if (CRADR.debugNICOND) console.log(`NICOND debug ON`);
   } else if (words.length === 2) {
 
     switch (words[1]) {
