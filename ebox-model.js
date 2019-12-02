@@ -103,98 +103,80 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 
 ////////////////////////////////////////////////////////////////
 //
-// Stolen from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR)
-// and p. 214 Figure 3-7 NICOND Dispatch and Waiting.
+// Derived from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR) and
+// p. 214 Figure 3-7 NICOND Dispatch and Waiting.
 //
-// _ │_____________________│ _____________________ │_
-//  \/  micro instruction1 \/  micro instruction2 \/   CR
-// _/\_____________________/\_____________________/\_
-//   │                     │                       │
-//   │_________            │ __________            │_
-//   /         \           │/          \           /    EBOX CLOCK
-// _/│         │\__________/           │\_________/│
-//   │         │           │           │           │
-//   │         │ __________│           │ _________ │
-//   │         │/          \           │/         \│    EBOX SYNC
-// ____________/           │\__________/           \_
-//   │         │           │           │           │
-// __│_________│___________│           │           │
-//   │         │           \           │           │    NICOND DISP
-//   │         │           │\__________│___________│_
-//   │         │           │           │           │
-//   │         │           │ __________│__________ │
-//   │         │           │/          │          \│    CON LOAD DRAM
-// __│_________│___________/           │           \_
-//   │         │           │           │           │
-//   │         │           │ __________│           │_
-//   │         │           │/  LATCHED \ UNLATCHED /    DR
-// __│_________│___________/           │\_________/│ 
-//   │         │           │           │           │
-//   │         │           │ __________│__________ │
-//   │         UNLATCHED   │/  LATCHED │          \│    IR
-// __│_________│___________/           │           \_
-//   │         │           │           │           │
-//   │_________│___________│           │           │
-//   /         │           \           │           │    COND/LOAD IR
-// _/│         │           │\__________│___________│_
-//   │         │           │           │           │
-//   │_________│___________│ __________│__________ │_
-//   /         │           \/          │          \/    AD/A
-// _/│         │           │\__________│__________/\_
-//   │         │           │           │           │
-//   │_________│___________│ __________│__________ │_
-//   /         │           \/          │          \/    ADA/AR
-// _/│         │           │\__________│__________/\_
-//   │         │           │           │           │
-//   │_________│           │ __________│___________│_
-//   /         \ UNLATCHED │/ LATCHED  │           │    HOLD IR
-// _/│         │\__________/           │           │
-//   │         │           │           │           │
-//   │      ___│___________│           │           │
-//   │     /////           \           │           │    IR MIXER IN
-// __│____/////│           │\ _________│___________│_
-//   │         │           │           │           │
-//   │         │           ^           │           │
-//   │         │           ├───────────│───────────│── instruction loads into ARX and IR
-//   ^         │           ^           │           ^
-//   ├─────────│───────────┴───────────│───────────┴────`latch()`: `value = toLatch`
-//   │         │                       │                (regs change so non-regs can settle)
-//   │         ^                       ^
-//   └─────────┴───────────────────────┴──────────────`unlatch()`: `toLatch = input.get()`
-//                                                      (non-regs see stable reg state)
-//                                                      (regs get non-reg state recrusively)
+// __│            │_________│           │ __________│           │_
+//   \            /         \           │/          \           / EBOX CLOCK
+//   |\__________/│         │\__________/           │\_________/│
+//   │            │         │           │           │           │
+//   │ __________ │         │ __________│           │ _________ │
+//   |/          \│         │/          \           │/         \│ EBOX SYNC
+// __/           \_________/           │\__________/           \_
+//   │            │         │           │           │           │
+// __│ __________ │_________│___________│ __________│__________ │_
+//   \/UNLATCHED \/ μinsn1  │ UNLATCHED \/ μinsn2   │UNLATCHED \/ CR
+// __/\__________/\_________│___________/\__________│__________/\_
+//   │            │         │           │           │           │
+// __│____________│_________│___________│           │           │
+//   │            │         │           \           │           │ NICOND DISP
+//   │            │         │           │\__________│___________│_
+//   │            │         │           │           │           │
+//   │            │         │           │ __________│__________ │
+//   │            │         │           │/          │          \│ CON LOAD DRAM
+// __│____________│_________│___________/           │           \_
+//   │            │         │           │           │           │
+//   │            │         │           │ __________│           │_
+//   │            │         UNLATCHED   │/  LATCHED \ UNLATCHED / DR
+// __│____________│_________│___________/           │\_________/│ 
+//   │            │         │           │           │           │
+//   │            │         │           │ __________│__________ │
+//   │            │         UNLATCHED   │/  LATCHED │          \│ IR
+// __│____________│_________│___________/           │           \_
+//   │            │         │           │           │           │
+//   │            │         │           ^           │           │
+//   │            │         │           ├───────────│───────────│── instruction loads into ARX and IR
+//   ^            │         ^           │           ^           │
+//   └────────────│─────────┴───────────│───────────┴───────────│────`unlatch()`: `toLatch = input.get()`
+//                │                     │                       │    (non-regs see stable reg state)
+//                │                     │                       │    (regs get non-reg state recrusively)
+//                ^                     ^                       ^
+//                └─────────────────────┴───────────────────────┴────`latch()`: `value = toLatch`
+//                                                                   (regs change so non-regs can settle)
 
 
 ////////////////////////////////////////////////////////////////
 // Stamps
-
+//
 // Base Stamp for EBOX functional units. This is an abstract Stamp
 // defining protocol but all should be completely overridden.
 //
 // The convention is that each EBOXUnit has a `getInputs()` method
 // that retrieves the unit's value based on its current inputs and
-// configuration. EBOXUnit uses `getInputs()` method to retrieve
-// inputs to save what would be saved on the latching clock edge.
+// control and address and configuration.
 //
 // There is also a `get()` method to retrieve the current _output_ of
 // the Unit.
 //
-// Combinatorial (not clocked) logic units will simply implement
-// `get()` as directly returning the value from `getInputs()`. Since
-// these are not clocked, they implement a no-op for `latch()`.
-// Registered and RAMs (clocked) will return the currently addressed
-// or latched value in `get()` while using `getInputs()` to determine
-// what value to latch and, in the case of RAMs, what address. The act
-// of latching is done through a call to the `latch()` method.
+// Combinatorial (not clocked) logic units simply implement `get()` as
+// directly returning the value from `getInputs()`. Since these are
+// not clocked, they implement a no-op for `latch()` and `unlatch()`.
+// Registered and RAMs (Clocked) return the currently addressed or
+// latched value in `get()` and use `getInputs()` (and `getControl()`
+// and `getAddress()`) to determine what value to latch during
+// `unlatch()`. When `latch()` is called, the output of a Clocked Unit
+// reflects what was loaded during `unlatch()`.
 //
 // * `getInputs()` and `getControl()` and `getAddress()` retrieve the
 //   inputs to the unit from the units that drive their input pins.
 //
-// * `latch()` uses `getInputs()` and `getAddress()` to latch a
+// * `unlatch()` uses `getInputs()` and `getAddress()` to save a
 //   register or RAM's value and is a no-op for combinatorial units.
 //
-// * `get()` returns currently latched value or direct value from
-//   `getInputs()` for combinatorial units.
+// * `latch()` makes the saved value the new output of the unit. 
+//
+// * `get()` returns current output value.
+//
 const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
   function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock}) {
     this.name = name;
@@ -226,11 +208,11 @@ reset,getAddress,getFunc,getControl,getInputs,get,latch,unlatch,cycle
       this.latch();
     },
 
-    // Some commonly used default methods for RAM, LogicUnit, Mux, etc.
     getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
     getFunc()    { assert(this.func, `${this.name}.func not null`); return this.func.get() },
     getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
     getInputs()  { assert(this.input, `${this.name}.input not null`); return this.input.get() & this.ones },
+
     getLH(v = this.value) { return (v >> 18n) & this.halfOnes },
     getRH(v = this.value) { return v & this.halfOnes },
     joinHalves(lh, rh) { return (lh << 18n) | (rh & this.halfOnes) },
@@ -346,10 +328,9 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
         this.value = value >= 0n ? value : value & this.ones;
       }).methods({
         getInputs() {return this.value},
-        get() {return this.value},
+
+        // Neuter to prevent this.value being replaced with 0n
         reset() {},
-        unlatch() {},
-        latch() {},
       });
 module.exports.ConstantUnit = ConstantUnit;
 
