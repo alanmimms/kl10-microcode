@@ -65,6 +65,11 @@ have most of the EBOX (execution box) emulated to at least the first
 order of detail now, and the microcode correctly fetches an
 instruction from the MBOX (memory) and begins to execute it.
 
+Don't expect this to be stable or tagged for releases until I get a
+lot further down the path. For now, since it isn't stable anyway, I
+checkpoint my source tree to GitHub with impunity and little care. It
+could be in any state when I do that.
+
 I have code from an earlier project that will eventually supply the
 emulation for disk and tape drives, and I'll write an Ethernet based
 emulator for the TCP/IP interface when the time comes as well.
