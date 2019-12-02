@@ -348,7 +348,19 @@ function doDebug(words) {
 
     // XXX Display all our debug flags.
 
-  } else if (words.length === 3) { // "debug unit-name method-or-*"
+  } else if (words.length === 2) {
+
+    switch (words[1]) {
+    case 'NICOND':
+      CRADR.debugNICOND ^= 1;
+      console.log(`NICOND debug now ${CRADR.debugNICOND ? 'ON' : 'OFF'}`);
+      break;
+
+    default:
+      console.log(`UNKNOWN debug flag ${words[1]} ignored`);
+      break;
+    }
+  } if (words.length === 3) { // "debug unit-name method-or-*"
     const unitName = words[1].toUpperCase();
     const unit = Named.units[unitName];
     const method = words[2];

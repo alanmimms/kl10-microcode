@@ -538,6 +538,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     this.force1777 = false;     // Set by page fault conditions
     this.stack = [];
     this.ones = (1n << this.bitWidth) - 1n;
+    this.debugNICOND = false;
   },
 
   get() {
@@ -551,10 +552,11 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     // * A10: CON COND ADR 10 CRA2
  
     if (this.force1777) {
-      this.force1777 = false;
-
       // Push return address from page fault handler.
       this.stack.push(this.value);
+      // Force next address to 0o1777 ORed with current MSBs.
+      this.value |= 0o1777n;
+      this.force1777 = false;   // Handled.
     } else {
       const skip = CR.SKIP.get();
       let orBits = 0n;
@@ -629,28 +631,28 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
       case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
 
         if (EBOX.piCyclePending) {
-          break;                                // CON PI CYCLE
+          if (this.debugNICOND) console.log(`NICOND: CON PI CYCLE`);
         } else if (!EBOX.run) {
-          orBits |= 0o02n;                      // -CON RUL (halt)
-          break;
+          orBits |= 0o02n;                      // -CON RUN (halt)
+          if (this.debugNICOND) console.log(`NICOND: CON -RUN (halt)`);
         } else if (EBOX.mtrIntReq) {
           orBits |= 0o04n;                      // MTR INT REQ (meter interrupt)
-          break;
+          if (this.debugNICOND) console.log(`NICOND: MTR INT REQ (meter interrupt)`);
         } else if (EBOX.intReq) {
           orBits |= 0o06n;                      // INT REQ (interrupt)
-          break;
+          if (this.debugNICOND) console.log(`NICOND: INT REQ (interrupt)`);
         } else if (EBOX.ucodeState05) {
           orBits |= 0o10n;                      // STATE 05 Tracks enable
           if (EBOX.trapReq) orBits |= 1n;       // STATE 05 Tracks enable+TRAP
-          break;
+          if (this.debugNICOND) console.log(`NICOND: STATE 05 Tracks enable`);
         } else if (!EBOX.vmaACRef) {
           orBits |= 0o12n;                      // Normal instruction
           if (EBOX.trapReq) orBits |= 1n;       // normal instruction=TRAP
-          break;
+          if (this.debugNICOND) console.log(`NICOND: Normal instruction`);
         } else {
           orBits |= 0o16n;                      // AC ref and not PI cycle
           if (EBOX.trapReq) orBits |= 1n;       // AC ref and not PI cycle+TRAP
-          break;
+          if (this.debugNICOND) console.log(`NICOND: AC ref and not PI cycle`);
         }
 
         break;
@@ -683,6 +685,9 @@ orBits=${octal(orBits)}`);
 
       this.value = orBits | CR.J.get();
 
+      // XXX this is wrong here since `get()` is called a lot when
+      // debugging. This needs to move to a separate Unit clocked only
+      // when the CR.CALL bit is lit.
       if (CR.CALL.get()) {
         this.stack.push(prevValue);
       }
@@ -690,7 +695,9 @@ orBits=${octal(orBits)}`);
       return this.value;
     }
   },
-}) ({name: 'CRADR', bitWidth: 11n, input: 'ZERO'});
+}) ({name: 'CRADR', bitWidth: 11n,
+     // We replace `get()` so we can ignore the input but it must be valid.
+     input: 'ZERO'});
 
 // This clock is pulsed in next cycle after IR is stable but not on
 // prefetch.
@@ -792,7 +799,8 @@ const IRAC = BitField({name: 'IRAC', s: 9, e: 12, input: `IR`});
 // State Register (internal machine state during instructions)
 const SR = Reg({name: 'SR', bitWidth: 4n, input: `CR['#']`,
                 clock: FieldMatchClock({name: 'SR_CLOCK', input: 'CR.COND',
-                                        matchValue: `CR.COND['SR_#']`})});
+                                        matchF: cond => (cond === CR.COND['SR_#'] ||
+                                                         cond === CR.COND['EBOX STATE'])})});
 
 const FM_ADR = LogicUnit.methods({
   
