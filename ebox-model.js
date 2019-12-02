@@ -1306,40 +1306,27 @@ const EBUS = ZERO;
 const ARML = Mux.methods({
 
   // This supplies the logic to control the ARL input mux ARML.
-  getControl() {
-
-    if (CONDis('ARL IND')) {    // Enables ARL<81:83> to control ARML
-      return CR.ARL.get();
-    } else {
-      return CR.AR.get();
-    }
-  },
+  getControl() { return CONDis('ARL IND') ? CR.ARL.get() : CR.AR.get() },
 }) ({name: 'ARML', bitWidth: 18n,
      inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
      control: `CR.ARL`});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
-                  inputs: `[ARMMR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`,
+                  inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`,
                   control: `CR.AR`});
-
-// ARL_1S		"AD/1S,COND/ARL IND,ARL/AD"
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', input: `CR['AR CTL']`,
                                          matchF: cur => cur & ARL_LOADmask || CONDis('ARL IND')})});
-
 const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
                                          matchF: cur => cur & ARR_LOADmask})});
-
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
 const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
-
-
 const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
 
 // XXX TODO: BR is clocked by CRAM BR LOAD?
@@ -1427,6 +1414,14 @@ const MBOX = RAM.props({
       break;
 
     case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
+
+      if (DR.B.get() & 2n) {
+        console.log(`================ DRAM B MBOX writeCycle start`);
+        this.writeCycle = true;
+      }
+
+      break;
+
     case CR.MEM['RW']:		// READ, TEST WRITABILITY
     case CR.MEM['RPW']:		// READ-PAUSE-WRITE
     case CR.MEM['WRITE']:	// FROM AR TO MEMORY
@@ -1459,7 +1454,6 @@ result=${octW(result)} stored to IR and ARX`);
       break;
     }
 
-    console.log(`MBOX op=${octal(op)} addr=${octW(addr)} result=${octW(result)}`);
     return result;
   },
 }) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36n, 
