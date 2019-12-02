@@ -187,12 +187,12 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.inputs = inputs;       //  but not both (`input` wins over `inputs`)
     this.func = func;
     this.control = control;
+    clock.addUnit(this);        // Because of this `clock` cannot be on `mayFixup` list
     this.addr = addr;
     this.bitWidth = BigInt(bitWidth || 0);
     this.wrappableMethods = `\
 reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
 `.trim().split(/,\s*/);
-    clock.addUnit(this);        // Because of this `clock` cannot be on `mayFixup` list
   }).props({
     value: 0n,
   }).methods({
@@ -613,6 +613,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         break;
 
       case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
+        // E.g., EXIT "DISP/DRAM B,MEM/B WRITE,J/ST0"
         orBits = DR.B.get();
         break;
 
@@ -663,9 +664,11 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
         // This condition matches CRA3 A .GE. 3 L
         orBits |= a >= 3n ? a : (DR.J.get() & 0o1777n);
 
+/*
         console.log(`\
 DRAM A RD A=${octal(a)} B=${octal(DR.B.get())} J=${oct6(DR.J.get())} \
 orBits=${octal(orBits)}`);
+*/
         break;
 
       case CR.DISP['DIAG']:
@@ -715,9 +718,7 @@ const DRAM = RAM.methods({
       if ((op & 0o074n) === 0o074n) result |= 0o070n; // A03-05
     }
 
-    this.value = result;
-    console.log(`DRAM getAddress op=${octal(op, 3, 3)} ir=${octW(ir)} result=${oct6(result)}`);
-    return result;
+    return this.value = result;
   },
 }) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `CR.J`});
 
@@ -1296,17 +1297,28 @@ module.exports.SERIAL_NUMBER = SERIAL_NUMBER;
 // XXX very temporary. Needs implementation.
 const EBUS = ZERO;
 
-// XXX This is wrong in many cases
-const ARML = Mux({name: 'ARML', bitWidth: 18n,
-                  inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`, control: `CR.AR`});
+const ARML = Mux.methods({
+
+  // This supplies the logic to control the ARL input mux ARML.
+  getControl() {
+
+    if (CONDis('ARL IND')) {    // Enables ARL<81:83> to control ARML
+      return CR.ARL.get();
+    } else {
+      return CR.AR.get();
+    }
+  },
+}) ({name: 'ARML', bitWidth: 18n,
+     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`, control: `CR.ARL`});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
                   inputs: `[ARMMR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`, control: `CR.AR`});
 
+// ARL_1S		"AD/1S,COND/ARL IND,ARL/AD"
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => cur & ARL_LOADmask})});
+                                         matchF: cur => cur & ARL_LOADmask || CONDis('ARL IND')})});
 
 const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
