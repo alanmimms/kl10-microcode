@@ -1461,7 +1461,10 @@ MBOX op=${octal(op)} addr=${octW(addr)} \
 result=${octW(result)} stored to IR and ARX`);
       }
       
-      console.log(`================ MBOX cycle end ${EBOX.fetchCycle ? 'FETCH' : 'non-FETCH'} ${octW(addr)}=${octW(result)}`);
+      console.log(`\
+================ MBOX \
+${EBOX.fetchCycle ? 'FETCH' : 'non-FETCH'} cycle end \
+${octW(addr)}=${octW(result)}`);
       EBOX.fetchCycle = false;  // Wait is over.
       EBOX.memCycle = false;
       this.writeCycle = false;
