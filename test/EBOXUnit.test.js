@@ -22,6 +22,11 @@ const LOG = () => 0;
 // const LOG = console.log;
 
 
+// Monkey patch BigInt so we can use a shorter name for my improved
+// xxx.toString(8).
+BigInt.prototype.to8 = function() { return '0' + this.toString(8) + 'n' };
+
+
 describe('Named', () => {
 
   it('should allow us to name our stamps', () => {
@@ -70,9 +75,9 @@ describe('EBOX', () => {
 
 
 describe('Clocking/latching', () => {
-  const X = 100n;
-  const Y = 200n;
-  const Z = 300n;
+  const X = 0o100n;
+  const Y = 0o200n;
+  const Z = 0o300n;
 
   beforeEach('Reset EBOX and fill CRAM with canonical X,Y,Z jumping ucode', () => {
     EBOX.reset();
@@ -98,19 +103,19 @@ describe('Clocking/latching', () => {
       CRADR.value = X;
       CRAM.latch();
 
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().to8()).to.equal(X.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      expect(CRADR.get().to8()).to.equal(Y.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      expect(CRADR.get().to8()).to.equal(Z.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().to8()).to.equal(X.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Y.toString(8));
+      expect(CRADR.get().to8()).to.equal(Y.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(Z.toString(8));
+      expect(CRADR.get().to8()).to.equal(Z.to8());
       EBOX.cycle();
-      expect(CRADR.get().toString(8)).to.equal(X.toString(8));
+      expect(CRADR.get().to8()).to.equal(X.to8());
     });
   });
 });
@@ -170,7 +175,7 @@ describe('Mux+Reg', () => {
         const bigK = BigInt(k);
         Mcontrol.value = bigK;
         CLK.cycle();
-        expect(R.get().toString(8)).to.equal((bigK + 65n).toString(8));
+        expect(R.get().to8()).to.equal((bigK + 65n).to8());
       });
     });
   });
