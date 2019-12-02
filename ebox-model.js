@@ -387,7 +387,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
 
   // Default behavior
   isWrite() {
-    return this.getControl();          // Active-high WRITE control
+    return !!this.getControl();          // Active-high WRITE control
   },
 });
 module.exports.RAM = RAM;
@@ -1066,16 +1066,17 @@ const VMA = Reg.compose({name: 'VMA'})
 
           // VMA
           switch (CR.VMA.get()) {
-          case 0n:                     // VMA (noop)
+          case CR.VMA.VMA:      // VMA (noop)
             break;
-          case 1n:                     // PC or LOAD
+          case CR.VMA.PC:       // PC or LOAD
+          case CR.VMA.LOAD:     // PC or LOAD
             // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
             this.value = PC.value;
             break;
-          case 2n:                     // PC+1
+          case CR.VMA['PC+1']:  // PC+1
             this.value = this.joinHalves(this.getLH(), PC.value + 1n);
             break;
-          case 3n:                     // AD (ENTIRE VMA, INCLUDING SECTION)
+          case CR.VMA.AD:       // AD (ENTIRE VMA, INCLUDING SECTION)
             this.value = AD.value;
             break;
           }
