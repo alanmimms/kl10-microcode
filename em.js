@@ -646,7 +646,7 @@ function doReset() {
   MBOX.data[0] = assemble(0o561, 0o13, 0, 0, 0o123456n);
 
   // HRLZI 12,1234
-  MBOX.data[1] = assemble(0o555, 0o12, 0, 0, 0o1234n);
+  MBOX.data[1] = assemble(0o515, 0o12, 0, 0, 0o1234n);
 
   // ADDI 11,4321
   MBOX.data[2] = assemble(0o271, 0o11, 0, 0, 0o4321n);
