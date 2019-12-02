@@ -541,6 +541,8 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     this.debugNICOND = false;
   },
 
+  latch() { },
+
   get() {
     const prevValue = this.value;                 // Save in case of CALL
 
@@ -1326,11 +1328,12 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => cur & ARL_LOADmask || CONDis('ARL IND')})});
+                                         matchF: cur => ((cur & ARL_LOADmask) ||
+                                                         CONDis('ARL IND'))})});
 const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => cur & ARR_LOADmask})});
+                                         matchF: cur => !!(cur & ARR_LOADmask)})});
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
