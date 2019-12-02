@@ -339,7 +339,15 @@ function doValue(words) {
 function doDebug(words) {
 
   if (words.length === 1) {
+    displayDebugFlags();
+  } else if (words.length === 2) {
+    setDebugFlag(words[1]);
+  } if (words.length === 3) { // "debug unit-name method-or-*"
+    wrapUnit(words[1].toUpperCase(), words[2]);
+  }
 
+
+  function displayDebugFlags() {
     // Display all our wrapped (for debug) EBOX unit methods first.
     EBOX.unitArray
       .sort()
@@ -347,31 +355,35 @@ function doDebug(words) {
                .forEach(method => console.log(`  debug logging on ${u.name} ${method}`)));
 
     if (CRADR.debugNICOND) console.log(`NICOND debug ON`);
-  } else if (words.length === 2) {
+  }
 
-    switch (words[1]) {
+
+  function setDebugFlag(flag) {
+
+    switch (flag) {
     case 'NICOND':
       CRADR.debugNICOND ^= 1;
       console.log(`NICOND debug now ${CRADR.debugNICOND ? 'ON' : 'OFF'}`);
       break;
 
     default:
-      console.log(`UNKNOWN debug flag ${words[1]} ignored`);
+      console.log(`UNKNOWN debug flag ${flag} ignored`);
       break;
     }
-  } if (words.length === 3) { // "debug unit-name method-or-*"
-    const unitName = words[1].toUpperCase();
+  }
+
+
+  function wrapUnit(unitName, method) {
     const unit = Named.units[unitName];
-    const method = words[2];
 
-    if (unit) {
+    if (!unit) return;
 
-      if (method === '*') {
+    if (method === '*') {
 
-        // Do ALL the methods on our wrappable list.
-        (unit.wrappableMethods || [])
-          .filter(method => typeof unit[method] === typeofFunction)
-          .forEach(method => {
+      // Do ALL the methods on our wrappable list.
+      (unit.wrappableMethods || [])
+        .filter(method => typeof unit[method] === typeofFunction)
+        .forEach(method => {
 
           if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
             unwrapMethod(unit, method);
@@ -381,22 +393,20 @@ function doDebug(words) {
             console.log(`${unit.name} ${method} debug now on`);
           }
         });
+    } else {
+
+      if (typeof unit[method] !== typeofFunction) {
+        console.error(`${unit.name} doesn't have a method called "${method}"`);
       } else {
 
-        if (typeof unit[method] !== typeofFunction) {
-          console.error(`${unit.name} doesn't have a method called "${method}"`);
-        } else {
-
-          if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
-            unwrapMethod(unit, method);
-            console.log(`${unit.name} ${method} debug now off`);
-          } else {                             // Not wrapped, so wrap
-            wrapMethod(unit, method);
-            console.log(`${unit.name} ${method} debug now on`);
-          }
+        if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
+          unwrapMethod(unit, method);
+          console.log(`${unit.name} ${method} debug now off`);
+        } else {                             // Not wrapped, so wrap
+          wrapMethod(unit, method);
+          console.log(`${unit.name} ${method} debug now on`);
         }
       }
-    } else {
     }
   }
 }
