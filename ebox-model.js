@@ -376,7 +376,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     const isWrite = this.isWrite();
 
     if (isWrite) {
-      this.value = this.get();
+      this.value = this.input.get();
       this.data[this.latchedAddr] = this.value;
     } else {
       this.value = this.data[this.latchedAddr];
@@ -387,13 +387,11 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
 
   // Default behavior
   isWrite() {
-    return !this.getControl();          // Active-low /WRITE control
+    return this.getControl();          // Active-high WRITE control
   },
 });
 module.exports.RAM = RAM;
 
-
-const matchFDefault = cur => cur === this.matchValue;
 
 // Use this for example as a `control` for a RAM (e.g., FM) to write
 // when `COND/FM WRITE` with:
@@ -401,7 +399,7 @@ const matchFDefault = cur => cur === this.matchValue;
 const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
       .init(function({bitWidth = 1n,
                       matchValue,
-                      matchF = matchFDefault}) {
+                      matchF = (cur => cur === this.matchValue)}) {
         this.matchValue = matchValue;
         this.matchF = matchF;
         this.bitWidth = bitWidth;
@@ -419,7 +417,7 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
       .init(function({input, matchValue = 0n, matchF}) {
         this.input = input;
         this.matchValue = matchValue;
-        this.matchF = matchF || matchFDefault;
+        this.matchF = matchF || (cur => cur === this.matchValue);
         EBOXClock.addUnit(this);
       }).methods({
 
@@ -517,7 +515,7 @@ module.exports.ShiftDiv = ShiftDiv;
 
 // Control RAM: Readonly by default
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n,
-                  input: `ZERO`, control: `ONES`, addr: `CRADR`});
+                  input: `ZERO`, control: `ZERO`, addr: `CRADR`});
 const CR = Reg({name: 'CR', bitWidth: 84n, input: `CRAM`});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
@@ -720,7 +718,7 @@ const DRAM = RAM.methods({
 
     return this.value = result;
   },
-}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ONES`, addr: `CR.J`});
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ZERO`, addr: `CR.J`});
 
 const DR = Reg.methods({
 
@@ -826,10 +824,12 @@ const FM_ADR = LogicUnit.methods({
   },
 }) ({name: 'FM_ADR', bitWidth: 4n, input: `[IRAC, ARX, VMA, MAGIC_NUMBER]`});
 
-const FMA = BitCombiner({name: 'FMA', bitWidth: 7n, inputs: `[CR.ACB, FM_ADR]`});
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36n, input: `AR`, addr: `FM`,
-                control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`,
-                                matchValue: `CR.COND['FM WRITE']`})});
+const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36n,
+                input: `AR`,
+                addr: BitCombiner({name: 'FM_FULL_ADDR', bitWidth: 7n, inputs: `[CR.ACB, FM_ADR]`}),
+                control: FieldMatcher({name: 'FM_WRITE',
+                                       input: `CR.COND`,
+                                       matchValue: `CR.COND['FM WRITE']`})});
 
 const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
   this.bitWidth = BigInt(bitWidth);
@@ -1092,10 +1092,10 @@ const VMA_HELD_OR_PC = Mux.methods({
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND',
                             matchValue: CR.COND['VMA HELD']})});
 
-const PC = Reg({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`});
-const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, input: `PC`,
-                           control: FieldMatcher({name: 'LOAD_PC', input: CR.SPEC,
-                                                  matchValue: CR.SPEC['LOAD PC']})});
+const PC = Reg({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`,
+                control: FieldMatcher({name: 'LOAD_PC', input: CR.SPEC,
+                                       matchValue: CR.SPEC['LOAD PC']})});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, input: `PC`});
 const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n, inputs: `[SCD_FLAGS, PC]`});
 
 const DIAG_FUNC = CR['DIAG FUNC'];
@@ -1260,12 +1260,15 @@ const ADA = Mux({name: 'ADA', bitWidth: 36n,
                  inputs: `[AR, ARX, MQ, PC, ZERO, ZERO, ZERO, ZERO]`,
                  // Note three bit field
                  control: `CR.ADA`});
-const ADB = Mux({name: 'ADB', bitWidth: 36n, inputs: `[FM, BRx2, BR, ARx4]`, control: `CR.ADB`});
-
+const ADB = Mux({name: 'ADB', bitWidth: 36n,
+                 inputs: `[FM, BRx2, BR, ARx4]`,
+                 control: `CR.ADB`});
 const ADXA = Mux({name: 'ADXA', bitWidth: 36n,
-                  inputs: `[ARX, ARX, ARX, ARX, ZERO, ZERO, ZERO]`, control: `CR.ADA`});
+                  inputs: `[ARX, ARX, ARX, ARX, ZERO, ZERO, ZERO]`,
+                  control: `CR.ADA`});
 const ADXB = Mux({name: 'ADXB', bitWidth: 36n,
-                  inputs: `[ZERO, BRXx2, BRX, ARXx4]`, control: `CR.ADB`});
+                  inputs: `[ZERO, BRXx2, BRX, ARXx4]`,
+                  control: `CR.ADB`});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
   getInputs() { return BigInt(+!!(AR.get() & maskForBit(0, 9))) },
@@ -1277,11 +1280,14 @@ const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, input: `SCAD`});
 const MAGIC_NUMBER = BitCombiner({name: 'MAGIC_NUMBER', bitWidth: 9n, inputs: `[CR['#']]`});
 
 const ARMML = Mux({name: 'ARMML', bitWidth: 9n,
-                   inputs: `[MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS]`, control: `CR.ARMM`});
+                   inputs: `[MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS]`,
+                   control: `CR.ARMM`});
 
 const ARMMR = Mux.methods({
   getInputs() { return VMAXis('PREV SEC') },
-}) ({name: 'ARMMR', bitWidth: 17n - 13n + 1n, inputs: `[PC_13_17, VMA_PREV_SECT_13_17]`, control: `CR.VMAX`});
+}) ({name: 'ARMMR', bitWidth: 17n - 13n + 1n,
+     inputs: `[PC_13_17, VMA_PREV_SECT_13_17]`,
+     control: `CR.VMAX`});
 
 const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36n, input: 'AD', loBits: 'ADX'});
 const ADXx2 = ShiftMult({name: 'ADXx2', shift: 1, bitWidth: 36n, input: 'ADX', loBits: 'MQ'});
@@ -1309,10 +1315,12 @@ const ARML = Mux.methods({
     }
   },
 }) ({name: 'ARML', bitWidth: 18n,
-     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`, control: `CR.ARL`});
+     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
+     control: `CR.ARL`});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
-                  inputs: `[ARMMR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`, control: `CR.AR`});
+                  inputs: `[ARMMR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`,
+                  control: `CR.AR`});
 
 // ARL_1S		"AD/1S,COND/ARL IND,ARL/AD"
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
@@ -1325,7 +1333,8 @@ const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
                                          matchF: cur => cur & ARR_LOADmask})});
 
-const ARXM = Mux({name: 'ARXM', bitWidth: 36n, inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
+const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
+                  inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
 const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
@@ -1372,7 +1381,8 @@ const SCADA = Mux({name: 'SCADA', bitWidth: 10n,
                    // SCADA/= includes SCADA EN/= as its MSB.
                    inputs: `[FE, AR_POS, AR_EXP, MAGIC_NUMBER, ZERO, ZERO, ZERO, ZERO]`,
                    control: `CR.SCADA`});
-const SCADB = Mux({name: 'SCADB', bitWidth: 10n, inputs: `[FE, AR_SIZE, AR_00_08, MAGIC_NUMBER]`,
+const SCADB = Mux({name: 'SCADB', bitWidth: 10n,
+                   inputs: `[FE, AR_SIZE, AR_00_08, MAGIC_NUMBER]`,
                    control: `CR.SCADB`});
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13n,
