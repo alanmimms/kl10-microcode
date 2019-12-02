@@ -5,6 +5,7 @@ const expect = require('chai').expect;
 const {
   octal, oct6, octW,
   wrapMethod,
+  defaultWrapAction,
 } = require('../util');
 
 const {
@@ -15,6 +16,7 @@ const {
   VMA, PC, IR,
   BR, BRX, MQ, SH,
   AD, AR, ARR, ARL, ADX, ARX,
+  ADA, ADB,
   ZERO, ONES,
 } = require('../ebox-model');
 
@@ -28,7 +30,7 @@ const X = 0o100n;
 const Y = 0o200n;
 const Z = 0o300n;
 const PCinitial = 0o123456n;
-const ARinitial = 0o654321n;
+const ARRinitial = 0o654321n;
 const BRinitial = 0o246100n;
 const BRXinitial = 0o777777n;   // Must cause carry out if added to MQinitial
 const MQinitial = 0o000010n;
@@ -43,7 +45,7 @@ const NOT = x => x ^ ones38;
 describe('AD ALU', () => {
 
   function desc(op) {
-    return `should do ${ARinitial.to8()} ${op} ${BRinitial.to8()}`;
+    return `should do ${ARRinitial.to8()} ${op} ${BRinitial.to8()}`;
   }
 
   beforeEach('Reset EBOX', () => {
@@ -52,7 +54,7 @@ describe('AD ALU', () => {
     VMA.value = PC.value = PCinitial;
     BR.value = BRinitial;
     MQ.value = MQinitial;
-    ARR.value = ARinitial;
+    ARR.value = ARRinitial;
   });
 
   describe(`Arithmetic functions`, () => {
@@ -69,6 +71,14 @@ describe('AD ALU', () => {
       CRADR.value = X;
       CRAM.data[CRADR.value] = CR.value;
 
+      wrapMethod(BR, 'get');
+      wrapMethod(BR, 'latch');
+      wrapMethod(PC, 'get');
+      wrapMethod(PC, 'latch');
+      wrapMethod(AD, 'get');
+      wrapMethod(ADB, 'getControl');
+      wrapMethod(ARR, 'get');
+      wrapMethod(ARR, 'latch');
       expect(CRADR.value.to8()).to.equal(X.to8());
       EBOX.cycle();
       expect(CRADR.value.to8()).to.equal(Y.to8());
@@ -89,10 +99,10 @@ describe('AD ALU', () => {
       CRADR.value = Y;
       CRAM.data[CRADR.value] = CR.value;
 
-      ARR.value = ARinitial;
+      ARR.value = ARRinitial;
       EBOX.cycle();
       expect(AR.get().to8()).to
-        .equal(((ARinitial*4n + MQinitial) & ARRones).to8(), `AR.get()`);
+        .equal(((ARRinitial*4n + MQinitial) & ARRones).to8(), `AR.get()`);
     });
 
     it(`should add AR and BR*2 to ARR and jump to X`, () => {
@@ -109,7 +119,7 @@ describe('AD ALU', () => {
 
       EBOX.cycle();
       expect(AR.get().to8()).to
-        .equal(((ARinitial + BRinitial*2n) & ARRones).to8(), `AR.get()`);
+        .equal(((ARRinitial + BRinitial*2n) & ARRones).to8(), `AR.get()`);
     });
 
     it(desc('A+1'),           () => arithOp('A+1',    (a, b) => a + 1n));
@@ -134,7 +144,7 @@ describe('AD ALU', () => {
     // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
     // Test for result calculated by opFunc.
     function arithOp(CRname, opFunc, cin = 0n) {
-      const sb = opFunc(ARinitial, BRinitial) & ARRones;
+      const sb = opFunc(ARRinitial, BRinitial) & ARRones;
       const arxA = cin ? 0o777777777770n : 0n; // Cause ARX to generate carry out
       const arxSB = (arxA + MQinitial) & ARXones;
 
@@ -181,7 +191,7 @@ describe('AD ALU', () => {
     // Set up CRAM for binary op on AR and BR called CR.AD/`CRname`.
     // Test for result calculated by opFunc.
     function boolOp(CRname, opFunc) {
-      const expected = opFunc(ARinitial, BRinitial) & ARRones;
+      const expected = opFunc(ARRinitial, BRinitial) & ARRones;
 
       // Z: AD/${CRname}, ADA/AR, ADB/BR, AR CTL/ARR LOAD, J/X
       CR.value = 0n;
@@ -196,7 +206,7 @@ describe('AD ALU', () => {
       EBOX.cycle();
       expect(CRADR.value.to8()).to.equal(X.to8());
       expect(ARR.get().to8()).to
-        .equal(expected.to8(), `op was ${oct6(ARinitial)} ${CRname} ${oct6(BRinitial)}`);
+        .equal(expected.to8(), `op was ${oct6(ARRinitial)} ${CRname} ${oct6(BRinitial)}`);
     }
   });
 });

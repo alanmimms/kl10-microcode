@@ -77,7 +77,19 @@ const Clock = Named.init(function({drives = []}) {
   this.wrappableMethods = ['cycle'];
 }).methods({
   addUnit(unit) { this.drives.push(unit) },
-  cycle() { this.drives.forEach(unit => unit.latch()) },
+
+  cycle() {
+
+    this.drives.forEach(unit => {
+      assert(typeof unit.unlatch === typeofFunction, `${unit.name} unlatch() must exist`); 
+     unit.unlatch();
+    });
+
+    this.drives.forEach(unit => {
+      assert(typeof unit.latch === typeofFunction, `${unit.name} latch() must exist`);
+      unit.latch();
+    });
+  },
 });
 module.exports.Clock = Clock;
 
@@ -94,60 +106,63 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 // Stolen from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR)
 // and p. 214 Figure 3-7 NICOND Dispatch and Waiting.
 //
-// _ |_____________________| _____________________ |_
+// _ │_____________________│ _____________________ │_
 //  \/  micro instruction1 \/  micro instruction2 \/   CR
 // _/\_____________________/\_____________________/\_
-//   |                     |                       |
-//   |_________            | __________            |_
-//   /         \           |/          \           /    EBOX CLOCK
-// _/|          \__________/            \_________/|
-//   |                     |                       |
-//   |           __________|             _________ |
-//   |          /          \            /         \|    EBOX SYNC
-// ____________/           |\__________/           \_
-//   |                     |                       |
-// __|_____________________|                       |
-//   |                     \                       |    NICOND DISP
-//   |                     |\______________________|_
-//   |                     |                       |
-//   |                     | _____________________ |
-//   |                     |/                     \|    CON LOAD DRAM
-// __|_____________________/                       \_
-//   |                     |                       |
-//   |                     | __________            |_
-//   |                     |/  LATCHED \ UNLATCHED /    DR
-// __|_____________________/            \_________/| 
-//   |                     |                       |
-//   |                     | _____________________ |
-//   |         UNLATCHED   |/  LATCHED            \|    IR
-// __|_____________________/                       \_
-//   |                     |                       |
-//   |_____________________|                       |
-//   /                     \                       |    COND/LOAD IR
-// _/|                     |\______________________|_
-//   |                     |                       |
-//   |_____________________| _____________________ |_
-//   /                     \/                     \/    AD/A
-// _/|                     |\_____________________/\_
-//   |                     |                       |
-//   |_____________________| _____________________ |_
-//   /                     \/                     \/    ADA/AR
-// _/|                     |\_____________________/\_
-//   |                     |                       |
-//   |_________            | ______________________|_
-//   /         \ UNLATCHED |/ LATCHED              |    HOLD IR
-// _/|          \__________/                       |
-//   |                     |                       |
-//   |      _______________|                       |
-//   |     /////           \                       |    IR MIXER IN
-// __|____/////            |\ _____________________|_
-//   |                     |                       |
-//   |                     |
-//   |                     +-- instruction loads into ARX
-//   |                     | 
-//   |                     +-- `latch()` copies `getInputs()` to `value`
-//   +
-//
+//   │                     │                       │
+//   │_________            │ __________            │_
+//   /         \           │/          \           /    EBOX CLOCK
+// _/│         │\__________/           │\_________/│
+//   │         │           │           │           │
+//   │         │ __________│           │ _________ │
+//   │         │/          \           │/         \│    EBOX SYNC
+// ____________/           │\__________/           \_
+//   │         │           │           │           │
+// __│_________│___________│           │           │
+//   │         │           \           │           │    NICOND DISP
+//   │         │           │\__________│___________│_
+//   │         │           │           │           │
+//   │         │           │ __________│__________ │
+//   │         │           │/          │          \│    CON LOAD DRAM
+// __│_________│___________/           │           \_
+//   │         │           │           │           │
+//   │         │           │ __________│           │_
+//   │         │           │/  LATCHED \ UNLATCHED /    DR
+// __│_________│___________/           │\_________/│ 
+//   │         │           │           │           │
+//   │         │           │ __________│__________ │
+//   │         UNLATCHED   │/  LATCHED │          \│    IR
+// __│_________│___________/           │           \_
+//   │         │           │           │           │
+//   │_________│___________│           │           │
+//   /         │           \           │           │    COND/LOAD IR
+// _/│         │           │\__________│___________│_
+//   │         │           │           │           │
+//   │_________│___________│ __________│__________ │_
+//   /         │           \/          │          \/    AD/A
+// _/│         │           │\__________│__________/\_
+//   │         │           │           │           │
+//   │_________│___________│ __________│__________ │_
+//   /         │           \/          │          \/    ADA/AR
+// _/│         │           │\__________│__________/\_
+//   │         │           │           │           │
+//   │_________│           │ __________│___________│_
+//   /         \ UNLATCHED │/ LATCHED  │           │    HOLD IR
+// _/│         │\__________/           │           │
+//   │         │           │           │           │
+//   │      ___│___________│           │           │
+//   │     /////           \           │           │    IR MIXER IN
+// __│____/////│           │\ _________│___________│_
+//   │         │           │           │           │
+//   │         │           ^           │           │
+//   │         │           ├───────────│───────────│── instruction loads into ARX and IR
+//   ^         │           ^           │           ^
+//   ├─────────│───────────┴───────────│───────────┴────`latch()`: `value = toLatch`
+//   │         │                       │                (regs change so non-regs can settle)
+//   │         ^                       ^
+//   └─────────┴───────────────────────┴──────────────`unlatch()`: `toLatch = input.get()`
+//                                                      (non-regs see stable reg state)
+
 
 ////////////////////////////////////////////////////////////////
 // Stamps
@@ -190,8 +205,9 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     clock.addUnit(this);        // Because of this `clock` cannot be on `mayFixup` list
     this.addr = addr;
     this.bitWidth = BigInt(bitWidth || 0);
+    this.value = this.toLatch = 0n;
     this.wrappableMethods = `\
-reset,getAddress,getAddr,getFunc,getControl,getInputs,get,latch,cycle
+reset,getAddress,getFunc,getControl,getInputs,get,latch,unlatch,cycle
 `.trim().split(/,\s*/);
   }).props({
     value: 0n,
@@ -268,6 +284,7 @@ module.exports.EBOX = EBOX;
 
 // Use this mixin to define a Combinatorial unit that is unclocked.
 const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
+  unlatch() { },
   latch() { },
 
   get() { 
@@ -279,7 +296,8 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
 
 // Use this mixin to define a Clocked unit.
 const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
-  latch() { return this.value = this.getInputs() & this.ones },
+  unlatch() { this.toLatch = this.getInputs() & this.ones },
+  latch() { this.value = this.toLatch },
   get() { return this.value },
 });
 
@@ -324,6 +342,7 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
         getInputs() {return this.value},
         get() {return this.value},
         reset() {},
+        unlatch() {},
         latch() {},
       });
 module.exports.ConstantUnit = ConstantUnit;
@@ -371,18 +390,19 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     this.ones = (1n << this.bitWidth) - 1n;
   },
 
-  latch() {
+  unlatch() {
+    this.latchedIsWrite = this.isWrite();
     this.latchedAddr = this.getAddress();
-    const isWrite = this.isWrite();
+    this.toLatch = this.getInputs() & this.ones;
+  },
 
-    if (isWrite) {
-      this.value = this.input.get();
-      this.data[this.latchedAddr] = this.value;
+  latch() {
+
+    if (this.latchedIsWrite) {
+      this.data[this.latchedAddr] = this.toLatch;
     } else {
       this.value = this.data[this.latchedAddr];
     }
-
-    return this.value;
   },
 
   // Default behavior
@@ -421,12 +441,15 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
         EBOXClock.addUnit(this);
       }).methods({
 
+        unlatch() {
+        },
+
         latch() {
           const cur = this.input.get();
           this.value = BigInt(this.matchF(cur));
 
           if (this.value) {
-            this.drives.forEach(unit => unit.latch());
+            this.drives.forEach(unit => unit.cycle());
           }
         },
       });
@@ -515,7 +538,7 @@ module.exports.ShiftDiv = ShiftDiv;
 
 // Control RAM: Readonly by default
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n,
-                  input: `ZERO`, control: `ZERO`, addr: `CRADR`});
+                  input: `ONES`, control: `ZERO`, addr: `CRADR`});
 const CR = Reg({name: 'CR', bitWidth: 84n, input: `CRAM`});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
@@ -541,6 +564,7 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
     this.debugNICOND = false;
   },
 
+  unlatch() { },
   latch() { },
 
   get() {
@@ -730,7 +754,7 @@ const DRAM = RAM.methods({
 
     return this.value = result;
   },
-}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, control: `ZERO`, addr: `CR.J`});
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, input: `ONES`, control: `ZERO`, addr: `CR.J`});
 
 const DR = Reg.methods({
 
@@ -802,10 +826,20 @@ const IR = Reg.init(function() {
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12, input: `IR`});
 
 // State Register (internal machine state during instructions)
+// This is CON3 E35 p. 150.
+// This is also used for PXCT bits (see PXCT/=<75:77>).
+// See SR_xxx macros for more info.
 const SR = Reg({name: 'SR', bitWidth: 4n, input: `CR['#']`,
                 clock: FieldMatchClock({name: 'SR_CLOCK', input: 'CR.COND',
-                                        matchF: cond => (cond === CR.COND['SR_#'] ||
-                                                         cond === CR.COND['EBOX STATE'])})});
+                                        matchF: cond => cond === CR.COND['SR_#']})});
+
+// EBOX STATE (UCODE STATE) Register (internal machine state during instructions)
+// This is CON4 E50 p. 161.
+// * MTR4 E54 input CON UCODE STATE 01 is an OR condition for MTR PERF CNT CLOCK
+// * MTR2 E40 input CON UCODE STATE 03 controls MTR CACHE CNT EN
+const EBOX_STATE = Reg({name: 'EBOX_STATE', bitWidth: 4n, input: `CR['#']`,
+                        clock: FieldMatchClock({name: 'EBOX_STATE_CLOCK', input: 'CR.COND',
+                                                matchF: cond => cond === CR.COND['EBOX STATE']})});
 
 const FM_ADR = LogicUnit.methods({
   
@@ -962,6 +996,11 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const b = this.inputs[1].get();
     assert(typeof b === 'bigint', `${this.name} B is BigInt`);
 
+    console.log(`\
+${this.name} \
+a=${octW(a)}(${this.inputs[0].name}) \
+b=${octW(b)}(${this.inputs[1].name})`);
+
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
     const bw = this.bitWidth;
@@ -1088,17 +1127,22 @@ const VMA = Reg.compose({name: 'VMA'})
 
           return this.value;
         },
-      }) ({name: 'VMA', bitWidth: 35n - 13n + 1n});
+      }) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
 
-const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, input: `VMA`});
-const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n, input: `AD_13_17`});
-const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17, input: `VMA_PREV_SECT`});
+const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35,
+                            input: `VMA`});
+const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n,
+                      input: `VMA`});
+const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n,
+                           input: `AD_13_17`});
+const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17,
+                                      input: `VMA_PREV_SECT`});
 // XXX VERY temporary input
-const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13n, input: ZERO});
+const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13n,
+                       input: `ZERO`});
 
 const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36n,
                                     inputs: `[VMA_FLAGS, VMA_HELD]`});
-const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n, input: `VMA`});
 
 const VMA_HELD_OR_PC = Mux.methods({
   getInputs() { return BigInt(+this.getControl()) },
@@ -1106,20 +1150,25 @@ const VMA_HELD_OR_PC = Mux.methods({
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND',
                             matchValue: CR.COND['VMA HELD']})});
 
-const PC = Reg({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`,
+const PC = Reg({name: 'PC', bitWidth: 35n - 13n + 1n,
+                input: `VMA`,
                 control: FieldMatcher({name: 'LOAD_PC', input: CR.SPEC,
                                        matchValue: CR.SPEC['LOAD PC']})});
-const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, input: `PC`});
-const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n, inputs: `[SCD_FLAGS, PC]`});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17,
+                           input: `PC`});
+const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n,
+                                   inputs: `[SCD_FLAGS, PC]`});
 
 const DIAG_FUNC = CR['DIAG FUNC'];
 const DATAO_APR = CR['DIAG FUNC']['DATAO APR'];
 const COND_DIAG_FUNC = CR.COND['DIAG FUNC'];
 const ADR_BREAK_matchF = (cur => cur === COND_DIAG_FUNC && DIAG_FUNC.get() === DATAO_APR);
-const ADR_BREAK_CLOCK = FieldMatchClock({name: 'ADR_BREAK_CLOCK', input: DIAG_FUNC,
+const ADR_BREAK_CLOCK = FieldMatchClock({name: 'ADR_BREAK_CLOCK',
+                                         input: DIAG_FUNC,
                                          matchF: ADR_BREAK_matchF, matchValue: DATAO_APR});
 const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n,
-                       input: `AD_13_35`, clock: ADR_BREAK_CLOCK});
+                       input: `AD_13_35`,
+                       clock: ADR_BREAK_CLOCK});
 
 const MQ = Reg.methods({
 
