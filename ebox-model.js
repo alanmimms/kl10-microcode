@@ -517,6 +517,8 @@ const ShiftDiv = Combinatorial.compose({name: 'ShiftDiv'})
         getInputs() {
           assert(this.hiBits, `${this.name}.hiBits not null`);
           const hiBits = this.hiBits.get() << (this.hiBits.bitWidth - this.shift);
+          assert(this.input, `${this.name} must have input`);
+          assert(typeof this.input.get === typeofFunction, `${this.name} must have input.get()`);
           return ((this.input.get() | hiBits) >> this.shift) & this.ones;
         },
       });
@@ -1178,7 +1180,7 @@ const MQ = Reg.methods({
 }) ({name: 'MQ', bitWidth: 36n, inputs: `[MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD]`});
 
 const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36n, input: `MQ`, loBits: `ADX`});
-const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36n, inputs: `MQ`, hiBits: `ADX`});
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36n, input: `MQ`, hiBits: `ADX`});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -1330,7 +1332,7 @@ const ARSIGN_SMEAR = LogicUnit.methods({
 const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, input: `SCAD`});
 const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, input: `SCAD`});
 
-const MAGIC_NUMBER = BitCombiner({name: 'MAGIC_NUMBER', bitWidth: 9n, inputs: `[CR['#']]`});
+const MAGIC_NUMBER = CR['#'];
 
 const ARMML = Mux({name: 'ARMML', bitWidth: 9n,
                    inputs: `[MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS]`,
