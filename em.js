@@ -248,8 +248,11 @@ function doDump(words) {
 
 
 function doCDump(words) {
-  const dump = _.range(16)
-        .map(rn => `${octal(rn, 2)}=${octW(FM.data[rn])}`)
+  const ACs = _.range(16)
+        .map(rn => `${octal(rn, 2)}=${octW(FM.data[rn])}`);
+  const others = [PC]
+        .map(r => `${r.name}=${octW(r.get())}`);
+  const dump = [...ACs, ...others]
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
