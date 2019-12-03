@@ -78,7 +78,7 @@ module.exports.Named = Named;
 // function on a Clock calls `latch()` on each driven unit.
 const Clock = Named.init(function({drives = []}) {
   this.drives = drives;
-  this.wrappableMethods = ['cycle'];
+  this.wrappableMethods = ['cycle,addUnit'];
 }).methods({
   addUnit(unit) { this.drives.push(unit) },
 
@@ -194,7 +194,7 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.bitWidth = BigInt(bitWidth || 0);
     this.value = this.toLatch = 0n;
     this.wrappableMethods = `\
-reset,getAddress,getFunc,getControl,getInputs,get,latch,unlatch,cycle
+reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,unlatch
 `.trim().split(/,\s*/);
   }).props({
     value: 0n,
@@ -234,8 +234,8 @@ const EBOX = StampIt.compose(Named, {
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
+  wrappableMethods: `cycle,reset`.split(/,\s*/),
   run: false,
-
   memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
   fetchCycle: false,            // Initated by MEM/IFET, cleared by MEM/MB WAIT
 }).methods({
@@ -257,7 +257,6 @@ const EBOX = StampIt.compose(Named, {
     _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
-    this.wrappableMethods = ['cycle'];
   },
 
   cycle() {
