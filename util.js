@@ -1,22 +1,34 @@
 'use strict';
 const _ = require('lodash');
+const util = require('util');
 
 // Return octal string for `n` value decoded as groups of `groupSize`
 // with at least `minDigits` octal digits padded on left with leading
 // zeroes.
-function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0) ? 6 : 4, delim = '.') {
+function octal(n, minDigits = 4, groupSize = (minDigits % 6 === 0 || minDigits < 12) ? 6 : 4, delim = '.') {
   const lzString = _.padStart(n.toString(8), minDigits, '0');
 
-  if (groupSize > 0) {
-    const re = RegExp(`(.{${groupSize}})`, 'g');
-    return (lzString.match(re) || [lzString]).join(delim);
+  if (groupSize > 0 && groupSize < minDigits) {
+    let s = lzString;
+    const slices = [];
+
+    // Build up the `slices` array with right hand slices of groupSize
+    // bytes until `s` holds the remainder (if any), which ends up as
+    // the first element of the array.
+    while (s) {
+      slices.unshift(s.slice(-groupSize));
+      s = s.slice(0, -groupSize);
+    }
+
+    return slices.join(delim);
   } else {
     return lzString;
   }
 }
-module.exports.octal = octal;
-const oct6 = module.exports.oct6 = n => octal(n, 6);
-const octW = module.exports.octW = n => octal(n, 12, 6, ',,');
+module.exports.octal = octal;                                   // Default is four octal digits zero left padded
+const oct6 = module.exports.oct6 = n => octal(n, 6);            // 18b halfwords zero left padded
+const octW = module.exports.octW = n => octal(n, 12, 6, ',,');  // Full 36b words x,,y zero left padded
+const octA = module.exports.octA = n => octal(n, 7, 6, ',,');   // Addresses x,,y padded to at least one x digit
 
 
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of

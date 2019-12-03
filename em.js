@@ -10,7 +10,7 @@ const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
 const {
-  octal, oct6, octW,
+  octal, oct6, octW, octA,
   shiftForBit,
   wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
   typeofFunction,
@@ -273,20 +273,20 @@ function doCPUStep(words) {
 
 
 function doGo(words) {
-  console.log(`[Running from ${octal(CRADR.get())}]`);
+  console.log(`[Running from ${octA(CRADR.get())}]`);
   run();
 }
 
 
 function doCPUGo(words) {
   EBOX.run = true;
-  console.log(`[CPU Running from ${octal(PC.get())}, EBOX waiting]`);
+  console.log(`[CPU Running from ${octA(PC.get())}; EBOX waiting]`);
 }
 
 
 function doCPUStop(words) {
   EBOX.run = false;
-  console.log(`[Stopping CPU at ${octal(PC.get())}, EBOX waiting]`);
+  console.log(`[Stopping CPU at ${octA(PC.get())}; EBOX waiting]`);
 }
 
 
