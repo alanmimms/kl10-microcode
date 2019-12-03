@@ -2,6 +2,10 @@
 *.js            text diff=javascript
 *.json          text
 
+# I did not write these
+kl10-docs/*     linguist-documentation
+kl10-source/*   linguist-vendored
+
 # These files are text and should be normalized (Convert crlf => lf)
 *.mcr           text
 *.mic           text
