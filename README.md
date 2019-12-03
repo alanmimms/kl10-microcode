@@ -81,7 +81,7 @@ not being very concerned with performance at this point.
 # The Future
 When this is working more completely, I want to take the understanding
 I have gained from creating this emulator and build one in C or C++
-that is meant to go _fast_. I didn't do that that first because it
+that is meant to go _fast_. I didn't do that first instead because it
 would have slowed me down considerably. The whole C/C++ edit, compile,
 link, debug loop is much slower than my JavaScript debugging process,
 and the JavaScript language is extremely expressive. It's just faster
