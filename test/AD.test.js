@@ -5,7 +5,6 @@ const expect = require('chai').expect;
 const {
   octal, oct6, octW,
   wrapMethod,
-  defaultWrapAction,
 } = require('../util');
 
 const {
@@ -71,6 +70,7 @@ describe('AD ALU', () => {
       CRADR.value = X;
       CRAM.data[CRADR.value] = CR.value;
 
+/*
       wrapMethod(BR, 'get');
       wrapMethod(BR, 'latch');
       wrapMethod(PC, 'get');
@@ -79,6 +79,7 @@ describe('AD ALU', () => {
       wrapMethod(ADB, 'getControl');
       wrapMethod(ARR, 'get');
       wrapMethod(ARR, 'latch');
+*/
       expect(CRADR.value.to8()).to.equal(X.to8());
       EBOX.cycle();
       expect(CRADR.value.to8()).to.equal(Y.to8());

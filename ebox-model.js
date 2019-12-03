@@ -49,6 +49,10 @@ const Named = StampIt({name: 'Named'}).statics({
   this.propName = this.name.replace(/[ .,]/g, '_');
   Named.units[this.propName] = this;
 }).methods({
+
+  // Stringify a value of our `this.value` type.
+  vToString(v) { return octal(v, Math.ceil(Number(this.bitWidth) / 3)) },
+  
   reset() { },
 
   // This is called on every instance to fix up forward references
@@ -543,25 +547,18 @@ const INDEXED_MASK = maskForBit(13);
 const X_NONZERO_MASK = maskForBit(14) - maskForBit(18);
 
 
-// Complex CRAM address calculation logic goes here...
-const CRADR = Clocked.init(function({stackDepth = 4}) {
-  this.stackDepth = stackDepth;
-}).methods({
+// Complex CRAM address calculation logic and uInstruction pointer.
+const CRADR = Clocked.methods({
 
   reset() {
-    this.value = 0n;
+    this.toLatch = this.value = 0n;
     this.force1777 = false;     // Set by page fault conditions
     this.stack = [];
     this.ones = (1n << this.bitWidth) - 1n;
     this.debugNICOND = false;
   },
 
-  unlatch() { },
-  latch() { },
-
-  get() {
-    const prevValue = this.value;                 // Save in case of CALL
-
+  unlatch() {
     // XXX Still remaining:
     // * A7: The conditions from Muxes E1,E32 CRA2
     // * A8: The conditions from Muxes E2,E16 CRA2
@@ -571,9 +568,10 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
  
     if (this.force1777) {
       // Push return address from page fault handler.
+      // Push VALUE not TOLATCH.
       this.stack.push(this.value);
       // Force next address to 0o1777 ORed with current MSBs.
-      this.value |= 0o1777n;
+      this.toLatch = this.value | 0o1777n;
       this.force1777 = false;   // Handled.
     } else {
       const skip = CR.SKIP.get();
@@ -704,16 +702,13 @@ const CRADR = Clocked.init(function({stackDepth = 4}) {
 
       }
 
-      this.value = orBits | CR.J.get();
-
-      // XXX this is wrong here since `get()` is called a lot when
-      // debugging. This needs to move to a separate Unit clocked only
-      // when the CR.CALL bit is lit.
       if (CR.CALL.get()) {
-        this.stack.push(prevValue);
+        // Push VALUE, not TOLATCH.
+        this.stack.push(this.value);
       }
 
-      return this.value;
+      console.log(`CRADR this.value=${octal(this.value)} orBits=${octal(orBits)} CR.J=${octal(CR.J.get())}`);
+      this.toLatch = this.value | orBits | CR.J.get();
     }
   },
 }) ({name: 'CRADR', bitWidth: 11n,

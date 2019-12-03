@@ -85,13 +85,14 @@ module.exports.fieldExtract = fieldExtract;
 // specified if some other action is needed in the wrapper (e.g.,
 // maintaining statistics, debugging, etc.).
 const contextSymbol = Symbol('wrapping context');
-function wrapMethod(objToWrap, method, wrapAction = defaultWrapAction) {
+function wrapMethod(objToWrap, method, preAction = defaultPreAction, postAction = defaultPostAction) {
   const context = {
     wrappedObj: objToWrap,
     name: objToWrap.name,
     methodName: method,
     originalFunction: objToWrap[method].bind(objToWrap),
-    wrapAction,
+    preAction,
+    postAction,
   };
   objToWrap[method] = wrapper.bind(context);
   objToWrap[method][contextSymbol] = context;
@@ -99,22 +100,35 @@ function wrapMethod(objToWrap, method, wrapAction = defaultWrapAction) {
 
 
   function wrapper(...a) {
-    const result = this.originalFunction(...a);
     const stamp = this.wrappedObj.stamp || {name: ''};
     const name = `${this.name}@${stamp.name}`;
     const bitWidth = Number(this.wrappedObj.bitWidth || 36);
-    return this.wrapAction({result, stamp, name, bitWidth});
+    this.preAction({stamp, name, bitWidth, context});
+    const result = this.originalFunction(...a);
+    return this.postAction({result, stamp, name, bitWidth});
   }
 }
 module.exports.wrapMethod = wrapMethod;
 
 
-function defaultWrapAction({result, stamp, name, bitWidth, context}) {
-  const resultString = result == null ? '' : `=${octW(result)}`;
-  console.log(`${name} ${this.methodName}${resultString}`);
+function defaultPreAction({stamp, name, bitWidth, context}) {
+  const o = this.wrappedObj;
+  this.beforeValue = o.value;
+  this.beforeToLatch = o.toLatch;
+}
+module.exports.defaultPreAction = defaultPreAction;
+
+
+function defaultPostAction({result, stamp, name, bitWidth, context}) {
+  const o = this.wrappedObj;
+  const resultString = result === undefined ? '' : `=${o.vToString(result)}`;
+  console.log(`\
+${name} ${this.methodName}${resultString} 
+    before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}
+    after  value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
   return result;
 }
-module.exports.defaultWrapAction = defaultWrapAction;
+module.exports.defaultPostAction = defaultPostAction;
 
 
 // The antidote to `wrapMethod()` to unwrap. Note this must be done in
