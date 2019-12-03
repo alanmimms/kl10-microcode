@@ -1,0 +1,21 @@
+# JavaScript sources
+*.js            text diff=javascript
+*.json          text
+
+# These files are text and should be normalized (Convert crlf => lf)
+*.mcr           text
+*.mic           text
+*.mac           text
+*.doc           text
+*.ctl           text
+*.ccl           text
+*.unv           text
+*.listing       text
+*.ram           text
+*.esp           text
+*.lispish       text
+
+# These files are binary and should be left untouched
+# (binary is a macro for -text -diff)
+*.exe           binary
+*.mcb           binary
