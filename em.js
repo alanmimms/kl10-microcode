@@ -234,7 +234,11 @@ function displayableAddress(x) {
 
 function curInstruction() {
   const x = CRADR.get();
-  return cramLines[x];
+  const bar = `─`.repeat(120);
+  const vbar = `│`;
+  const NL = `\n`;
+  const barredLines = cramLines[x].split(/\n/).join(NL + vbar);
+  return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
 }
 
 
