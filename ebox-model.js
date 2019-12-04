@@ -74,8 +74,9 @@ const Named = StampIt({name: 'Named'}).statics({
 module.exports.Named = Named;
 
 
-// Each Clock has a list of units it drives. Calling the `latch()`
-// function on a Clock calls `latch()` on each driven unit.
+// Each Clock has a list of units it drives. Calling the `latch()` or
+// `sampleInputs()` method on a Clock calls that same method each driven
+// unit.
 const Clock = Named.init(function({drives = []}) {
   this.drives = drives;
   this.wrappableMethods = ['cycle,addUnit'];
@@ -85,8 +86,8 @@ const Clock = Named.init(function({drives = []}) {
   cycle() {
 
     this.drives.forEach(unit => {
-      assert(typeof unit.unlatch === typeofFunction, `${unit.name} unlatch() must exist`); 
-     unit.unlatch();
+      assert(typeof unit.sampleInputs === typeofFunction, `${unit.name} sampleInputs() must exist`); 
+     unit.sampleInputs();
     });
 
     this.drives.forEach(unit => {
@@ -110,43 +111,43 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 // Derived from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR) and
 // p. 214 Figure 3-7 NICOND Dispatch and Waiting.
 //
-// __│            │_________│           │ __________│           │_
-//   \            /         \           │/          \           / EBOX CLOCK
-//   |\__________/│         │\__________/           │\_________/│
-//   │            │         │           │           │           │
-//   │ __________ │         │ __________│           │ _________ │
-//   |/          \│         │/          \           │/         \│ EBOX SYNC
-// __/           \_________/           │\__________/           \_
-//   │            │         │           │           │           │
-// __│ __________ │_________│___________│ __________│__________ │_
-//   \/UNLATCHED \/ μinsn1  │ UNLATCHED \/ μinsn2   │UNLATCHED \/ CR
-// __/\__________/\_________│___________/\__________│__________/\_
-//   │            │         │           │           │           │
-// __│____________│_________│___________│           │           │
-//   │            │         │           \           │           │ NICOND DISP
-//   │            │         │           │\__________│___________│_
-//   │            │         │           │           │           │
-//   │            │         │           │ __________│__________ │
-//   │            │         │           │/          │          \│ CON LOAD DRAM
-// __│____________│_________│___________/           │           \_
-//   │            │         │           │           │           │
-//   │            │         │           │ __________│           │_
-//   │            │         UNLATCHED   │/  LATCHED \ UNLATCHED / DR
-// __│____________│_________│___________/           │\_________/│ 
-//   │            │         │           │           │           │
-//   │            │         │           │ __________│__________ │
-//   │            │         UNLATCHED   │/  LATCHED │          \│ IR
-// __│____________│_________│___________/           │           \_
-//   │            │         │           │           │           │
-//   │            │         │           ^           │           │
-//   │            │         │           ├───────────│───────────│── instruction loads into ARX and IR
-//   ^            │         ^           │           ^           │
-//   └────────────│─────────┴───────────│───────────┴───────────│────`unlatch()`: `toLatch = input.get()`
-//                │                     │                       │    (non-regs see stable reg state)
-//                │                     │                       │    (regs get non-reg state recrusively)
-//                ^                     ^                       ^
-//                └─────────────────────┴───────────────────────┴────`latch()`: `value = toLatch`
-//                                                                   (regs change so non-regs can settle)
+//   │[=========]<---`sampleInputs()` regs recursively load inputs to `toLatch`, output remains stable
+//   │[=========]<---non-regs settle inputs --> outputs
+//   │           │[========]<---`latch()` regs drive `toLatch` on their outputs
+// __│           │ __________│           │ __________│          │ _
+//   \           │/          \           │/          \          │/ EBOX CLOCK
+//   |\__________/           │\__________/           │\_________/
+//   │           │           │           │           │          │ 
+//   │ __________│           │ __________│           │ _________│ 
+//   |/          │           │/          \           │/         \  EBOX SYNC
+// __/           │\__________/           │\__________/          │\_
+//   │           │           │           │           │          │ 
+// __│ __________│ __________│___________│ __________│__________│ _
+//   \/UNLATCHED \/ μinsn1   │ UNLATCHED \/ μinsn2   │UNLATCHED \/ CR
+// __/\__________/\__________│___________/\__________│__________/\_
+//   │           │           │           │           │          │ 
+// __│___________│___________│___________│           │          │ 
+//   │           │           │           \           │          │  NICOND DISP
+//   │           │           │           │\__________│__________│__
+//   │           │           │           │           │          │ 
+//   │           │           │           │ __________│__________│ 
+//   │           │           │           │/          │          \ CON LOAD DRAM
+// __│___________│___________│___________/           │          │\_
+//   │           │           │           │           │          │ 
+//   │           │           │           │ __________│          │ _
+//   │           │           UNLATCHED   │/  LATCHED \ UNLATCHED│/ DR
+// __│___________│___________│___________/           │\_________/ 
+//   │           │           │           │           │          │ 
+//   │           │           │           │ __________│__________│ 
+//   │           │           UNLATCHED   │/  LATCHED │          \ IR
+// __│___________│___________│___________/           │          │\_
+//   │           │           │           │           │          │ 
+//   ^           │           ^           │           ^          │ 
+//   └───────────│───────────┴───────────│───────────┴──────────│──  `latch()`: `value = toLatch`
+//               ^                       ^                      ^ 
+//               └───────────────────────┴──────────────────────┴─── `sampleInputs()`: `toLatch = input.get()`
+//                                                                   (reg outputs remain stable)
+//                                                                   (regs get non-reg state recursively)
 
 
 ////////////////////////////////////////////////////////////////
@@ -164,17 +165,18 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 //
 // Combinatorial (not clocked) logic units simply implement `get()` as
 // directly returning the value from `getInputs()`. Since these are
-// not clocked, they implement a no-op for `latch()` and `unlatch()`.
-// Registered and RAMs (Clocked) return the currently addressed or
-// latched value in `get()` and use `getInputs()` (and `getControl()`
-// and `getAddress()`) to determine what value to latch during
-// `unlatch()`. When `latch()` is called, the output of a Clocked Unit
-// reflects what was loaded during `unlatch()`.
+// not clocked, they implement a no-op for `latch()` and
+// `sampleInputs()`. Registered and RAMs (Clocked) return the
+// currently addressed or latched value in `get()` and use
+// `getInputs()` (and `getControl()` and `getAddress()`) to determine
+// what value to latch during `sampleInputs()`. When `latch()` is
+// called, the output of a Clocked Unit reflects what was loaded
+// during `sampleInputs()`.
 //
 // * `getInputs()` and `getControl()` and `getAddress()` retrieve the
 //   inputs to the unit from the units that drive their input pins.
 //
-// * `unlatch()` uses `getInputs()` and `getAddress()` to save a
+// * `sampleInputs()` uses `getInputs()` and `getAddress()` to save a
 //   register or RAM's value and is a no-op for combinatorial units.
 //
 // * `latch()` makes the saved value the new output of the unit. 
@@ -194,7 +196,7 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.bitWidth = BigInt(bitWidth || 0);
     this.value = this.toLatch = 0n;
     this.wrappableMethods = `\
-reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,unlatch
+reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
 `.trim().split(/,\s*/);
   }).props({
     value: 0n,
@@ -208,7 +210,7 @@ reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,unlatch
     },
 
     cycle() {
-      this.unlatch();
+      this.sampleInputs();
       this.latch();
     },
 
@@ -275,7 +277,7 @@ module.exports.EBOX = EBOX;
 
 // Use this mixin to define a Combinatorial unit that is unclocked.
 const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
-  unlatch() { },
+  sampleInputs() { },
   latch() { },
 
   get() { 
@@ -287,7 +289,7 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
 
 // Use this mixin to define a Clocked unit.
 const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
-  unlatch() { this.toLatch = this.getInputs() & this.ones },
+  sampleInputs() { this.toLatch = this.getInputs() & this.ones },
   latch() { this.value = this.toLatch },
   get() { return this.value },
 });
@@ -380,7 +382,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     this.ones = (1n << this.bitWidth) - 1n;
   },
 
-  unlatch() {
+  sampleInputs() {
     this.latchedIsWrite = this.isWrite();
     this.latchedAddr = this.getAddress();
     this.toLatch = this.getInputs() & this.ones;
@@ -431,7 +433,7 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
         EBOXClock.addUnit(this);
       }).methods({
 
-        unlatch() {
+        sampleInputs() {
         },
 
         latch() {
@@ -557,7 +559,7 @@ const CRADR = Clocked.methods({
     this.debugNICOND = false;
   },
 
-  unlatch() {
+  sampleInputs() {
     // XXX Still remaining:
     // * A7: The conditions from Muxes E1,E32 CRA2
     // * A8: The conditions from Muxes E2,E16 CRA2
