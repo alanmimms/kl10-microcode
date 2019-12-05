@@ -35,6 +35,8 @@ let historyEnabled = false;
 const craHistory = [];
 let craHistoryX = -1;
 
+let sourceLines = KLX_CRAM_lines;
+
 let startOfLastStep = 0;
 
 
@@ -252,23 +254,18 @@ function displayableAddress(x) {
 
 function curInstruction() {
   const x = CRAM.latchedAddr;
-
-  if (OPT.testMicrocode) {
-    return `${octal(x, 4)}: ${disassemble(CRAM.data[x])}`;
-  } else {
-    const bar = `─`.repeat(120);
-    const vbar = `│`;
-    const NL = `\n`;
-    const barredLines = KLX_CRAM_lines[x].split(/\n/).join(NL + vbar);
-    return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
-  }
+  const bar = `─`.repeat(120);
+  const vbar = `│`;
+  const NL = `\n`;
+  const barredLines = sourceLines[x].split(/\n/).join(NL + vbar);
+  return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
 }
 
 
 function doDump(words) {
   const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
         .map(r => `${r.name}=${octW(r.get())}`)
-        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 0 ? '\n' : '  '), '');
+        .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
 }
@@ -668,33 +665,83 @@ function assemble(op, a, i, x, y) {
 }
 
 
-const X = 0o123n;
-const Y = 0o222n;
-const Z = 0o321n;
-
-
 function createTestMicrocode() {
+  const X = 0o123n;
+  const Y = 0o222n;
+  const Z = 0o321n;
+  const T1 = 0o400n;
   const cram = CRAM.data;
+  let t = 0n;                   // CRAM location we are filling right now
 
+  sourceLines = [];
+
+  console.log(`================ Test CR.J jump`);
+  sourceLines[t] = `${octal(t)}: J/${octal(X)}`;
   CR.value = 0n;
   CR.J = X;                     // Jump to three instruction bounce loop
-  cram[0] = CR.value;
-  console.log(`0000: ${disassemble(CR.value)}`);
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
+  t = X;
+  sourceLines[t] = `${octal(t)}: J/${octal(Y)}`;
   CR.value = 0n;
   CR.J = Y;
-  cram[X] = CR.value;
-  console.log(`${octal(X, 4)}: ${disassemble(CR.value)}`);
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
+  t = Y;
+  sourceLines[t] = `${octal(t)}: J/${octal(Z)}`;
   CR.value = 0n;
   CR.J = Z;
-  cram[Y] = CR.value;
-  console.log(`${octal(Y, 4)}: ${disassemble(CR.value)}`);
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
+  t = Z;
+  sourceLines[t] = `${octal(t)}: J/${octal(T1)}`;
   CR.value = 0n;
-  CR.J = X;
-  cram[Z] = CR.value;
-  console.log(`${octal(Z, 4)}: ${disassemble(CR.value)}`);
+  CR.J = T1;
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
+
+  console.log(`================ Test FM and ADA/ADB/AD`);
+  t = T1;
+  FM.data[3] = 0o333333333333n;
+  FM.data[4] = 0o444444444444n;
+  // AR<-AC3: FMADR/AC+#, #/3 ADB/FM, AD/B, AR/AD
+  sourceLines[t] = `${octal(t)}: J/${octal(X)}`;
+  CR.value = 0n;
+  CR.FMADR = CR.FMADR['AC+#'];
+  CR['#'] = 3n;
+  CR.ADB = CR.ADB.FM
+  CR.AD = CR.AD.B;
+  CR.AR = CR.AR.AD;
+  CR.J = t + 1n;
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)} Load AR=AC3=${octW(FM.data[3])}`);
+  ++t;
+
+  sourceLines[t] = `\
+${octal(t)}: BR<-AC3, AR<-AC4: BR/AR, FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}`;
+  CR.value = 0n;
+  CR.ADB = CR.ADB.FM
+  CR.AD = CR.AD.B;
+  CR.AR = CR.AR.AD;
+  CR.J = t + 1n;
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)} Load BR=AR, AR=AC4=${octW(FM.data[4])}`);
+  ++t;
+
+  sourceLines[t] = `\
+${octal(t)}: AR_(AR+2BR)*.25 = ADA/AR,ADB/BR*2,AD/A+B,AR/AD*.25, J/${octal(0n)}`;
+  CR.value = 0n;
+  CR.ADA = CR.ADA.AR;
+  CR.ADB = CR.ADB['BR*2'];
+  CR.AD = CR.AD['A+B'];
+  CR.AR = CR.AR['AD*.25'];
+  CR.J = 0n;
+  cram[t] = CR.value;
+  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
+  ++t;
 }
 
 
@@ -709,11 +756,6 @@ function doReset() {
     KLX_CRAM.forEach((mw, addr) => CRAM.data[addr] = mw);
     KLX_DRAM.forEach((dw, addr) => DRAM.data[addr] = dw);
   };
-
-  console.log(`After ${octal(0, 4)}: ${disassemble(CRAM.data[0])}`);
-  console.log(`After ${octal(X, 4)}: ${disassemble(CRAM.data[X])}`);
-  console.log(`After ${octal(Y, 4)}: ${disassemble(CRAM.data[Y])}`);
-  console.log(`After ${octal(Z, 4)}: ${disassemble(CRAM.data[Z])}`);
 
   // HRROI 13,123456
   MBOX.data[0] = assemble(0o561, 0o13, 0, 0, 0o123456n);
