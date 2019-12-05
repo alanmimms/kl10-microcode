@@ -327,7 +327,16 @@ function doAddressBreak(words) {
 function doExamine(words) {
 
   if (words.length > 1) {
-    const result = EBOX.eval(words.slice(1).join(' '));
+    let result = 0n;
+    const toEval = words.slice(1).join(' ');
+
+    try {
+      result = EBOX.eval(toEval);
+    } catch(e) {
+      console.error(`Error evaluating "${toEval}":
+${e.msg}`);
+      return;
+    }
 
     if (typeof result === 'bigint' || typeof result === 'number') {
       console.log(octW(result));
@@ -365,7 +374,12 @@ function doDebug(words) {
   if (words.length === 1) {
     displayDebugFlags();
   } else if (words.length === 2) {
-    setDebugFlag(words[1]);
+
+    if (Named.units[words[1]]) {
+      wrapUnit(words[1].toUpperCase(), '*');
+    } else {
+      setDebugFlag(words[1]);
+    }
   } if (words.length === 3) { // "debug unit-name method-or-*"
     wrapUnit(words[1].toUpperCase(), words[2]);
   }
@@ -675,40 +689,38 @@ function createTestMicrocode() {
 
   sourceLines = [];
 
-  console.log(`================ Test CR.J jump`);
-  sourceLines[t] = `${octal(t)}: J/${octal(X)}`;
+  sourceLines[t] = `
+; ================ Test CR.J jump
+${octal(t)}: J/${octal(X)}`;
   CR.value = 0n;
   CR.J = X;                     // Jump to three instruction bounce loop
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
   t = X;
   sourceLines[t] = `${octal(t)}: J/${octal(Y)}`;
   CR.value = 0n;
   CR.J = Y;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
   t = Y;
   sourceLines[t] = `${octal(t)}: J/${octal(Z)}`;
   CR.value = 0n;
   CR.J = Z;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
   t = Z;
   sourceLines[t] = `${octal(t)}: J/${octal(T1)}`;
   CR.value = 0n;
   CR.J = T1;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
 
-  console.log(`================ Test FM and ADA/ADB/AD`);
   t = T1;
   FM.data[3] = 0o333333333333n;
   FM.data[4] = 0o444444444444n;
-  // AR<-AC3: FMADR/AC+#, #/3 ADB/FM, AD/B, AR/AD
-  sourceLines[t] = `${octal(t)}: J/${octal(X)}`;
+  sourceLines[t] = `
+; ================ Test FM, AD/ADA/ADB
+${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
+; AR=AC3=${octW(FM.data[3])}`;
   CR.value = 0n;
   CR.FMADR = CR.FMADR['AC+#'];
   CR['#'] = 3n;
@@ -717,22 +729,24 @@ function createTestMicrocode() {
   CR.AR = CR.AR.AD;
   CR.J = t + 1n;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)} Load AR=AC3=${octW(FM.data[3])}`);
   ++t;
 
   sourceLines[t] = `\
-${octal(t)}: BR<-AC3, AR<-AC4: BR/AR, FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}`;
+${octal(t)}: BR/AR, FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
+; BR=AC3=${octW(FM.data[3])}, AR=AC4=${octW(FM.data[4])}`;
   CR.value = 0n;
+  CR.FMADR = CR.FMADR['AC+#'];
+  CR['#'] = 4n;
   CR.ADB = CR.ADB.FM
   CR.AD = CR.AD.B;
   CR.AR = CR.AR.AD;
   CR.J = t + 1n;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)} Load BR=AR, AR=AC4=${octW(FM.data[4])}`);
   ++t;
 
   sourceLines[t] = `\
-${octal(t)}: AR_(AR+2BR)*.25 = ADA/AR,ADB/BR*2,AD/A+B,AR/AD*.25, J/${octal(0n)}`;
+${octal(t)}: ADA/AR,ADB/BR*2,AD/A+B,AR/AD*.25, J/${octal(0n)}\t\
+; AR<-(AR+2BR)*.25`;
   CR.value = 0n;
   CR.ADA = CR.ADA.AR;
   CR.ADB = CR.ADB['BR*2'];
@@ -740,7 +754,6 @@ ${octal(t)}: AR_(AR+2BR)*.25 = ADA/AR,ADB/BR*2,AD/A+B,AR/AD*.25, J/${octal(0n)}`
   CR.AR = CR.AR['AD*.25'];
   CR.J = 0n;
   cram[t] = CR.value;
-  console.log(`${octal(t)}: ${disassemble(CR.value)}`);
   ++t;
 }
 
