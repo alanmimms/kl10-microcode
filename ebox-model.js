@@ -12,6 +12,9 @@ const {
   typeofFunction,
 } = require('./util');
 
+const utilFormats = require('./util');
+
+
 // Read our defines.mic and gobble definitions for fields and
 // constants for CRAM and DRAM.
 const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
@@ -50,9 +53,6 @@ const Named = StampIt({name: 'Named'}).statics({
   Named.units[this.propName] = this;
 }).methods({
 
-  // Stringify a value of our `this.value` type.
-  vToString(v) { return octal(v, Math.ceil(Number(this.bitWidth) / 3)) },
-  
   reset() { },
 
   // This is called on every instance to fix up forward references
@@ -186,7 +186,7 @@ module.exports.EBOXClock = EBOXClock;
 //   this just returns the transformed inputs.
 //
 const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
-  function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock}) {
+  function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock, debugFormat = 'octW'}) {
     this.name = name;
     this.clock = clock;
     this.input = input;         // We can use singular OR plural
@@ -197,6 +197,7 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.addr = addr;
     this.bitWidth = BigInt(bitWidth || 0);
     this.value = this.toLatch = 0n;
+    this.debugFormat = debugFormat;
     this.wrappableMethods = `\
 reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
 `.trim().split(/,\s*/);
@@ -204,6 +205,9 @@ reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
     value: 0n,
   }).methods({
 
+    // Stringify a value of our `this.value` type.
+    vToString(v) { return utilFormats[this.debugFormat](v, Math.ceil(Number(this.bitWidth) / 3)) },
+  
     reset() {
       this.value = 0n;
       this.bitWidth = BigInt(this.bitWidth || 1n);
@@ -349,12 +353,6 @@ module.exports.ONES = ONES;
 
 
 ////////////////////////////////////////////////////////////////
-// Simply pass through inputs to outputs as a combinatorial device
-// without changing anything.
-const PassThrough = Combinatorial.compose({name: 'PassThrough'});
-
-
-////////////////////////////////////////////////////////////////
 // Take a group of inputs and concatenate them into a single wide
 // field.
 const BitCombiner = Combinatorial.compose({name: 'BitCombiner'}).methods({
@@ -369,11 +367,8 @@ module.exports.BitCombiner = BitCombiner;
 
 
 ////////////////////////////////////////////////////////////////
-// Given an address, retrieve the stored word. Can also store new
-// words for diagnostic purposes. Elements are BigInt by default. The
-// `input` is the unit that provides a value for calls to `latch()` or
-// write data. A ZERO VALUE on `control` means the clock cycle is a
-// WRITE, otherwise it is a read.
+// Given an address, retrieve the stored word or if `isWrite()` write
+// the value presented via `sampleInputs()`.
 const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n}) {
   this.nWords = nWords;
   this.initValue = initValue;
@@ -398,6 +393,10 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     this.latchedIsWrite = this.isWrite();
     this.latchedAddr = this.getAddress();
     this.toLatch = this.data[this.latchedAddr] & this.ones;
+
+    // RAMs act as Combinatorial, passing through to their outputs
+    // whatever is addressed if this is not a write.
+    if (!this.latchedIsWrite) this.value = this.toLatch;
   },
 
   latch() {
@@ -411,7 +410,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
 
   // Default behavior
   isWrite() {
-    return !!this.getControl();          // Active-high WRITE control
+    return !!this.getControl();          // Active-high truthy WRITE control
   },
 });
 module.exports.RAM = RAM;
@@ -713,9 +712,14 @@ CR.J=${octal(CR.J.get())}`);
   },
 }) ({name: 'CRAM', nWords: 2048, bitWidth: 84n,
      input: `ONES`, control: `ZERO`, addr: `ZERO`});
-const CR = PassThrough({name: 'CR', bitWidth: 84n, input: `CRAM`});
-const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
-defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
+
+// This simply passes CRAM current addressed word through so we can
+// extract bitfields.
+const CR = Combinatorial({name: 'CR', bitWidth: 84n, input: `CRAM`});
+
+// Populate CR with properties representing CRAM bit fields. Ignore
+// the unusued bits.
+defineBitFields(CR, CRAMdefinitions, `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/));
 
 
 // Mask for I bit in instruction word
@@ -996,10 +1000,12 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const b = this.inputs[1].get();
     assert(typeof b === 'bigint', `${this.name} B is BigInt`);
 
+/*
     console.log(`\
 ${this.name} \
 a=${octW(a)}(${this.inputs[0].name}) \
 b=${octW(b)}(${this.inputs[1].name})`);
+*/
 
     const allOnes = this.alu.ONES;
     const NOT = v => v ^ allOnes;
