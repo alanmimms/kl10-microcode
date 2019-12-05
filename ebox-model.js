@@ -249,7 +249,7 @@ const EBOX = StampIt.compose(Named, {
 
     this.resetActive = true;
     this.ucodeRun = false;
-    this.run = false;
+    this.run = true;            // By default I usually just want to go while testing microcode
     this.unitArray = Object.values(Named.units).concat([this]);
 
     // Reset every Unit back to initial value.
@@ -343,6 +343,12 @@ const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36n, value: 0n});
 const ONES = ConstantUnit({name: 'ONES', bitWidth: 36n, value: (1n << 36n) - 1n});
 module.exports.ZERO = ZERO;
 module.exports.ONES = ONES;
+
+
+////////////////////////////////////////////////////////////////
+// Simply pass through inputs to outputs as a combinatorial device
+// without changing anything.
+const PassThrough = Combinatorial.compose({name: 'PassThrough'});
 
 
 ////////////////////////////////////////////////////////////////
@@ -536,7 +542,7 @@ module.exports.ShiftDiv = ShiftDiv;
 // Control RAM: Readonly by default
 const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n,
                   input: `ONES`, control: `ZERO`, addr: `CRADR`});
-const CR = Reg({name: 'CR', bitWidth: 84n, input: `CRAM`});
+const CR = PassThrough({name: 'CR', bitWidth: 84n, input: `CRAM`});
 const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
 defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
 
@@ -574,143 +580,143 @@ const CRADR = Clocked.methods({
       // Force next address to 0o1777 ORed with current MSBs.
       this.toLatch = this.value | 0o1777n;
       this.force1777 = false;   // Handled.
-    } else {
-      const skip = CR.SKIP.get();
-      let orBits = 0n;
+      return;
+    }
 
-      // Determine if LSB is forced to '1' by a skip test condition or
-      // If DISP/MUL finds sign(FE) == 0.
-      switch(skip) {
-      default:
-        break;
+    const skip = CR.SKIP.get();
+    let orBits = 0n;
 
-      case CR.SKIP.RUN:
-        if (EBOX.run) orBits = 0o1n;
-        break;
+    // Determine if LSB is forced to '1' by a skip test condition or
+    // If DISP/MUL finds sign(FE) == 0.
+    switch(skip) {
+    default:
+      break;
 
-      case CR.SKIP.KERNEL:
-        orBits = 0o1n;          // XXX for now we are always in KERNEL mode
-        break;
+    case CR.SKIP.RUN:
+      if (EBOX.run) orBits = 0o1n;
+      break;
 
-      case CR.SKIP['-START']:   // Needed?
-      case CR.SKIP.FETCH:       // Soon
-      case CR.SKIP.USER:
-      case CR.SKIP.PUBLIC:
-      case CR.SKIP['RPW REF']:
-      case CR.SKIP['PI CYCLE']:
-      case CR.SKIP['-EBUS GRANT']:
-      case CR.SKIP['-EBUS XFER']:
-      case CR.SKIP.INTRPT:
-      case CR.SKIP['IO LEGAL']:
-      case CR.SKIP['P!S XCT']:
-      case CR.SKIP['-VMA SEC0']:
-      case CR.SKIP['AC REF']:   // Soon
-      case CR.SKIP['-MTR REQ']:
-        break;                  // XXX these need to be implemented
-      }
+    case CR.SKIP.KERNEL:
+      orBits = 0o1n;          // XXX for now we are always in KERNEL mode
+      break;
 
-      const disp = CR.DISP.get();
+    case CR.SKIP['-START']:   // Needed?
+    case CR.SKIP.FETCH:       // Soon
+    case CR.SKIP.USER:
+    case CR.SKIP.PUBLIC:
+    case CR.SKIP['RPW REF']:
+    case CR.SKIP['PI CYCLE']:
+    case CR.SKIP['-EBUS GRANT']:
+    case CR.SKIP['-EBUS XFER']:
+    case CR.SKIP.INTRPT:
+    case CR.SKIP['IO LEGAL']:
+    case CR.SKIP['P!S XCT']:
+    case CR.SKIP['-VMA SEC0']:
+    case CR.SKIP['AC REF']:   // Soon
+    case CR.SKIP['-MTR REQ']:
+      break;                  // XXX these need to be implemented
+    }
 
-      switch (disp) {
+    const disp = CR.DISP.get();
+
+    switch (disp) {
 
       // See schematics p. 344 and
       // EK-EBOX-all p. 256 for explanation.
       // FE0*4 + MQ34*2 + MQ35; implies MQ SHIFT, AD LONG
-      case CR.DISP.MUL:
-        if (FE.get() >= 0o1000n) orBits |= 0o04n;
-        orBits |= MQ.get() & 3n;
-        break;
+    case CR.DISP.MUL:
+      if (FE.get() >= 0o1000n) orBits |= 0o04n;
+      orBits |= MQ.get() & 3n;
+      break;
 
-      case CR.DISP['DRAM J']:
-        orBits = DR.J.get() & 0o17n;
-        break;
+    case CR.DISP['DRAM J']:
+      orBits = DR.J.get() & 0o17n;
+      break;
 
-      case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
-        orBits = this.stack.pop();
-        break;
+    case CR.DISP['RETURN']:   // POPJ return--may not coexist with CALL
+      orBits = this.stack.pop();
+      break;
 
-      case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
-        // E.g., EXIT "DISP/DRAM B,MEM/B WRITE,J/ST0"
-        orBits = DR.B.get();
-        break;
+    case CR.DISP['DRAM B']:   // 8 WAYS ON DRAM B FIELD
+      // E.g., EXIT "DISP/DRAM B,MEM/B WRITE,J/ST0"
+      orBits = DR.B.get();
+      break;
 
-      case CR.DISP['EA MOD']:	// (ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
-                                // ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
-                                // is (ARX0 or -LONG EN) for second case.  If ARX18
-                                // is 0, clear AR left; otherwise, poke ARL select
-                                // to set bit 2 (usually gates AD left into ARL)
-        // XXX this needs to be conditional on instructtion word
-        // format for byte pointers, etc.
-        if (IR.get() & X_NONZERO_MASK) orBits |= 0o01n;
-        if (IR.get() & INDEXED_MASK) orBits |= 0o02n;
-        break;
+    case CR.DISP['EA MOD']:	// (ARX0 or -LONG EN)*8 + -(LONG EN and ARX1)*4 +
+      // ARX13*2 + (ARX2-5) or (ARX14-17) non zero; enable
+      // is (ARX0 or -LONG EN) for second case.  If ARX18
+      // is 0, clear AR left; otherwise, poke ARL select
+      // to set bit 2 (usually gates AD left into ARL)
+      // XXX this needs to be conditional on instructtion word
+      // format for byte pointers, etc.
+      if (IR.get() & X_NONZERO_MASK) orBits |= 0o01n;
+      if (IR.get() & INDEXED_MASK) orBits |= 0o02n;
+      break;
 
-      case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
+    case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
 
-        if (EBOX.piCyclePending) {
-          if (this.debugNICOND) console.log(`NICOND: CON PI CYCLE`);
-        } else if (!EBOX.run) {
-          orBits |= 0o02n;                      // -CON RUN (halt)
-          if (this.debugNICOND) console.log(`NICOND: CON -RUN (halt)`);
-        } else if (EBOX.mtrIntReq) {
-          orBits |= 0o04n;                      // MTR INT REQ (meter interrupt)
-          if (this.debugNICOND) console.log(`NICOND: MTR INT REQ (meter interrupt)`);
-        } else if (EBOX.intReq) {
-          orBits |= 0o06n;                      // INT REQ (interrupt)
-          if (this.debugNICOND) console.log(`NICOND: INT REQ (interrupt)`);
-        } else if (EBOX.ucodeState05) {
-          orBits |= 0o10n;                      // STATE 05 Tracks enable
-          if (EBOX.trapReq) orBits |= 1n;       // STATE 05 Tracks enable+TRAP
-          if (this.debugNICOND) console.log(`NICOND: STATE 05 Tracks enable`);
-        } else if (!EBOX.vmaACRef) {
-          orBits |= 0o12n;                      // Normal instruction
-          if (EBOX.trapReq) orBits |= 1n;       // normal instruction=TRAP
-          if (this.debugNICOND) console.log(`NICOND: Normal instruction`);
-        } else {
-          orBits |= 0o16n;                      // AC ref and not PI cycle
-          if (EBOX.trapReq) orBits |= 1n;       // AC ref and not PI cycle+TRAP
-          if (this.debugNICOND) console.log(`NICOND: AC ref and not PI cycle`);
-        }
-
-        break;
-
-      case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
-        // 01 234 567 89A
-        const a = DR.A.get();   // Dispatch on DRAM A
-
-        // This condition matches CRA3 A .GE. 3 L
-        orBits |= a >= 3n ? a : (DR.J.get() & 0o1777n);
-
-        // If DR.A is IMMED-PF or READ-PF, prefetch next instruction.
-        switch(a) {
-        case DR.A['IMMED-PF']:
-        case DR.A['READ-PF']:
-          MBOX.startFetch();
-          break;
-        }
-        
-        break;
-
-      case CR.DISP['DIAG']:
-      case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
-      case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
-      case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
-      case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
-      case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
-      case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
-      case CR.DISP['NORM']:     // See normalization for details. Implies AD LONG
-        break;
-
+      if (EBOX.piCyclePending) {
+        if (this.debugNICOND) console.log(`NICOND: CON PI CYCLE`);
+      } else if (!EBOX.run) {
+        orBits |= 0o02n;                      // -CON RUN (halt)
+        if (this.debugNICOND) console.log(`NICOND: CON -RUN (halt)`);
+      } else if (EBOX.mtrIntReq) {
+        orBits |= 0o04n;                      // MTR INT REQ (meter interrupt)
+        if (this.debugNICOND) console.log(`NICOND: MTR INT REQ (meter interrupt)`);
+      } else if (EBOX.intReq) {
+        orBits |= 0o06n;                      // INT REQ (interrupt)
+        if (this.debugNICOND) console.log(`NICOND: INT REQ (interrupt)`);
+      } else if (EBOX.ucodeState05) {
+        orBits |= 0o10n;                      // STATE 05 Tracks enable
+        if (EBOX.trapReq) orBits |= 1n;       // STATE 05 Tracks enable+TRAP
+        if (this.debugNICOND) console.log(`NICOND: STATE 05 Tracks enable`);
+      } else if (!EBOX.vmaACRef) {
+        orBits |= 0o12n;                      // Normal instruction
+        if (EBOX.trapReq) orBits |= 1n;       // normal instruction=TRAP
+        if (this.debugNICOND) console.log(`NICOND: Normal instruction`);
+      } else {
+        orBits |= 0o16n;                      // AC ref and not PI cycle
+        if (EBOX.trapReq) orBits |= 1n;       // AC ref and not PI cycle+TRAP
+        if (this.debugNICOND) console.log(`NICOND: AC ref and not PI cycle`);
       }
 
-      if (CR.CALL.get()) {
-        // Push VALUE, not TOLATCH.
-        this.stack.push(this.value);
+      break;
+
+    case CR.DISP['DRAM A RD']:// IMPLIES INH CRY18
+      // 01 234 567 89A
+      const a = DR.A.get();   // Dispatch on DRAM A
+
+      // This condition matches CRA3 A .GE. 3 L
+      orBits |= a >= 3n ? a : (DR.J.get() & 0o1777n);
+
+      // If DR.A is IMMED-PF or READ-PF, prefetch next instruction.
+      switch(a) {
+      case DR.A['IMMED-PF']:
+      case DR.A['READ-PF']:
+        MBOX.startFetch();
+        break;
       }
 
-      console.log(`CRADR this.value=${octal(this.value)} orBits=${octal(orBits)} CR.J=${octal(CR.J.get())}`);
-      this.toLatch = this.value | orBits | CR.J.get();
+      break;
+
+    case CR.DISP['DIAG']:
+    case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
+    case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
+    case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
+    case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
+    case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
+    case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
+    case CR.DISP['NORM']:     // See normalization for details. Implies AD LONG
+      break;
     }
+
+    if (CR.CALL.get()) {
+      // Push VALUE, not TOLATCH.
+      this.stack.push(this.value);
+    }
+
+    console.log(`CRADR this.value=${octal(this.value)} orBits=${octal(orBits)} CR.J=${octal(CR.J.get())}`);
+    this.toLatch = CR.J.get() | orBits;
   },
 }) ({name: 'CRADR', bitWidth: 11n,
      // We replace `get()` so we can ignore the input but it must be valid.
