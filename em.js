@@ -332,6 +332,9 @@ function doExamine(words) {
 
     try {
       result = EBOX.eval(toEval);
+
+      // So you can say "ex AR" and get content of AR.
+      if (typeof result === 'object') result = result.get();
     } catch(e) {
       console.error(`Error evaluating "${toEval}":
 ${e.msg}`);
@@ -369,6 +372,9 @@ function doValue(words) {
 }
 
 
+const EBOXDebugFlags = `NICOND,CLOCK`.split(/,\s*/);
+
+
 function doDebug(words) {
 
   if (words.length === 1) {
@@ -392,7 +398,7 @@ function doDebug(words) {
       .forEach(u => wrappedMethods(u)
                .forEach(method => console.log(`  debug logging on ${u.name} ${method}`)));
 
-    if (EBOX.debugNICOND) console.log(`NICOND debug ON`);
+    EBOXDebugFlags.forEach(f => console.log(`${f} debug is ${EBOX['debug' + f] ? 'ON' : 'OFF'}`));
   }
 
 
@@ -402,6 +408,11 @@ function doDebug(words) {
     case 'NICOND':
       EBOX.debugNICOND ^= 1;
       console.log(`NICOND debug now ${EBOX.debugNICOND ? 'ON' : 'OFF'}`);
+      break;
+
+    case 'CLOCK':
+      EBOX.debugCLOCK ^= 1;
+      console.log(`CLOCK debug now ${EBOX.debugCLOCK ? 'ON' : 'OFF'}`);
       break;
 
     default:
@@ -719,21 +730,21 @@ ${octal(t)}: J/${octal(X)}`;
   FM.data[4] = 0o444444444444n;
   sourceLines[t] = `
 ; ================ Test FM, AD/ADA/ADB
-${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
-; AR=AC3=${octW(FM.data[3])}`;
+${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, SPEC/LOAD PC, J/${octal(t+1n)}\t\
+; PC=AC3=${octW(FM.data[3])}`;
   CR.value = 0n;
   CR.FMADR = CR.FMADR['AC+#'];
   CR['#'] = 3n;
   CR.ADB = CR.ADB.FM
   CR.AD = CR.AD.B;
-  CR.AR = CR.AR.AD;
+  CR.SPEC = CR.SPEC['LOAD PC'];
   CR.J = t + 1n;
   cram[t] = CR.value;
   ++t;
 
   sourceLines[t] = `\
-${octal(t)}: BR/AR, FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
-; BR=AC3=${octW(FM.data[3])}, AR=AC4=${octW(FM.data[4])}`;
+${octal(t)}: FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
+; PC=AC3=${octW(FM.data[3])}, AR=AC4=${octW(FM.data[4])}`;
   CR.value = 0n;
   CR.FMADR = CR.FMADR['AC+#'];
   CR['#'] = 4n;
@@ -745,11 +756,11 @@ ${octal(t)}: BR/AR, FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
   ++t;
 
   sourceLines[t] = `\
-${octal(t)}: ADA/AR,ADB/BR*2,AD/A+B,AR/AD*.25, J/${octal(0n)}\t\
-; AR<-(AR+2BR)*.25`;
+${octal(t)}: ADA/PC,ADB/AR*4,AD/A+B,AR/AD*.25, J/${octal(0n)}\t\
+; AR<-(AR+PC)*.25`;
   CR.value = 0n;
-  CR.ADA = CR.ADA.AR;
-  CR.ADB = CR.ADB['BR*2'];
+  CR.ADA = CR.ADA.PC;
+  CR.ADB = CR.ADB['AR*4'];
   CR.AD = CR.AD['A+B'];
   CR.AR = CR.AR['AD*.25'];
   CR.J = 0n;
