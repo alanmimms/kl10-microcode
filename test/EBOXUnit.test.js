@@ -10,8 +10,8 @@ const {
 const {
   EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
   SERIAL_NUMBER, EBOX,
-  CRAM, CRADR, CR,
-  DRAM, DRADR, DR,
+  CRAM, CR,
+  DRAM, DR,
   VMA, PC, IR,
   AR, ARX, BR, BRX, MQ, AD, SH,
   ZERO, ONES,
@@ -54,8 +54,8 @@ describe('EBOX', () => {
   });
 
   it(`should clear EBOX state`, () => {
-    CRADR.stack = [1n, 2n, 3n];    // Fill up a few things with state
-    CRADR.toLatch = 0o1234n;
+    CRAM.stack = [1n, 2n, 3n];    // Fill up a few things with state
+    CRAM.latchedAddr = 0o1234n;
     _.range(1000).forEach(k => CRAM.data[k] = BigInt(k) * 0o1234567n);
     expect(CRAM.data[123]).to.equal(123n * 0o1234567n);
     IR.toLatch = (0o123456n << 18n) | 0o765432n;
@@ -64,8 +64,8 @@ describe('EBOX', () => {
     PC.latch();
     EBOX.reset();
     expect(CRAM.data[123]).to.equal(0n);
-    expect(CRADR.get()).to.equal(0n);
-    expect(CRADR.stack.length).to.equal(0);
+    expect(CRAM.latchedAddr).to.equal(0n);
+    expect(CRAM.stack.length).to.equal(0);
     expect(IR.get()).to.equal(0n);
     expect(PC.get()).to.equal(0n);
   });
@@ -104,32 +104,24 @@ describe('Clocking/latching', () => {
   describe(`Verify basic CRAM J/x jump operation`, () => {
 
     it(`should cycle through X, Y, Z and then repeat`, () => {
-      wrapMethod(CRADR, 'unlatch');
-      wrapMethod(CRADR, 'latch');
-      wrapMethod(CRADR, 'get');
-
-      wrapMethod(CRAM, 'unlatch');
-      wrapMethod(CRAM, 'latch');
-      wrapMethod(CRAM, 'get');
-
-      CRADR.toLatch = CRADR.value = X;
+      CRAM.latchedAddr = X;
       CRAM.latch();
 
-      expect(CRADR.get().to8()).to.equal(X.to8());
-      console.log(`CRAM[${octal(CRADR.get())}]=${octal(CRAM.data[CRADR.get()], 84/3)}`);
+      expect(CRAM.latchedAddr.to8()).to.equal(X.to8());
+      console.log(`CRAM[${octal(CRAM.latchedAddr)}]=${octal(CRAM.data[CRAM.latchedAddr], 84/3)}`);
       EBOX.cycle();
-      console.log(`CRAM[${octal(CRADR.get())}]=${octal(CRAM.data[CRADR.get()], 84/3)}`);
-      expect(CRADR.get().to8()).to.equal(Y.to8());
+      console.log(`CRAM[${octal(CRAM.latchedAddr)}]=${octal(CRAM.data[CRAM.latchedAddr], 84/3)}`);
+      expect(CRAM.latchedAddr.to8()).to.equal(Y.to8());
       EBOX.cycle();
-      expect(CRADR.get().to8()).to.equal(Z.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(Z.to8());
       EBOX.cycle();
-      expect(CRADR.get().to8()).to.equal(X.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(X.to8());
       EBOX.cycle();
-      expect(CRADR.get().to8()).to.equal(Y.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(Y.to8());
       EBOX.cycle();
-      expect(CRADR.get().to8()).to.equal(Z.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(Z.to8());
       EBOX.cycle();
-      expect(CRADR.get().to8()).to.equal(X.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(X.to8());
     });
   });
 });

@@ -5,7 +5,7 @@ const {assert} = require('chai');
 const StampIt = require('@stamp/it');
 
 const {
-  octal, oct6, octW,
+  octal, oct6, octW, octA,
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask,
   wrapMethod, unwrapMethod,
@@ -99,11 +99,14 @@ const Clock = Named.init(function({drives = []}) {
 module.exports.Clock = Clock;
 
 
-// Used for non-clocked objects like ZERO and ONES
+// Used for non-clocked objects like ZERO and ONES. This is never
+// actually cycled.
 const NOCLOCK = Clock({name: 'NOCLOCK'});
+module.exports.NOCLOCK = NOCLOCK;
 
-// The EBOX-wide clock.
+// The EBOX-wide clock that drives the whole kaboodle.
 const EBOXClock = Clock({name: 'EBOXClock'});
+module.exports.EBOXClock = EBOXClock;
 
 
 ////////////////////////////////////////////////////////////////
@@ -173,15 +176,14 @@ const EBOXClock = Clock({name: 'EBOXClock'});
 // called, the output of a Clocked Unit reflects what was loaded
 // during `sampleInputs()`.
 //
-// * `getInputs()` and `getControl()` and `getAddress()` retrieve the
-//   inputs to the unit from the units that drive their input pins.
-//
-// * `sampleInputs()` uses `getInputs()` and `getAddress()` to save a
-//   register or RAM's value and is a no-op for combinatorial units.
+// * `sampleInputs()` uses `getInputs()`, `getControl()` and
+//   `getAddress()` to save a register or RAM's value and is a no-op
+//   for combinatorial units.
 //
 // * `latch()` makes the saved value the new output of the unit. 
 //
-// * `get()` returns current output value.
+// * `get()` returns current output value. For combinatorial units
+//   this just returns the transformed inputs.
 //
 const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
   function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock}) {
@@ -233,13 +235,14 @@ const EBOX = StampIt.compose(Named, {
   this.serialNumber = serialNumber;
   this.microInstructionsExecuted = 0n;
   this.executionTime = 0;
+  this.debugNICOND = false;
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
   wrappableMethods: `cycle,reset`.split(/,\s*/),
   run: false,
   memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
-  fetchCycle: false,            // Initated by MEM/IFET, cleared by MEM/MB WAIT
+  fetchCycle: false,            // Initiated by MEM/IFET, cleared by MEM/MB WAIT
 }).methods({
 
   reset() {
@@ -376,7 +379,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
   this.initValue = initValue;
 }).methods({
 
-  reset() {
+  RAMreset() {
 
     if (this.bitWidth <= 64 && this.initValue === 0n) {
       this.data = new BigUint64Array(this.nWords);
@@ -385,8 +388,13 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
     }
 
     this.value = this.initValue;
+    this.latchedAddr = 0n;
+    this.latchedIsWrite = false;
+    this.toLatch = 0n;
     this.ones = (1n << this.bitWidth) - 1n;
   },
+
+  reset() { this.RAMreset() },
 
   sampleInputs() {
     this.latchedIsWrite = this.isWrite();
@@ -432,15 +440,15 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 // Use this for example as a `control` for a RAM to write when
 // `COND/FM WRITE` with {input: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
 const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
-      .init(function({input, matchValue = 0n, matchF}) {
+      .init(function({input, clock = EBOXClock, matchValue = 0n, matchF}) {
         this.input = input;
+        this.clock = clock;
         this.matchValue = matchValue;
         this.matchF = matchF || (cur => cur === this.matchValue);
-        EBOXClock.addUnit(this);
+        clock.addUnit(this);
       }).methods({
 
-        sampleInputs() {
-        },
+        sampleInputs() { },     // XXX this needs to be fixed?
 
         latch() {
           const cur = this.input.get();
@@ -540,32 +548,15 @@ module.exports.ShiftDiv = ShiftDiv;
 // RAMs
 
 // Control RAM: Readonly by default
-const CRAM = RAM({name: 'CRAM', nWords: 2048, bitWidth: 84n,
-                  input: `ONES`, control: `ZERO`, addr: `CRADR`});
-const CR = PassThrough({name: 'CR', bitWidth: 84n, input: `CRAM`});
-const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
-defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
-
-
-// Mask for I bit in instruction word
-const INDEXED_MASK = maskForBit(13);
-
-// Mask for index register number in instruction word
-const X_NONZERO_MASK = maskForBit(14) - maskForBit(18);
-
-
-// Complex CRAM address calculation logic and uInstruction pointer.
-const CRADR = Clocked.methods({
+const CRAM = RAM.methods({
 
   reset() {
-    this.toLatch = this.value = 0n;
+    this.RAMreset();
     this.force1777 = false;     // Set by page fault conditions
     this.stack = [];
-    this.ones = (1n << this.bitWidth) - 1n;
-    this.debugNICOND = false;
   },
 
-  sampleInputs() {
+  getAddress() {
     // XXX Still remaining:
     // * A7: The conditions from Muxes E1,E32 CRA2
     // * A8: The conditions from Muxes E2,E16 CRA2
@@ -574,13 +565,12 @@ const CRADR = Clocked.methods({
     // * A10: CON COND ADR 10 CRA2
  
     if (this.force1777) {
+      this.force1777 = false;   // Handled.
       // Push return address from page fault handler.
       // Push VALUE not TOLATCH.
-      this.stack.push(this.value);
+      this.stack.push(this.latchedAddr);
       // Force next address to 0o1777 ORed with current MSBs.
-      this.toLatch = this.value | 0o1777n;
-      this.force1777 = false;   // Handled.
-      return;
+      return this.latchedAddr | 0o1777n;
     }
 
     const skip = CR.SKIP.get();
@@ -656,28 +646,28 @@ const CRADR = Clocked.methods({
     case CR.DISP['NICOND']:   // NEXT INSTRUCTION CONDITION (see NEXT for detail)
 
       if (EBOX.piCyclePending) {
-        if (this.debugNICOND) console.log(`NICOND: CON PI CYCLE`);
+        if (EBOX.debugNICOND) console.log(`NICOND: CON PI CYCLE`);
       } else if (!EBOX.run) {
         orBits |= 0o02n;                      // -CON RUN (halt)
-        if (this.debugNICOND) console.log(`NICOND: CON -RUN (halt)`);
+        if (EBOX.debugNICOND) console.log(`NICOND: CON -RUN (halt)`);
       } else if (EBOX.mtrIntReq) {
         orBits |= 0o04n;                      // MTR INT REQ (meter interrupt)
-        if (this.debugNICOND) console.log(`NICOND: MTR INT REQ (meter interrupt)`);
+        if (EBOX.debugNICOND) console.log(`NICOND: MTR INT REQ (meter interrupt)`);
       } else if (EBOX.intReq) {
         orBits |= 0o06n;                      // INT REQ (interrupt)
-        if (this.debugNICOND) console.log(`NICOND: INT REQ (interrupt)`);
+        if (EBOX.debugNICOND) console.log(`NICOND: INT REQ (interrupt)`);
       } else if (EBOX.ucodeState05) {
         orBits |= 0o10n;                      // STATE 05 Tracks enable
         if (EBOX.trapReq) orBits |= 1n;       // STATE 05 Tracks enable+TRAP
-        if (this.debugNICOND) console.log(`NICOND: STATE 05 Tracks enable`);
+        if (EBOX.debugNICOND) console.log(`NICOND: STATE 05 Tracks enable`);
       } else if (!EBOX.vmaACRef) {
         orBits |= 0o12n;                      // Normal instruction
         if (EBOX.trapReq) orBits |= 1n;       // normal instruction=TRAP
-        if (this.debugNICOND) console.log(`NICOND: Normal instruction`);
+        if (EBOX.debugNICOND) console.log(`NICOND: Normal instruction`);
       } else {
         orBits |= 0o16n;                      // AC ref and not PI cycle
         if (EBOX.trapReq) orBits |= 1n;       // AC ref and not PI cycle+TRAP
-        if (this.debugNICOND) console.log(`NICOND: AC ref and not PI cycle`);
+        if (EBOX.debugNICOND) console.log(`NICOND: AC ref and not PI cycle`);
       }
 
       break;
@@ -711,20 +701,28 @@ const CRADR = Clocked.methods({
     }
 
     if (CR.CALL.get()) {
-      // Push VALUE, not TOLATCH.
-      this.stack.push(this.value);
+      this.stack.push(this.latchedAddr);
     }
 
-    console.log(`CRADR this.value=${octal(this.value)} orBits=${octal(orBits)} CR.J=${octal(CR.J.get())}`);
-    this.toLatch = CR.J.get() | orBits;
-  },
-}) ({name: 'CRADR', bitWidth: 11n,
-     // We replace `get()` so we can ignore the input but it must be valid.
-     input: 'ZERO'});
+    console.log(`CRAM getAddress: \
+this.latchedAddr=${octal(this.latchedAddr)} \
+orBits=${octal(orBits)} \
+CR.J=${octal(CR.J.get())}`);
 
-// This clock is pulsed in next cycle after IR is stable but not on
-// prefetch.
-const DR_CLOCK = Clock({name: 'DR_CLOCK'});
+    return CR.J.get() | orBits;
+  },
+}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n,
+     input: `ONES`, control: `ZERO`, addr: `ZERO`});
+const CR = PassThrough({name: 'CR', bitWidth: 84n, input: `CRAM`});
+const excludeCRAMfields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
+defineBitFields(CR, CRAMdefinitions, excludeCRAMfields);
+
+
+// Mask for I bit in instruction word
+const INDEXED_MASK = maskForBit(13);
+
+// Mask for index register number in instruction word
+const X_NONZERO_MASK = fieldMask(14, 18);
 
 // Dispatch RAM: readonly by default
 const DRAM = RAM.methods({
@@ -750,6 +748,10 @@ const DRAM = RAM.methods({
   },
 }) ({name: 'DRAM', nWords: 512, bitWidth: 24n, input: `ONES`, control: `ZERO`, addr: `CR.J`});
 
+// This clock is pulsed in next cycle after IR is stable but not on
+// prefetch. XXX this is not used right now.
+const DR_CLOCK = Clock({name: 'DR_CLOCK'});
+
 const DR = Reg.methods({
 
   // Special override to handle special cases for DRAM read/dispatch
@@ -769,9 +771,13 @@ const DR = Reg.methods({
 
     return dw;
   },
-}) ({name: 'DR', bitWidth: 24n, clock: DR_CLOCK, input: `DRAM`});
+}) ({name: 'DR', bitWidth: 24n,
+     // XXX not used XXX clock: DR_CLOCK,
+     input: `DRAM`});
 defineBitFields(DR, DRAMdefinitions);
 
+// XXX this should probably be eliminated and replaced with explicit
+// loading of CURRENT_BLOCK as a side effect of some other operation.
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
 const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n,
                            clock: LOAD_AC_BLOCKS, input: `EBUS`});

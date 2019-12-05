@@ -10,8 +10,8 @@ const {
 const {
   EBOXUnit, Combinatorial, Clocked, Clock, Named, ConstantUnit, Reg, Mux,
   SERIAL_NUMBER, EBOX,
-  CRAM, CRADR, CR,
-  DRAM, DRADR, DR,
+  CRAM, CR,
+  DRAM, DR,
   VMA, PC, IR,
   BR, BRX, MQ, SH,
   AD, AR, ARR, ARL, ADX, ARX,
@@ -67,8 +67,8 @@ describe('AD ALU', () => {
       CR.AR = CR.AR.AD;
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.J = Y;
-      CRADR.value = X;
-      CRAM.data[CRADR.value] = CR.value;
+      CRAM.latchedAddr = X;
+      CRAM.data[CRAM.latchedAddr] = CR.value;
 
 /*
       wrapMethod(BR, 'get');
@@ -80,9 +80,9 @@ describe('AD ALU', () => {
       wrapMethod(ARR, 'get');
       wrapMethod(ARR, 'latch');
 */
-      expect(CRADR.value.to8()).to.equal(X.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(X.to8());
       EBOX.cycle();
-      expect(CRADR.value.to8()).to.equal(Y.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(Y.to8());
       expect(AR.get().to8()).to
         .equal(((BRinitial + PCinitial) & ARRones).to8(), `AR.get()`);
     });
@@ -97,8 +97,8 @@ describe('AD ALU', () => {
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.AR = CR.AR.AD;
       CR.J = Z;
-      CRADR.value = Y;
-      CRAM.data[CRADR.value] = CR.value;
+      CRAM.latchedAddr = Y;
+      CRAM.data[CRAM.latchedAddr] = CR.value;
 
       ARR.value = ARRinitial;
       EBOX.cycle();
@@ -115,8 +115,8 @@ describe('AD ALU', () => {
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.AR = CR.AR.AD;
       CR.J = X;
-      CRADR.value = Z;
-      CRAM.data[CRADR.value] = CR.value;
+      CRAM.latchedAddr = Z;
+      CRAM.data[CRAM.latchedAddr] = CR.value;
 
       EBOX.cycle();
       expect(AR.get().to8()).to
@@ -160,8 +160,8 @@ describe('AD ALU', () => {
       if (!cin) BRX.value = 0n; // Do not generate carry out of ARX
       CR.ARX = CR.ARX.ADX;      // Will compute arxA + BRX (may generate carry)
       CR.J = X;
-      CRADR.value = Z;
-      CRAM.data[CRADR.value] = CR.value;
+      CRAM.latchedAddr = Z;
+      CRAM.data[CRAM.latchedAddr] = CR.value;
 
       EBOX.cycle();
       expect(AR.get().to8()).to.equal(sb.to8(), `AR.get()`);
@@ -202,10 +202,10 @@ describe('AD ALU', () => {
       CR['AR CTL'] = CR['AR CTL']['ARR LOAD'];
       CR.AR = CR.AR.AD;
       CR.J = X;
-      CRADR.value = Z;
-      CRAM.data[CRADR.value] = CR.value;
+      CRAM.latchedAddr = Z;
+      CRAM.data[CRAM.latchedAddr] = CR.value;
       EBOX.cycle();
-      expect(CRADR.value.to8()).to.equal(X.to8());
+      expect(CRAM.latchedAddr.to8()).to.equal(X.to8());
       expect(ARR.get().to8()).to
         .equal(expected.to8(), `op was ${oct6(ARRinitial)} ${CRname} ${oct6(BRinitial)}`);
     }

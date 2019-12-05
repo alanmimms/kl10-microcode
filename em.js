@@ -23,7 +23,7 @@ const KLX_CRAM_lines = require('./cram-lines.js');
 
 const {
   EBOX, MBOX, FM,
-  CRADR, CRAM, CR, DRAM, DR,
+  CRAM, CR, DRAM, DR,
   AR, ARX, BR, BRX, MQ, VMA, PC, IR,
   Named, EBOXUnit,
 } = EBOXmodel;
@@ -32,8 +32,8 @@ const {
 const historyMax = 100;
 var breakpoint = {};
 let historyEnabled = false;
-const cradrHistory = [];
-let cradrHistoryX = -1;
+const craHistory = [];
+let craHistoryX = -1;
 
 let startOfLastStep = 0;
 
@@ -129,7 +129,7 @@ const commands = [
   },
 
   {name: 'til',
-   description: 'Continue execution until CRADR reaches a specified address.',
+   description: 'Continue execution until CRA reaches a specified address.',
    doFn: doTil,
   },
 
@@ -148,9 +148,9 @@ const commands = [
    doFn: doList,
   },
 
-  {name: 'cradr',
-   description: 'Set CRADR to specified value',
-   doFn: (words) => CRADR.value = getAddress(words),
+  {name: 'cra',
+   description: 'Set CRA to specified value',
+   doFn: (words) => CRAM.latchedAddr = getAddress(words),
   },
 
   {name: 'symbol',
@@ -160,7 +160,7 @@ const commands = [
   },
 
   {name: 'history',
-   description: `Display CRADRs 25 (or specified count) backward in time up to ${historyMax}.
+   description: `Display CRAs 25 (or specified count) backward in time up to ${historyMax}.
 Use 'history on' or 'history off' to enable or disable history mechanism.`,
    doFn: doHistory,
   },
@@ -217,8 +217,8 @@ function getAddress(words) {
   default:
 
     if (words.length < 2) {
-      const x = CRADR.get();
-      console.log(`CRADR=${octal(x)}`);
+      const x = CRAM.latchedAddr;
+      console.log(`CRA=${octal(x)}`);
       return x;
     }
 
@@ -251,7 +251,7 @@ function displayableAddress(x) {
 
 
 function curInstruction() {
-  const x = CRADR.get();
+  const x = CRAM.latchedAddr;
 
   if (OPT.testMicrocode) {
     return `${octal(x, 4)}: ${disassemble(CRAM.data[x])}`;
@@ -300,7 +300,7 @@ function doCPUStep(words) {
 
 
 function doGo(words) {
-  console.log(`[Running from ${octA(CRADR.get())}]`);
+  console.log(`[Running from ${octA(CRAM.latchedAddr)}]`);
   run();
 }
 
@@ -381,7 +381,7 @@ function doDebug(words) {
       .forEach(u => wrappedMethods(u)
                .forEach(method => console.log(`  debug logging on ${u.name} ${method}`)));
 
-    if (CRADR.debugNICOND) console.log(`NICOND debug ON`);
+    if (EBOX.debugNICOND) console.log(`NICOND debug ON`);
   }
 
 
@@ -389,8 +389,8 @@ function doDebug(words) {
 
     switch (flag) {
     case 'NICOND':
-      CRADR.debugNICOND ^= 1;
-      console.log(`NICOND debug now ${CRADR.debugNICOND ? 'ON' : 'OFF'}`);
+      EBOX.debugNICOND ^= 1;
+      console.log(`NICOND debug now ${EBOX.debugNICOND ? 'ON' : 'OFF'}`);
       break;
 
     default:
@@ -482,7 +482,7 @@ function handleLine(line) {
   }
 
   if (rl) prompt();
-  lastL = CRADR.get();
+  lastL = CRAM.latchedAddr;
 }
 
 
@@ -555,7 +555,7 @@ function startCommandLine() {
   });
 
   prompt();
-  lastL = CRADR.get();
+  lastL = CRAM.latchedAddr;
 }
 
 
@@ -623,10 +623,10 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 
     for (let n = insnsPerTick; EBOX.ucodeRun && n; --n) {
       EBOX.cycle();
-      const cradr = CRADR.get();
+      const cra = CRAM.latchedAddr;
 
-      if (breakpoint[cradr]) {
-	console.log(`[${breakpoint[cradr]}]`); // Say why we stopped
+      if (breakpoint[cra]) {
+	console.log(`[${breakpoint[cra]}]`); // Say why we stopped
 	breakpoint = {};
         EBOX.ucodeRun = false;
       } else {
@@ -639,7 +639,7 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
       setImmediate(runAsync);
     } else {
 
-      if (!maxCount || breakpoint[CRADR.get()]) {
+      if (!maxCount || breakpoint[CRAM.latchedAddr]) {
 	const stopTime = process.hrtime();
 	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
 
