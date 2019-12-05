@@ -387,10 +387,8 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
       this.data = _.range(Number(this.nWords)).map(x => this.initValue);
     }
 
-    this.value = this.initValue;
     this.latchedAddr = 0n;
-    this.latchedIsWrite = false;
-    this.toLatch = 0n;
+    this.toLatch = this.value = this.initValue;
     this.ones = (1n << this.bitWidth) - 1n;
   },
 
@@ -399,7 +397,7 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
   sampleInputs() {
     this.latchedIsWrite = this.isWrite();
     this.latchedAddr = this.getAddress();
-    this.toLatch = this.getInputs() & this.ones;
+    this.toLatch = this.data[this.latchedAddr] & this.ones;
   },
 
   latch() {
