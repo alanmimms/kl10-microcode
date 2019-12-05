@@ -17,9 +17,9 @@ const {
 } = require('./util');
 
 const EBOXmodel = require('./ebox-model');
-const CRAMwords = require('./cram.js');
-const DRAMwords = require('./dram.js');
-const cramLines = require('./cram-lines.js');
+const KLX_CRAM = require('./cram.js');
+const KLX_DRAM = require('./dram.js');
+const KLX_CRAM_lines = require('./cram-lines.js');
 
 const {
   EBOX, MBOX, FM,
@@ -38,13 +38,31 @@ let cradrHistoryX = -1;
 let startOfLastStep = 0;
 
 
-const optionList =   {
-  name: 'program', defaultOption: true,
-  defaultValue: 'boot.sav',
-  description: '[not yet implemented] REQUIRED program image to load (e.g., boot.sav)',
-};
+const optionList = [
+  {
+    name: 'test-microcode', alias: 'T', defaultValue: false, type: Boolean,
+    description: 'load internal testCRAM[]/testDRAM[] DEC KLX.MCR into CRAM/DRAM',
+  }, {
+    name: 'program', alias: 'P', defaultOption: true, defaultValue: 'boot.sav', type: String,
+    description: '[not yet implemented] REQUIRED program image to load (e.g., boot.sav)',
+  },
+];
 
-const OPT = CLA([optionList], {camelCase: true});
+
+const OPT = parseOptions(optionList);
+
+
+function parseOptions(list) {
+  let result = null;
+
+  try {
+    result = CLA(optionList, {camelCase: true});
+  } catch(e) {
+    usage(e.msg);
+  }
+
+  return result;
+}
 
 
 function usage(msg) {
@@ -53,7 +71,7 @@ function usage(msg) {
       header: 'em',
       content: `\
 Emulate a DEC KL10PV CPU configured to run TOPS-20 by running its \
-microcode on simulated hardware`,
+microcode on simulated hardware.`,
     },
     {
       header: 'Options',
@@ -234,11 +252,16 @@ function displayableAddress(x) {
 
 function curInstruction() {
   const x = CRADR.get();
-  const bar = `─`.repeat(120);
-  const vbar = `│`;
-  const NL = `\n`;
-  const barredLines = cramLines[x].split(/\n/).join(NL + vbar);
-  return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
+
+  if (OPT.testMicrocode) {
+    return `${octal(x, 4)}: ${disassemble(CRAM.data[x])}`;
+  } else {
+    const bar = `─`.repeat(120);
+    const vbar = `│`;
+    const NL = `\n`;
+    const barredLines = KLX_CRAM_lines[x].split(/\n/).join(NL + vbar);
+    return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
+  }
 }
 
 
@@ -645,15 +668,52 @@ function assemble(op, a, i, x, y) {
 }
 
 
+const X = 0o123n;
+const Y = 0o222n;
+const Z = 0o321n;
+
+
+function createTestMicrocode() {
+  const cram = CRAM.data;
+
+  CR.value = 0n;
+  CR.J = X;                     // Jump to three instruction bounce loop
+  cram[0] = CR.value;
+  console.log(`0000: ${disassemble(CR.value)}`);
+
+  CR.value = 0n;
+  CR.J = Y;
+  cram[X] = CR.value;
+  console.log(`${octal(X, 4)}: ${disassemble(CR.value)}`);
+
+  CR.value = 0n;
+  CR.J = Z;
+  cram[Y] = CR.value;
+  console.log(`${octal(Y, 4)}: ${disassemble(CR.value)}`);
+
+  CR.value = 0n;
+  CR.J = X;
+  cram[Z] = CR.value;
+  console.log(`${octal(Z, 4)}: ${disassemble(CR.value)}`);
+}
+
+
 function doReset() {
   // Reset
   EBOX.reset();
 
-  // Load CRAM from our Microcode
-  CRAMwords.forEach((mw, addr) => CRAM.data[addr] = mw);
+  if (OPT.testMicrocode) {
+    createTestMicrocode();
+  } else {
+    // Load CRAM and DRAM from our KLX microcode
+    KLX_CRAM.forEach((mw, addr) => CRAM.data[addr] = mw);
+    KLX_DRAM.forEach((dw, addr) => DRAM.data[addr] = dw);
+  };
 
-  // Load DRAM from our Microcode
-  DRAMwords.forEach((dw, addr) => DRAM.data[addr] = dw);
+  console.log(`After ${octal(0, 4)}: ${disassemble(CRAM.data[0])}`);
+  console.log(`After ${octal(X, 4)}: ${disassemble(CRAM.data[X])}`);
+  console.log(`After ${octal(Y, 4)}: ${disassemble(CRAM.data[Y])}`);
+  console.log(`After ${octal(Z, 4)}: ${disassemble(CRAM.data[Z])}`);
 
   // HRROI 13,123456
   MBOX.data[0] = assemble(0o561, 0o13, 0, 0, 0o123456n);
