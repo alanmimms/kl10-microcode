@@ -702,10 +702,12 @@ const CRAM = RAM.methods({
       this.stack.push(this.latchedAddr);
     }
 
+/*
     console.log(`CRAM getAddress: \
 this.latchedAddr=${octal(this.latchedAddr)} \
 orBits=${octal(orBits)} \
 CR.J=${octal(CR.J.get())}`);
+*/
 
     return CR.J.get() | orBits;
   },
