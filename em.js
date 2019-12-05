@@ -723,6 +723,9 @@ function doReset() {
 
   // ADDI 11,4321
   MBOX.data[2] = assemble(0o271, 0o11, 0, 0, 0o4321n);
+
+  // Prefetch CR content for first cycle
+  CRAM.cycle();
 }
 
 
