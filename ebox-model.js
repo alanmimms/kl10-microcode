@@ -27,6 +27,29 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 
 
 ////////////////////////////////////////////////////////////////
+// Handy utility functions
+
+// For each XXXXis(name) function, return 1n iff XXXX/${name} is true.
+const SPECis = matcherFactory('SPEC');
+const CONDis = matcherFactory('COND');
+const VMAXis = matcherFactory('VMAX');
+
+
+// Return 1n iff CR[fieldName] has value of the constant
+// fieldValueName defined for that field.
+function fieldIs(fieldName, fieldValueName) {
+  return BigInt(CR[fieldName].get() === CR[fieldName][fieldValueName]);
+}
+
+
+// Returns a matcher function to match CR field `fieldName` against
+// its constant value named by the function parameter.
+function matcherFactory(fieldName) {
+  return name => BigInt(CR[fieldName].get() === CR[fieldName][name]);
+}
+
+
+////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 ////////////////////////////////////////////////////////////////
 
@@ -83,17 +106,23 @@ const Clock = Named.init(function({drives = []}) {
 }).methods({
   addUnit(unit) { this.drives.push(unit) },
 
-  cycle() {
+  cycle(debug = false) {
+
+    if (debug) console.log(`================ ${this.name} sampleInputs phase ================`);
 
     this.drives.forEach(unit => {
       assert(typeof unit.sampleInputs === typeofFunction, `${unit.name} sampleInputs() must exist`); 
      unit.sampleInputs();
     });
 
+    if (debug) console.log(`=================== ${this.name} latch phase ====================`);
+
     this.drives.forEach(unit => {
       assert(typeof unit.latch === typeofFunction, `${unit.name} latch() must exist`);
       unit.latch();
     });
+
+    if (debug) console.log(`=============== ${this.name} cycle complete  ================`);
   },
 });
 module.exports.Clock = Clock;
@@ -240,6 +269,7 @@ const EBOX = StampIt.compose(Named, {
   this.microInstructionsExecuted = 0n;
   this.executionTime = 0;
   this.debugNICOND = false;
+  this.debugCLOCK = false;
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
@@ -269,7 +299,7 @@ const EBOX = StampIt.compose(Named, {
   },
 
   cycle() {
-    this.clock.cycle();
+    this.clock.cycle(this.debugCLOCK);
     ++this.microInstructionsExecuted;
   },
 
@@ -471,6 +501,7 @@ const Mux = Combinatorial.compose({name: 'Mux'}).init(function({enableF = () => 
     const controlValue = this.getControl();
     const input = this.inputs[controlValue];
     assert(this.enableF, `${this.name}.enableF not null`);
+    assert(input, `${this.name}.get(): input not null for controlValue=${controlValue}.`);
     return this.enableF() ? input.get() & this.ones : 0n;
   },
 });
@@ -812,7 +843,7 @@ const IR = Reg.init(function() {
   // NOTE The fields we define here have getter/setter so you can
   // directly reference them as IR members without using
   // fieldName.get().
-  Object.entries(fields).forEach((name, field) => {
+  Object.entries(fields).forEach(([name, field]) => {
     const {s, e} = field;
 
     Object.defineProperty(that, name, {
@@ -1156,10 +1187,16 @@ const VMA_HELD_OR_PC = Mux.methods({
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND',
                             matchValue: CR.COND['VMA HELD']})});
 
-const PC = Reg({name: 'PC', bitWidth: 35n - 13n + 1n,
-                input: `VMA`,
-                control: FieldMatcher({name: 'LOAD_PC', input: CR.SPEC,
-                                       matchValue: CR.SPEC['LOAD PC']})});
+const PC = Reg.methods({
+
+  // Allow SPEC/LOAD PC to override our normal load from VMA.
+  getInputs() {
+    const input = SPECis('LOAD PC') ? AR : VMA;
+    console.log(`PC input is ${input.name}`);
+    return input.get();
+  },
+}) ({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`});
+
 const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17,
                            input: `PC`});
 const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n,
@@ -1381,7 +1418,7 @@ const ARML = Mux.methods({
      control: `CR.ARL`});
 
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
-                  inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADdiv4]`,
+                  inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
 const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
@@ -1391,7 +1428,8 @@ const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
 const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => !!(cur & ARR_LOADmask)})});
+                                         matchF: cur => (!!(cur & ARR_LOADmask) ||
+                                                         CR.AR !== CR.AR.AR)})});
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
@@ -1399,11 +1437,9 @@ const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
 const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
 
-// XXX TODO: BR is clocked by CRAM BR LOAD?
 const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`,
                 clock: FieldMatchClock({name: 'BR_CLOCK',
                                         input: `CR.BR`, matchValue: CR.BR.AR})});
-// XXX TODO: BRX is clocked by CRAM BRX LOAD?
 const BRX = Reg({name: 'BRX', bitWidth: 36n, input: `ARX`,
                  clock: FieldMatchClock({name: 'BRX_CLOCK',
                                          input: `CR.BRX`, matchValue: CR.BRX.ARX})});
@@ -1604,28 +1640,6 @@ function defineBitFields(input, s, ignoreFields = []) {
       }
     }
   });
-}
-
-////////////////////////////////////////////////////////////////
-// Handy utility functions
-
-// For each XXXXis(name) function, return 1n iff XXXX/${name} is true.
-const SPECis = matcherFactory('SPEC');
-const CONDis = matcherFactory('COND');
-const VMAXis = matcherFactory('VMAX');
-
-
-// Return 1n iff CR[fieldName] has value of the constant
-// fieldValueName defined for that field.
-function fieldIs(fieldName, fieldValueName) {
-  return BigInt(CR[fieldName].get() === CR[fieldName][fieldValueName]);
-}
-
-
-// Returns a matcher function to match CR field `fieldName` against
-// its constant value named by the function parameter.
-function matcherFactory(fieldName) {
-  return name => BigInt(CR[fieldName].get() === CR[fieldName][name]);
 }
 
 // Export every EBOXUnit
