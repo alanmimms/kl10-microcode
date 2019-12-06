@@ -46,11 +46,15 @@ function fieldIs(fieldName, fieldValueName) {
 // its constant value named by the function parameter.
 function matcherFactory(fieldName) {
   return name => {
+    const toMatch = CR[fieldName][name];
+/*
     const {s, e} = CR[fieldName];
     const w = e - s + 1;
     const cur = fieldExtract(CR.value, s, e, CR.bitWidth);
-    const toMatch = CR[fieldName][name];
-    console.log(`matcher ${name}=${octal(cur, w/3)} toMatch=${octal(toMatch, w/3)}`);
+    console.log(`CR=${octal(CR.get(), 84/3)}`);
+    console.log(`matcher CR.${fieldName}['${name}']=${octal(cur, w/3)} toMatch=${octal(toMatch, w/3)}`);
+*/
+    const cur = CR[fieldName].get();
     return cur === toMatch;
   }
 }
@@ -300,6 +304,7 @@ const EBOX = StampIt.compose(Named, {
     this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
 
     // RESET always generates several clocks with zero CRAM and DRAM.
+    CRAM.cycle();               // Explicitly set up CRAM for this cycle.
     _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
@@ -307,6 +312,7 @@ const EBOX = StampIt.compose(Named, {
 
   cycle() {
     this.clock.cycle(this.debugCLOCK);
+    CRAM.cycle();               // Explicitly set up CRAM for next cycle.
     ++this.microInstructionsExecuted;
   },
 
@@ -582,7 +588,10 @@ module.exports.ShiftDiv = ShiftDiv;
 ////////////////////////////////////////////////////////////////
 // RAMs
 
-// Control RAM: Readonly by default
+// Control RAM: Readonly by default. This is not a RAM object because
+// we explicitly clock it and manage its settled value for each EBOX
+// cycle in EBOX. The CRAM value never changes during a cycle; it only
+// changes in the time between cycles.
 const CRAM = RAM.methods({
 
   reset() {
@@ -590,6 +599,16 @@ const CRAM = RAM.methods({
     this.force1777 = false;     // Set by page fault conditions
     this.stack = [];
   },
+
+  sampleInputs() {},
+  latch() {},
+
+  cycle() {
+    this.latchedAddr = this.getAddress();
+    this.value = this.data[this.latchedAddr];
+  },
+
+  get() { return this.value },
 
   getAddress() {
     // XXX Still remaining:
@@ -748,8 +767,7 @@ CR.J=${octal(CR.J.get())}`);
 
     return CR.J.get() | orBits;
   },
-}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n,
-     input: `ONES`, control: `ZERO`, addr: `ZERO`});
+}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n, clock: NOCLOCK});
 
 // This simply passes CRAM current addressed word through so we can
 // extract bitfields.
@@ -1102,76 +1120,75 @@ const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, input: `AD`});
 // This does not use the canonical EBOXUnit `control` or `func` inputs
 // since it has very complex decoding of VMA/xxx and COND/xxx values
 // to determine its operation.
-const VMA = Reg.compose({name: 'VMA'})
-      .methods({
+const VMA = Reg.methods({
 
-        latch() {
-          // XXX this needs to implement the load/inc/dec/hold. It is
-          // probably going to have to take the Addr+Data Paths VMA
-          // architecture completely into account. The good news is
-          // that the logic to do some of this is part of SCD TRAP
-          // MIX.
-          //
-          // From inspecting schematics (VMA starts on p. 354), VMA
-          // only holds the full PC including section. Flags come from
-          // elsewhere.
-          //
-          // It is pretty clear I need a completely new data path
-          // diagram for VMA based on M8542 which replaces the M8523 -
-          // outdated for KL10-PV model B but is shown on p. 137.
+  latch() {
+    // XXX this needs to implement the load/inc/dec/hold. It is
+    // probably going to have to take the Addr+Data Paths VMA
+    // architecture completely into account. The good news is
+    // that the logic to do some of this is part of SCD TRAP
+    // MIX.
+    //
+    // From inspecting schematics (VMA starts on p. 354), VMA
+    // only holds the full PC including section. Flags come from
+    // elsewhere.
+    //
+    // It is pretty clear I need a completely new data path
+    // diagram for VMA based on M8542 which replaces the M8523 -
+    // outdated for KL10-PV model B but is shown on p. 137.
 
-          // Note the data path diagram shows these values inverted
-          // because in schematics they are active low. These are
-          // right.
-          // VMA/=<52:53>D,0	;ALSO CONTROLLED BY SPECIAL FUNCTIONS
-          // 	VMA=0		;BY DEFAULT
-          // 	PC=1		;MAY BE OVERRIDDEN BY MCL LOGIC	TO LOAD FROM AD
-          // 	LOAD=1		; IF WE KNOW IT WILL BE OVERRIDDEN, USE THIS
-          // 	PC+1=2
-          // 	AD=3		;ENTIRE VMA, INCLUDING SECTION
-          //
-          // COND/=<60:65>D,0
-          //     VMA_#=30
-          //     VMA_#+TRAP=31
-          //     VMA_#+MODE=32
-          //     VMA_#+AR32-35=33
-          //     VMA_#+PI*2=34
-          //     VMA DEC=35	;VMA_VMA-1
-          //     VMA INC=36	;VMA_VMA+1
+    // Note the data path diagram shows these values inverted
+    // because in schematics they are active low. These are
+    // right.
+    // VMA/=<52:53>D,0	;ALSO CONTROLLED BY SPECIAL FUNCTIONS
+    // 	VMA=0		;BY DEFAULT
+    // 	PC=1		;MAY BE OVERRIDDEN BY MCL LOGIC	TO LOAD FROM AD
+    // 	LOAD=1		; IF WE KNOW IT WILL BE OVERRIDDEN, USE THIS
+    // 	PC+1=2
+    // 	AD=3		;ENTIRE VMA, INCLUDING SECTION
+    //
+    // COND/=<60:65>D,0
+    //     VMA_#=30
+    //     VMA_#+TRAP=31
+    //     VMA_#+MODE=32
+    //     VMA_#+AR32-35=33
+    //     VMA_#+PI*2=34
+    //     VMA DEC=35	;VMA_VMA-1
+    //     VMA INC=36	;VMA_VMA+1
 
-          switch (CR.COND.get()) {
-          case CR['VMA_#']:
-          case CR['VMA_#+TRAP']:
-          case CR['VMA_#+MODE']:
-          case CR['VMA_#+AR32-35']:
-          case CR['VMA_#+PI*2']:
-            break;
+    switch (CR.COND.get()) {
+    case CR['VMA_#']:
+    case CR['VMA_#+TRAP']:
+    case CR['VMA_#+MODE']:
+    case CR['VMA_#+AR32-35']:
+    case CR['VMA_#+PI*2']:
+      break;
 
-          case CR['VMA DEC']:
-          case CR['VMA INC']:
-            break;
-          }
+    case CR['VMA DEC']:
+    case CR['VMA INC']:
+      break;
+    }
 
-          // VMA
-          switch (CR.VMA.get()) {
-          case CR.VMA.VMA:      // VMA (noop)
-            break;
-          case CR.VMA.PC:       // PC or LOAD
-          case CR.VMA.LOAD:     // PC or LOAD
-            // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
-            this.value = PC.value;
-            break;
-          case CR.VMA['PC+1']:  // PC+1
-            this.value = this.joinHalves(this.getLH(), PC.value + 1n);
-            break;
-          case CR.VMA.AD:       // AD (ENTIRE VMA, INCLUDING SECTION)
-            this.value = AD.value;
-            break;
-          }
+    // VMA
+    switch (CR.VMA.get()) {
+    case CR.VMA.VMA:      // VMA (noop)
+      break;
+    case CR.VMA.PC:       // PC or LOAD
+    case CR.VMA.LOAD:     // PC or LOAD
+      // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
+      this.value = PC.value;
+      break;
+    case CR.VMA['PC+1']:  // PC+1
+      this.value = this.joinHalves(this.getLH(), PC.value + 1n);
+      break;
+    case CR.VMA.AD:       // AD (ENTIRE VMA, INCLUDING SECTION)
+      this.value = AD.value;
+      break;
+    }
 
-          return this.value;
-        },
-      }) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
+    return this.value;
+  },
+}) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
 
 const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35,
                             input: `VMA`});
@@ -1199,7 +1216,6 @@ const PC = Reg.methods({
   // Allow SPEC/LOAD PC to override our normal load from VMA.
   getInputs() {
     const input = SPECis('LOAD PC') ? AR : VMA;
-    console.log(`PC input is ${input.name}`);
     return input.get();
   },
 }) ({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`});
