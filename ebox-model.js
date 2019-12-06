@@ -9,7 +9,7 @@ const {
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask,
   wrapMethod, unwrapMethod,
-  typeofFunction,
+  centeredBanner, typeofFunction,
 } = require('./util');
 
 const utilFormats = require('./util');
@@ -89,6 +89,10 @@ const Named = StampIt({name: 'Named'}).statics({
 
   reset() { },
 
+  debugBanner(msg) {
+    console.log(`${this.name}: ` + centeredBanner(msg, 80 - this.name.length));
+  },
+  
   // This is called on every instance to fix up forward references
   // found in its `mayFixup` stamp static property, which is an array
   // of property names whose value is a string to be evaluated at the
@@ -118,22 +122,21 @@ const Clock = Named.init(function({drives = []}) {
   addUnit(unit) { this.drives.push(unit) },
 
   cycle(debug = false) {
-
-    if (debug) console.log(`================ ${this.name} sampleInputs phase ================`);
+    if (debug) this.debugBanner(`sampleInputs`);
 
     this.drives.forEach(unit => {
       assert(typeof unit.sampleInputs === typeofFunction, `${unit.name} sampleInputs() must exist`); 
      unit.sampleInputs();
     });
 
-    if (debug) console.log(`=================== ${this.name} latch phase ====================`);
+    if (debug) this.debugBanner(`latch`);
 
     this.drives.forEach(unit => {
       assert(typeof unit.latch === typeofFunction, `${unit.name} latch() must exist`);
       unit.latch();
     });
 
-    if (debug) console.log(`=============== ${this.name} cycle complete  ================`);
+    if (debug) this.debugBanner('cycle complete');
   },
 });
 module.exports.Clock = Clock;
@@ -247,7 +250,7 @@ reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
 
     // Stringify a value of our `this.value` type.
     vToString(v) { return utilFormats[this.debugFormat](v, Math.ceil(Number(this.bitWidth) / 3)) },
-  
+
     reset() {
       this.value = 0n;
       this.bitWidth = BigInt(this.bitWidth || 1n);
@@ -312,7 +315,7 @@ const EBOX = StampIt.compose(Named, {
 
   cycle() {
     this.clock.cycle(this.debugCLOCK);
-    CRAM.cycle();               // Explicitly set up CRAM for next cycle.
+    CRAM.cycle(this.debugCLOCK); // Explicitly set up CRAM for next cycle.
     ++this.microInstructionsExecuted;
   },
 
@@ -603,9 +606,12 @@ const CRAM = RAM.methods({
   sampleInputs() {},
   latch() {},
 
-  cycle() {
+  cycle(debug = false) {
+    if (debug) this.debugBanner(`sampleInputs`);
     this.latchedAddr = this.getAddress();
+    if (debug) this.debugBanner(`latch`);
     this.value = this.data[this.latchedAddr];
+    if (debug) this.debugBanner(`cycle complete`);
   },
 
   get() { return this.value },

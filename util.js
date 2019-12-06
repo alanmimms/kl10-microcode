@@ -167,3 +167,13 @@ function wrappedMethods(obj) {
     .filter(name => methodIsWrapped(obj, name));
 }
 module.exports.wrappedMethods = wrappedMethods;
+
+
+function centeredBanner(s, width = 80, pad = '=') {
+  const leftPad = (width - s.length) >>> 1;
+  s = ' ' + s + ' ';
+  return s
+    .padStart(s.length + leftPad, pad)
+    .padEnd(width, pad);
+}
+module.exports.centeredBanner = centeredBanner;
