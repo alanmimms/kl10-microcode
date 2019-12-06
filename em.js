@@ -379,15 +379,20 @@ function doDebug(words) {
 
   if (words.length === 1) {
     displayDebugFlags();
-  } else if (words.length === 2) {
+    return;
+  }
 
-    if (Named.units[words[1]]) {
-      wrapUnit(words[1].toUpperCase(), '*');
+  const name = words[1].toUpperCase();
+
+  if (words.length === 2) {
+
+    if (Named.units[name]) {
+      wrapUnit(name, '*');
     } else {
-      setDebugFlag(words[1]);
+      setDebugFlag(name);
     }
   } if (words.length === 3) { // "debug unit-name method-or-*"
-    wrapUnit(words[1].toUpperCase(), words[2]);
+    wrapUnit(name, words[2]);
   }
 
 
