@@ -729,12 +729,13 @@ ${octal(t)}: J/${octal(X)}`;
   _.range(16).forEach(a => FM.data[a] = 0o010101010101n * BigInt(a));
   sourceLines[t] = `
 ; ================ Test FM, AD/ADA/ADB
-${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, SPEC/LOAD PC, J/${octal(t+1n)}\t\
+${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, VMA/AD, SPEC/LOAD PC, J/${octal(t+1n)}\t\
 ; PC=AC3=${octW(FM.data[3])}`;
   CR.value = 0n;
   CR.FMADR = CR.FMADR['AC+#'];
   CR['#'] = 3n;
   CR.ADB = CR.ADB.FM
+  CR.VMA = CR.VMA.AD;
   CR.AD = CR.AD.B;
   CR.SPEC = CR.SPEC['LOAD PC'];
   CR.J = t + 1n;
