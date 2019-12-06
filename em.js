@@ -253,12 +253,12 @@ function displayableAddress(x) {
 
 
 function curInstruction() {
-  const x = CRAM.latchedAddr;
   const bar = `─`.repeat(120);
-  const vbar = `│`;
-  const NL = `\n`;
-  const barredLines = sourceLines[x].split(/\n/).join(NL + vbar);
-  return `┌` + bar + NL + vbar + barredLines + NL + '└' + bar;
+  return `\
+┌${bar}
+│ ${sourceLines[CRAM.latchedAddr].split(/\n/).join(`\n│`)}
+│      CR=${octal(CR.get(), 84/3)}
+└${bar}`;
 }
 
 
@@ -695,7 +695,7 @@ function createTestMicrocode() {
   const Y = 0o222n;
   const Z = 0o321n;
   const T1 = 0o400n;
-  const cram = CRAM.data;
+  const cramData = CRAM.data;
   let t = 0n;                   // CRAM location we are filling right now
 
   sourceLines = [];
@@ -705,25 +705,25 @@ function createTestMicrocode() {
 ${octal(t)}: J/${octal(X)}`;
   CR.value = 0n;
   CR.J = X;                     // Jump to three instruction bounce loop
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
 
   t = X;
   sourceLines[t] = `${octal(t)}: J/${octal(Y)}`;
   CR.value = 0n;
   CR.J = Y;
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
 
   t = Y;
   sourceLines[t] = `${octal(t)}: J/${octal(Z)}`;
   CR.value = 0n;
   CR.J = Z;
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
 
   t = Z;
   sourceLines[t] = `${octal(t)}: J/${octal(T1)}`;
   CR.value = 0n;
   CR.J = T1;
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
 
   t = T1;
   _.range(16).forEach(a => FM.data[a] = 0o010101010101n * BigInt(a));
@@ -738,9 +738,7 @@ ${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, SPEC/LOAD PC, J/${octal(t+1n)}\t\
   CR.AD = CR.AD.B;
   CR.SPEC = CR.SPEC['LOAD PC'];
   CR.J = t + 1n;
-  console.log(`CR=${octal(CR.value, 84/3)}`);
-  console.log(`CR.SPEC=${octal(fieldExtract(CR.value, 67, 71, 84))}`);
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
   ++t;
 
   sourceLines[t] = `\
@@ -753,7 +751,7 @@ ${octal(t)}: FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
   CR.AD = CR.AD.B;
   CR.AR = CR.AR.AD;
   CR.J = t + 1n;
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
   ++t;
 
   sourceLines[t] = `\
@@ -765,7 +763,7 @@ ${octal(t)}: ADA/PC,ADB/AR*4,AD/A+B,AR/AD*.25, J/${octal(0n)}\t\
   CR.AD = CR.AD['A+B'];
   CR.AR = CR.AR['AD*.25'];
   CR.J = 0n;
-  cram[t] = CR.value;
+  cramData[t] = CR.value;
   ++t;
 }
 
