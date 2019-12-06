@@ -135,7 +135,7 @@ function defaultPostAction({result, stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
   const resultString = result === undefined ? '' : `=${o.vToString(result)}`;
   console.log(`\
-${name} ${this.methodName}${resultString} 
+${name} ${this.methodName}${resultString}
     before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}
     after  value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
   return result;
