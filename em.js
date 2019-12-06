@@ -11,7 +11,7 @@ const CLU = require('command-line-usage');
 
 const {
   octal, oct6, octW, octA,
-  shiftForBit,
+  shiftForBit, fieldExtract,
   wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
   typeofFunction,
 } = require('./util');
@@ -726,8 +726,7 @@ ${octal(t)}: J/${octal(X)}`;
   cram[t] = CR.value;
 
   t = T1;
-  FM.data[3] = 0o333333333333n;
-  FM.data[4] = 0o444444444444n;
+  _.range(16).forEach(a => FM.data[a] = 0o010101010101n * BigInt(a));
   sourceLines[t] = `
 ; ================ Test FM, AD/ADA/ADB
 ${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, SPEC/LOAD PC, J/${octal(t+1n)}\t\
@@ -739,6 +738,8 @@ ${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, SPEC/LOAD PC, J/${octal(t+1n)}\t\
   CR.AD = CR.AD.B;
   CR.SPEC = CR.SPEC['LOAD PC'];
   CR.J = t + 1n;
+  console.log(`CR=${octal(CR.value, 84/3)}`);
+  console.log(`CR.SPEC=${octal(fieldExtract(CR.value, 67, 71, 84))}`);
   cram[t] = CR.value;
   ++t;
 
