@@ -45,7 +45,14 @@ function fieldIs(fieldName, fieldValueName) {
 // Returns a matcher function to match CR field `fieldName` against
 // its constant value named by the function parameter.
 function matcherFactory(fieldName) {
-  return name => BigInt(CR[fieldName].get() === CR[fieldName][name]);
+  return name => {
+    const {s, e} = CR[fieldName];
+    const w = e - s + 1;
+    const cur = fieldExtract(CR.value, s, e, CR.bitWidth);
+    const toMatch = CR[fieldName][name];
+    console.log(`matcher ${name}=${octal(cur, w/3)} toMatch=${octal(toMatch, w/3)}`);
+    return cur === toMatch;
+  }
 }
 
 
@@ -1417,24 +1424,27 @@ const ARML = Mux.methods({
      inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
      control: `CR.ARL`});
 
+const AR_CTL = CR['AR CTL'];
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
                   inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
-const ARL_LOADmask = CR['AR CTL']['ARL LOAD'];
+const ARL_LOADmask = AR_CTL['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
-                 clock: FieldMatchClock({name: 'ARL_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => ((cur & ARL_LOADmask) ||
+                 clock: FieldMatchClock({name: 'ARL_CLOCK', input: `AR_CTL`,
+                                         matchF: cur => (cur & ARL_LOADmask ||
                                                          CONDis('ARL IND'))})});
-const ARR_LOADmask = CR['AR CTL']['ARR LOAD'];
+const ARR_LOADmask = AR_CTL['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
-                 clock: FieldMatchClock({name: 'ARR_CLOCK', input: `CR['AR CTL']`,
-                                         matchF: cur => (!!(cur & ARR_LOADmask) ||
+                 clock: FieldMatchClock({name: 'ARR_CLOCK', input: `AR_CTL`,
+                                         matchF: cur => (cur & ARR_LOADmask ||
                                                          CR.AR !== CR.AR.AR)})});
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
 const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
+
+// XXX needs to implement AR/ARMM, SPEC/REG CTL as a special getInputs() method.
 const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
 
 const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`,
