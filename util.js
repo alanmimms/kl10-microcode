@@ -29,6 +29,7 @@ module.exports.octal = octal;                                   // Default is fo
 const oct6 = module.exports.oct6 = n => octal(n, 6);            // 18b halfwords zero left padded
 const octW = module.exports.octW = n => octal(n, 12, 6, ',,');  // Full 36b words x,,y zero left padded
 const octA = module.exports.octA = n => octal(n, 7, 6, ',,');   // Addresses x,,y padded to at least one x digit
+const octC = module.exports.octC = n => octal(n, 84/3);         // CRAM words
 
 
 // Return BigInt bit mask for PDP bit numbering bit `n` in word of
