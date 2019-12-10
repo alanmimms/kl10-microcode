@@ -794,7 +794,7 @@ function createTestMicrocode() {
 FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/@NEXT
 
 ; AR<-(AR+MQ)*.25
-ADA/PC,ADB/AR*4,AD/A+B,AR/AD*.25, J/0000
+ADA/MQ,ADB/AR*4,AD/A+B,AR/AD*.25, J/0000
 `);
 }
 
