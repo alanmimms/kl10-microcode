@@ -97,6 +97,7 @@ module.exports.fieldExtract = fieldExtract;
 // name (if any) and its result. The `wrapAction` function can be
 // specified if some other action is needed in the wrapper (e.g.,
 // maintaining statistics, debugging, etc.).
+let wrapDepth = 0;              // Indentation counter
 const contextSymbol = Symbol('wrapping context');
 function wrapMethod(objToWrap, method, preAction = defaultPreAction, postAction = defaultPostAction) {
   const context = {
@@ -128,17 +129,21 @@ function defaultPreAction({stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
   this.beforeValue = o.value;
   this.beforeToLatch = o.toLatch;
+
+  console.log(`\
+${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
+before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}`);
+  ++wrapDepth;
 }
 module.exports.defaultPreAction = defaultPreAction;
 
 
 function defaultPostAction({result, stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
-  const resultString = result === undefined ? '' : `=${o.vToString(result)}`;
+  --wrapDepth;
   console.log(`\
-${name} ${this.methodName}${resultString}
-    before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}
-    after  value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
+${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
+ after value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
   return result;
 }
 module.exports.defaultPostAction = defaultPostAction;
