@@ -907,43 +907,6 @@ const EBOX_STATE = Reg({name: 'EBOX_STATE', bitWidth: 4n, input: `CR['#']`,
                         clock: FieldMatchClock({name: 'EBOX_STATE_CLOCK', input: 'CR.COND',
                                                 matchF: cond => cond === CR.COND['EBOX STATE']})});
 
-const FM_ADR = LogicUnit.methods({
-  
-  getInputs() {
-    let acr;
-    
-    switch(CR.FMADR.get()) {
-    default:
-    case CR.FMADR.AC0:
-      acr = IRAC.get(); break;
-    case CR.FMADR.AC1:
-      acr = (IRAC.get() + 1n) & 15n; break;
-    case CR.FMADR.AC2:
-      acr = (IRAC.get() + 2n) & 15n; break;
-    case CR.FMADR.AC3:
-      acr = (IRAC.get() + 3n) & 15n; break;
-    case CR.FMADR.XR:
-      acr = ARX_14_17.get(); break;
-    case CR.FMADR.VMA:
-      acr = VMA_32_35.get(); break;
-    case CR.FMADR['AC+#']:
-      acr = (IRAC.get() + MAGIC_NUMBER.get()) & 15n; break;
-    case CR.FMADR['#B#']:
-      // THIS NEEDS TO BE MAGIC_NUMBER<4:0> defining 10181 function (LSB is BOOLE).
-      acr = MAGIC_NUMBER.get() & 15n; break;
-    }
-
-    return acr;
-  },
-}) ({name: 'FM_ADR', bitWidth: 4n, input: `[IRAC, ARX, VMA, MAGIC_NUMBER]`});
-
-const FM = RAM({name: 'FM', nWords: 8*16, bitWidth: 36n,
-                input: `AR`,
-                addr: BitCombiner({name: 'FM_FULL_ADDR', bitWidth: 7n, inputs: `[CR.ACB, FM_ADR]`}),
-                control: FieldMatcher({name: 'FM_WRITE',
-                                       input: `CR.COND`,
-                                       matchValue: `CR.COND['FM WRITE']`})});
-
 const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
   this.bitWidth = BigInt(bitWidth);
 }).props({
@@ -1095,6 +1058,59 @@ const ADX = DataPathALU.compose({name: 'ADX'}).methods({
   getCRY_02() { return 0n },
 
 }) ({name: 'ADX', bitWidth: 36n, inputs: `[ADXA, ADXB, ZERO]`, func: `CR.AD`});
+
+// XXX Need to implement APR3 FM EXTENDED/APR FM 36 bit from p. 384 lower left corner.
+const FM = RAM.props({
+  curBlock: 0n,
+  alu: ALU10181({bitWidth: 4n}),
+}).methods({
+
+  // XXX this needs more ACB possibilities.
+  // XXX this needs to support AC-OP<75:79> ALU operations.
+  // XXX FM block number (CURRENT and PREV) are complex. See p. 386.
+  //     0,1,4,5,6: APR5 CURRENT BLOCK
+  //     2: APR5 XR BLOCK
+  //     3: APR5 VMA BLOCK
+  //     6: APR5 CURRENT BLOCK
+  //     7: CRAM #<02:04>
+  // APR5 CURRENT/PREV BLOCK loaded from EBUS<06:11> by CON LOAD AC BLOCKS.
+  // APR5 VMA BLOCK loaded from mux(MCL4 VMA PREV EN)[APR5 CURRENT BLOCK,APR5 PREV BLOCK]
+  //      when MCL4 LOAD VMA CONTEXT.
+  //
+  // APR FM ADR bits from p. 385.
+  getAddress() {
+    const ac = IRAC.get();
+    const blkShifted = this.curBlock << 4n;
+    const op = CR.FMADR.get();
+    
+    switch(op) {
+    default:
+    case CR.FMADR.AC0:
+    case CR.FMADR.AC1:
+    case CR.FMADR.AC2:
+    case CR.FMADR.AC3:
+      return blkShifted | (ac + op) & 15n;
+
+    case CR.FMADR.XR:
+      return blkShifted | ARX_14_17.get();
+
+    case CR.FMADR.VMA:
+      return blkShifted | VMA_32_35.get();
+
+    case CR.FMADR['AC+#']:
+      const magic = MAGIC_NUMBER.get();
+      const aluOp = magic >> 4n;
+      return blkShifted | this.alu(aluOp, ac, magic & 15n, 0n);
+
+    case CR.FMADR['#B#']:
+      return MAGIC_NUMBER.get() & 0o177n;
+    }
+  },
+}) ({name: 'FM', nWords: 8*16, bitWidth: 36n,
+     input: `AR`,
+     addr: ZERO,
+     control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, matchValue: `CR.COND['FM WRITE']`})});
+
 
 // Note many DISP field values affect carry and LONG:
 //
