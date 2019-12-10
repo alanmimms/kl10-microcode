@@ -5,7 +5,7 @@ const {assert} = require('chai');
 const StampIt = require('@stamp/it');
 
 const {
-  octal, oct6, octW, octA,
+  octal, oct6, octW, octA, octC,
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask,
   wrapMethod, unwrapMethod,
@@ -1128,7 +1128,7 @@ const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, input: `AD`});
 // to determine its operation.
 const VMA = Reg.methods({
 
-  latch() {
+  sampleInputs() {
     // XXX this needs to implement the load/inc/dec/hold. It is
     // probably going to have to take the Addr+Data Paths VMA
     // architecture completely into account. The good news is
@@ -1175,6 +1175,8 @@ const VMA = Reg.methods({
       break;
     }
 
+    const pc = PC.get();
+
     // VMA
     switch (CR.VMA.get()) {
     case CR.VMA.VMA:      // VMA (noop)
@@ -1182,17 +1184,15 @@ const VMA = Reg.methods({
     case CR.VMA.PC:       // PC or LOAD
     case CR.VMA.LOAD:     // PC or LOAD
       // XXX to do: MAY BE OVERRIDDEN BY MCL LOGIC TO LOAD FROM AD
-      this.value = PC.value;
+      this.toLatch = pc;
       break;
     case CR.VMA['PC+1']:  // PC+1
-      this.value = this.joinHalves(this.getLH(), PC.value + 1n);
+      this.toLatch = this.joinHalves(this.getLH(), pc + 1n);
       break;
     case CR.VMA.AD:       // AD (ENTIRE VMA, INCLUDING SECTION)
-      this.value = AD.value;
+      this.toLatch = AD.get();
       break;
     }
-
-    return this.value;
   },
 }) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
 
@@ -1218,6 +1218,9 @@ const VMA_HELD_OR_PC = Mux.methods({
                             matchValue: CR.COND['VMA HELD']})});
 
 const PC = Reg.methods({
+
+  // XXX p. 139 says PC loaded automatically from VMA at NICOND.
+  // XXX see Figure 2-63 PC Loading or Inhibit on p. 140 for details.
 
   // Allow SPEC/LOAD PC to override our normal load from VMA.
   getInputs() {
