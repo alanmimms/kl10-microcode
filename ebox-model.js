@@ -117,7 +117,7 @@ module.exports.Named = Named;
 // unit.
 const Clock = Named.init(function({drives = []}) {
   this.drives = drives;
-  this.wrappableMethods = ['cycle,addUnit'];
+  this.wrappableMethods = `cycle,addUnit`.split(/,\s*/);
 }).methods({
   addUnit(unit) { this.drives.push(unit) },
 
@@ -342,7 +342,7 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
 
 // Use this mixin to define a Clocked unit.
 const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
-  sampleInputs() { this.toLatch = this.getInputs() & this.ones },
+  sampleInputs() { this.toLatch = this.getInputs() },
   latch() { this.value = this.toLatch },
   get() { return this.value },
 });
@@ -393,8 +393,8 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
 module.exports.ConstantUnit = ConstantUnit;
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36n, value: 0n});
-const ONES = ConstantUnit({name: 'ONES', bitWidth: 36n, value: (1n << 36n) - 1n});
 module.exports.ZERO = ZERO;
+const ONES = ConstantUnit({name: 'ONES', bitWidth: 36n, value: (1n << 36n) - 1n});
 module.exports.ONES = ONES;
 
 
@@ -438,19 +438,22 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
   sampleInputs() {
     this.latchedIsWrite = this.isWrite();
     this.latchedAddr = this.getAddress();
-    this.toLatch = this.data[this.latchedAddr] & this.ones;
 
-    // RAMs act as Combinatorial, passing through to their outputs
-    // whatever is addressed if this is not a write.
-    if (!this.latchedIsWrite) this.value = this.toLatch;
+    if (this.latchedIsWrite) {  // Write
+      this.toLatch = this.getInputs() & this.ones;
+    } else {                    // Read
+      // RAMs act as Combinatorial, passing through to their outputs
+      // whatever is addressed during read.
+      this.value = this.toLatch = this.data[this.latchedAddr] & this.ones;
+    }
+
   },
 
   latch() {
 
-    if (this.latchedIsWrite) {
-      this.data[this.latchedAddr] = this.toLatch;
-    } else {
-      this.value = this.data[this.latchedAddr];
+    // Read was already handled during sampleInputs()
+    if (this.latchedIsWrite) {  // Write
+      this.value = this.data[this.latchedAddr] = this.toLatch;
     }
   },
 
@@ -1108,7 +1111,6 @@ const FM = RAM.props({
   },
 }) ({name: 'FM', nWords: 8*16, bitWidth: 36n,
      input: `AR`,
-     addr: ZERO,
      control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, matchValue: `CR.COND['FM WRITE']`})});
 
 
@@ -1600,7 +1602,7 @@ const MBOX = RAM.props({
         ARX.value = result;     // XXX HACK?
         console.log(`\
 MBOX op=${octal(op)} addr=${octW(addr)} \
-result=${octW(result)} stored to IR and ARX`);
+result=${octW(result)} loaded into IR and ARX`);
       }
       
       console.log(`\
