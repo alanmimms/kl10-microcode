@@ -685,21 +685,28 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 }
 
 
-// Microassemble lines of microcode in `code` to store microwords in
+// Assemble lines of microcode from `code` storing microwords in
 // `cram`. This does not support macros (yet?), but has full field and
-// value constant support. Each source line begins with octal digits
-// and a colon defining the address of the microword, followed by a
-// standard sequence of field/value separated by commas. The `cra`
-// value is used to save the line(s) in sourceLines[]. The `code`
-// string may include comments. Sequences of these will be included in
-// sourceLines[] for the microword following them. The symbol `@NEXT`
-// is a macro for the next address after cra.
+// value constant support. Each source line optionally begins with
+// octal digits and a colon defining the address (cra) of the
+// microword, followed by a standard sequence of field/value separated
+// by commas. If not specified, the `cra` value is one greater than
+// that of the previous line.
+//
+// The `code` string may include comments. Sequences of these will be
+// included in sourceLines[] for the microword following them. The
+// symbol `@NEXT` is a macro for the next address after cra. This
+// `cra` value is used to save the line(s) in sourceLines[].
+//
+// This assembler does NOT support lines that break after a comma.
+// Instead, just use backslash on the end of the line that needs to be
+// continued.
 //
 // E.g.:
 // ; This is a comment
-// 0123: FMADR/AC+#, #/3 ADB/FM, AD/B, COND/REG CTL, MQ/MQM SEL, MQ CTL/AD, J/0456
+// 0123: FMADR/AC+#, #/3, ADB/FM, AD/B, COND/REG CTL, MQ/MQM SEL, MQ CTL/AD, J/@NEXT
 // ; Looping enough for you yet?
-// 0321: J/0123
+// J/0123
 function uasm(cram, code) {
   let linesForThisWord = [];
   let cra = 0n;
@@ -720,7 +727,7 @@ function uasm(cram, code) {
       cra = BigInt(parseInt(prefixM[1], 8));
       line = line.slice(prefixM[0].length); // Rest of line after org prefix is microword
     } else {                                // If not present, next uinsn goes at @NEXT
-      cra += 1n;
+      ++cra;
     }
 
     sourceLines[cra] = linesForThisWord.join('\n');
