@@ -10,7 +10,7 @@ const CLA = require('command-line-args');
 const CLU = require('command-line-usage');
 
 const {
-  octal, oct6, octW, octA,
+  octal, oct6, octW, octA, octC,
   shiftForBit, fieldExtract,
   wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
   typeofFunction,
@@ -35,8 +35,6 @@ let historyEnabled = false;
 const craHistory = [];
 let craHistoryX = -1;
 
-let sourceLines = KLX_CRAM_lines;
-
 let startOfLastStep = 0;
 
 
@@ -52,6 +50,8 @@ const optionList = [
 
 
 const OPT = parseOptions(optionList);
+
+let sourceLines = OPT.testMicrocode ? [] : KLX_CRAM_lines;
 
 
 function parseOptions(list) {
@@ -242,7 +242,7 @@ function getAddress(words) {
 
 // Disassemble or display a CRAM word `w`.
 function disassemble(w) {
-  return octal(w, 84/3, 4);
+  return octC(w);
 }
 
 
@@ -256,15 +256,15 @@ function curInstruction() {
   const bar = `─`.repeat(120);
   return `\
 ┌${bar}
-│ ${sourceLines[CRAM.latchedAddr].split(/\n/).join(`\n│`)}
-│      CR=${octal(CR.get(), 84/3)}
+│${(sourceLines[CRAM.latchedAddr] || '').split(/\n/).join(`\n│`)}
+│     CR=${octC(CR.get())}
 └${bar}`;
 }
 
 
 function doDump(words) {
   const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
-        .map(r => `${r.name}=${octW(r.get())}`)
+        .map(r => `${r.name.padStart(4)}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
@@ -685,6 +685,78 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 }
 
 
+// Microassemble lines of microcode in `code` to store microwords in
+// `cram`. This does not support macros (yet?), but has full field and
+// value constant support. Each source line begins with octal digits
+// and a colon defining the address of the microword, followed by a
+// standard sequence of field/value separated by commas. The `cra`
+// value is used to save the line(s) in sourceLines[]. The `code`
+// string may include comments. Sequences of these will be included in
+// sourceLines[] for the microword following them. The symbol `@NEXT`
+// is a macro for the next address after cra.
+//
+// E.g.:
+// ; This is a comment
+// 0123: FMADR/AC+#, #/3 ADB/FM, AD/B, COND/REG CTL, MQ/MQM SEL, MQ CTL/AD, J/0456
+// ; Looping enough for you yet?
+// 0321: J/0123
+function uasm(cram, code) {
+  let linesForThisWord = [];
+  let cra = 0n;
+
+  code.split(/\n/).forEach(line => {
+    CR.value = 0n;
+
+    linesForThisWord.push(line);
+
+    // Do nothing but save blank and comment lines.
+    if (line.match(/^\s*;.*$/) || line.match(/^\s*$/)) return;
+
+    // Microassemble a line of code.
+    // First grab the address prefix if present.
+    const prefixM = line.match(/^([0-7]+)\s*:\s*/);
+
+    if (prefixM) {
+      cra = BigInt(parseInt(prefixM[1], 8));
+      line = line.slice(prefixM[0].length); // Rest of line after org prefix is microword
+    } else {                                // If not present, next uinsn goes at @NEXT
+      cra += 1n;
+    }
+
+    sourceLines[cra] = linesForThisWord.join('\n');
+    linesForThisWord = [];
+
+    line.trim().split(/,\s*/)
+      .forEach(assignment => {
+        const [field, value] = assignment.split(/\//);
+
+        if (field in CR) {
+
+          if (value === '@NEXT') {
+            CR[field] = cra + 1n;
+          } else if (value.match(/^[0-7].*/)) {
+            CR[field] = BigInt(parseInt(value, 8));
+          } else if (value in CR[field]) {
+            CR[field] = CR[field][value];
+          } else {
+            console.error(`\
+uasm['${line}]':
+  '${assignment}' contains undefined value '${value}'`);
+          }
+        } else {
+          console.error(`\
+uasm['${line}']:
+  '${assignment}' contains undefined field '${field}'`);
+        }
+      });
+
+    cram[cra] = CR.value;
+  });
+
+  return CR.value;
+}
+
+
 function assemble(op, a, i, x, y) {
   return 0n |
     BigInt(op) << shiftForBit(8) |
@@ -699,78 +771,31 @@ function createTestMicrocode() {
   const X = 0o123n;
   const Y = 0o222n;
   const Z = 0o321n;
-  const T1 = 0o400n;
   const cramData = CRAM.data;
-  let t = 0n;                   // CRAM location we are filling right now
 
-  sourceLines = [];
-
-  sourceLines[t] = `
-; ================ Test CR.J jump
-${octal(t)}: J/${octal(X)}`;
-  CR.value = 0n;
-  CR.J = X;                     // Jump to three instruction bounce loop
-  cramData[t] = CR.value;
-
-  t = X;
-  sourceLines[t] = `${octal(t)}: J/${octal(Y)}`;
-  CR.value = 0n;
-  CR.J = Y;
-  cramData[t] = CR.value;
-
-  t = Y;
-  sourceLines[t] = `${octal(t)}: J/${octal(Z)}`;
-  CR.value = 0n;
-  CR.J = Z;
-  cramData[t] = CR.value;
-
-  t = Z;
-  sourceLines[t] = `${octal(t)}: J/${octal(T1)}`;
-  CR.value = 0n;
-  CR.J = T1;
-  cramData[t] = CR.value;
-
-  t = T1;
   _.range(16).forEach(a => FM.data[a] = 0o010101010101n * BigInt(a));
-  sourceLines[t] = `
-; ================ Test FM, AD/ADA/ADB
-${octal(t)}: FMADR/AC+#, #/3 ADB/FM, AD/B, VMA/AD, SPEC/LOAD PC, J/${octal(t+1n)}\t\
-; PC=AC3=${octW(FM.data[3])}`;
-  CR.value = 0n;
-  CR.FMADR = CR.FMADR['AC+#'];
-  CR['#'] = 3n;
-  CR.ADB = CR.ADB.FM
-  CR.VMA = CR.VMA.AD;
-  CR.AD = CR.AD.B;
-  CR.SPEC = CR.SPEC['LOAD PC'];
-  CR.J = t + 1n;
-  cramData[t] = CR.value;
-  ++t;
 
-  sourceLines[t] = `\
-${octal(t)}: FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/${octal(t+1n)}\t\
-; PC=AC3=${octW(FM.data[3])}, AR=AC4=${octW(FM.data[4])}`;
-  CR.value = 0n;
-  CR.FMADR = CR.FMADR['AC+#'];
-  CR['#'] = 4n;
-  CR.ADB = CR.ADB.FM
-  CR.AD = CR.AD.B;
-  CR.AR = CR.AR.AD;
-  CR.J = t + 1n;
-  cramData[t] = CR.value;
-  ++t;
+  uasm(cramData, `\
+; ================ Test CR.J jump
+; Jump to three instruction bounce loop
+0000: J/0123
+0123: J/0222
+0222: J/0321
+0321: J/0400
 
-  sourceLines[t] = `\
-${octal(t)}: ADA/PC,ADB/AR*4,AD/A+B,AR/AD*.25, J/${octal(0n)}\t\
-; AR<-(AR+PC)*.25`;
-  CR.value = 0n;
-  CR.ADA = CR.ADA.PC;
-  CR.ADB = CR.ADB['AR*4'];
-  CR.AD = CR.AD['A+B'];
-  CR.AR = CR.AR['AD*.25'];
-  CR.J = 0n;
-  cramData[t] = CR.value;
-  ++t;
+; ================ Test FM, MQ, AD/ADA/ADB
+
+; MQ_AD   "COND/REG CTL,MQ/MQM SEL,MQ CTL/AD"
+; MQ=AC3=${octW(FM.data[3])}
+0400: FMADR/AC+#, #/3, ADB/FM, AD/B, COND/REG CTL, MQ/MQM SEL, MQ CTL/AD, J/@NEXT
+
+; AR_MQ+FM[]    "ADA/MQ,ADB/FM,@1,AD/A+B,AR/AD"
+; AR=MQ+AC4=${octW(FM.data[4])}
+FMADR/AC+#, #/4 ADB/FM, AD/B, AR/AD, J/@NEXT
+
+; AR<-(AR+MQ)*.25
+ADA/PC,ADB/AR*4,AD/A+B,AR/AD*.25, J/0000
+`);
 }
 
 
