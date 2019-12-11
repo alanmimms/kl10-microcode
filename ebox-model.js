@@ -33,6 +33,7 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const SPECis = matcherFactory('SPEC');
 const CONDis = matcherFactory('COND');
 const VMAXis = matcherFactory('VMAX');
+const  MEMis = matcherFactory('MEM');
 
 
 // Return 1n iff CR[fieldName] has value of the constant
@@ -1459,14 +1460,30 @@ module.exports.SERIAL_NUMBER = SERIAL_NUMBER;
 // XXX very temporary. Needs implementation.
 const EBUS = ZERO;
 
+// XXX this is still very wrong.
+// * Needs to take ARMM special function into account.
+// * Needs to take CLR<77:80> into account.
+// * Needs to support loading of AR0-8 only.
+// This probably should be rewritten to separate AR0-8 into a Unit by itself.
 const ARML = Mux.methods({
 
   // This supplies the logic to control the ARL input mux ARML.
-  getControl() { return CONDis('ARL IND') ? CR.ARL.get() : CR.AR.get() },
+  // CTL2 ARL IND SEL 1,2,4 are p.365 E39 lower left.
+  // XXX CR.ARL only controls this if ARL_IND() returns true
+  //     (see ARL<81:83> comments and CTL2).
+  getControl() {
+    return ARL_IND() ? CR.ARL.get() : CR.AR.get();
+  },
 }) ({name: 'ARML', bitWidth: 18n,
-     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
-     control: `CR.ARL`});
+     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`});
 
+// ARL_IND is defined in MEM/, SPEC/, and COND/ and they are ORed
+// together in E31 in middle of p.365.
+function ARL_IND() {
+  return CONDis('ARL IND') || SPECis('ARL IND') || MEMis('ARL IND');
+}
+
+// XXX this is enabled by COND/REG CTL (CTL2)
 const AR_CTL = CR['AR CTL'];
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
                   inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
@@ -1474,8 +1491,7 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
 const ARL = Reg({name: 'ARL', bitWidth: 18n, input: `ARML`,
                  clock: FieldMatchClock({name: 'ARL_CLOCK', input: `AR_CTL`,
-                                         matchF: cur => (cur & ARL_LOADmask ||
-                                                         CONDis('ARL IND'))})});
+                                         matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
                  clock: FieldMatchClock({name: 'ARR_CLOCK', input: `AR_CTL`,
