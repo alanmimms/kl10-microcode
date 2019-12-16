@@ -498,6 +498,8 @@ const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
         sampleInputs() { },     // XXX this needs to be fixed?
 
         latch() {
+          assert(this.input && typeof this.input.get === typeofFunction,
+                 `${this.name}.input must be defined`);
           const cur = this.input.get();
           this.value = BigInt(this.matchF(cur));
 
@@ -627,7 +629,7 @@ const CRAM = RAM.methods({
     // * A9: The conditions from Muxes E6,E26 CRA2
     // * A10: The conditions from Muxes E22,E31,E36,E39 CRA2
     // * A10: CON COND ADR 10 CRA2
- 
+    // * Note changes in p. 234 of EBOX 006 C.8 MODULE M8541.
     if (this.force1777) {
       this.force1777 = false;   // Handled.
       // Push return address from page fault handler.
@@ -1466,16 +1468,17 @@ const EBUS = ZERO;
 // * Needs to support loading of AR0-8 only.
 // This probably should be rewritten to separate AR0-8 into a Unit by itself.
 const ARML = Mux.methods({
-
   // This supplies the logic to control the ARL input mux ARML.
   // CTL2 ARL IND SEL 1,2,4 are p.365 E39 lower left.
   // XXX CR.ARL only controls this if ARL_IND() returns true
   //     (see ARL<81:83> comments and CTL2).
   getControl() {
-    return ARL_IND() ? CR.ARL.get() : CR.AR.get();
+    const arlIND = ARL_IND();
+    const ctl = arlIND ? CR.ARL.get() : CR.AR.get();
+    return (ctl === 0n && arlIND) ? ctl + 8 : ctl;
   },
 }) ({name: 'ARML', bitWidth: 18n,
-     inputs: `[ARMML, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`});
+     inputs: `[ARL, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
 
 // ARL_IND is defined in MEM/, SPEC/, and COND/ and they are ORed
 // together in E31 in middle of p.365.
@@ -1491,11 +1494,12 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
+// NOTE "CRAM ARL SEL 4,2,1" really means AR/=<24:26> right?
 // CTL ARR LOAD = CTL1 REG CTL # 02 & (
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
-                 clock: FieldMatchClock({name: 'ARR_CLOCK', input: `AR_CTL`,
+                 clock: FieldMatchClock({name: 'ARR_CLOCK', input: AR_CTL,
                                          matchF: cur => (cur & ARR_LOADmask ||
                                                          CR.AR !== CR.AR.AR)})});
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
@@ -1504,13 +1508,13 @@ const ARL_LOADmask = AR_CTL['ARL LOAD'];
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
 const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML`,
-                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: `AR_CTL`,
+                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
                                              matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
 const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML`,
-                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: `AR_CTL`,
+                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
                                              matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
 
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
@@ -1518,6 +1522,8 @@ const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   control: `CR.ARX`});
 const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
 const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
+
+const ARL = BitCombiner({name: 'ARL', bitWidth: 18n, inputs: `[AR00_08, AR09_17]`});
 
 // XXX needs to implement AR/ARMM, SPEC/REG CTL as a special getInputs() method.
 const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[AR00_08, AR09_17, ARR]`});
