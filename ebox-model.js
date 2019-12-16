@@ -48,13 +48,6 @@ function fieldIs(fieldName, fieldValueName) {
 function matcherFactory(fieldName) {
   return name => {
     const toMatch = CR[fieldName][name];
-/*
-    const {s, e} = CR[fieldName];
-    const w = e - s + 1;
-    const cur = fieldExtract(CR.value, s, e, CR.bitWidth);
-    console.log(`CR=${octal(CR.get(), 84/3)}`);
-    console.log(`matcher CR.${fieldName}['${name}']=${octal(cur, w/3)} toMatch=${octal(toMatch, w/3)}`);
-*/
     const cur = CR[fieldName].get();
     return cur === toMatch;
   }
@@ -1475,7 +1468,7 @@ const ARML = Mux.methods({
   getControl() {
     const arlIND = ARL_IND();
     const ctl = arlIND ? CR.ARL.get() : CR.AR.get();
-    return (ctl === 0n && arlIND) ? ctl + 8 : ctl;
+    return (ctl === 0n && arlIND) ? 8n : ctl;
   },
 }) ({name: 'ARML', bitWidth: 18n,
      inputs: `[ARL, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
@@ -1489,7 +1482,7 @@ function ARL_IND() {
 // XXX this is enabled by COND/REG CTL (CTL2)
 const AR_CTL = CR['AR CTL'];
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
-                  inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
+                  inputs: `[ARR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 
@@ -1636,8 +1629,8 @@ const MBOX = RAM.props({
       result = this.data[addr];
 
       if (EBOX.fetchCycle) {
-        IR.value = result;      // XXX HACK?
-        ARX.value = result;     // XXX HACK?
+        IR.value = IR.toLatch = result;      // XXX HACK?
+        ARX.value = ARX.toLatch = result;     // XXX HACK?
         console.log(`\
 MBOX op=${octal(op)} addr=${octW(addr)} \
 result=${octW(result)} loaded into IR and ARX`);
