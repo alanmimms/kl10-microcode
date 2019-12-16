@@ -2,6 +2,9 @@
 const _ = require('lodash');
 const util = require('util');
 
+var wrapperEnableLevel = 1;
+module.exports.wrapperEnableLevel = wrapperEnableLevel;
+
 // Return octal string for `n` value decoded as groups of `groupSize`
 // with at least `minDigits` octal digits padded on left with leading
 // zeroes.
@@ -130,7 +133,7 @@ function defaultPreAction({stamp, name, bitWidth, context}) {
   this.beforeValue = o.value;
   this.beforeToLatch = o.toLatch;
 
-  console.log(`\
+  if (wrapperEnableLevel) console.log(`\
 ${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
 before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}`);
   ++wrapDepth;
@@ -141,7 +144,7 @@ module.exports.defaultPreAction = defaultPreAction;
 function defaultPostAction({result, stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
   --wrapDepth;
-  console.log(`\
+  if (wrapperEnableLevel) console.log(`\
 ${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
  after value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
   return result;
@@ -163,6 +166,17 @@ function methodIsWrapped(obj, method) {
   return typeof value === typeofFunction && value[contextSymbol];
 }
 module.exports.methodIsWrapped = methodIsWrapped;
+
+
+function disableWrappers() {
+  --wrapperEnableLevel;
+}
+module.exports.disableWrappers = disableWrappers;
+
+function restoreWrappers() {
+  ++wrapperEnableLevel;
+}
+module.exports.restoreWrappers = restoreWrappers;
 
 
 // Return a list of names of methods that have wrappers or [] if none.

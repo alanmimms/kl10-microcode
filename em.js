@@ -12,7 +12,7 @@ const CLU = require('command-line-usage');
 const {
   octal, oct6, octW, octA, octC,
   shiftForBit, fieldExtract,
-  wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped,
+  wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped, disableWrappers, restoreWrappers,
   typeofFunction,
 } = require('./util');
 
@@ -254,24 +254,30 @@ function displayableAddress(x) {
 
 function curInstruction() {
   const bar = `─`.repeat(120);
-  return `\
+  disableWrappers();
+  const result = `\
 ┌${bar}
 │${(sourceLines[CRAM.latchedAddr] || '').split(/\n/).join(`\n│`)}
 │     CR=${octC(CR.get())}
 └${bar}`;
+  restoreWrappers();
+  return result;
 }
 
 
 function doDump(words) {
+  disableWrappers();
   const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
         .map(r => `${r.name.padStart(4)}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
+  restoreWrappers();
 }
 
 
 function doCDump(words) {
+  disableWrappers();
   const ACs = _.range(16)
         .map(rn => `${octal(rn, 2)}=${octW(FM.data[rn])}`);
   const others = [PC]
@@ -280,6 +286,7 @@ function doCDump(words) {
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
+  restoreWrappers();
 }
 
 
@@ -304,13 +311,17 @@ function doGo(words) {
 
 function doCPUGo(words) {
   EBOX.run = true;
+  disableWrappers();
   console.log(`[CPU Running from ${octA(PC.get())}; EBOX waiting]`);
+  restoreWrappers();
 }
 
 
 function doCPUStop(words) {
+  disableWrappers();
   EBOX.run = false;
   console.log(`[Stopping CPU at ${octA(PC.get())}; EBOX waiting]`);
+  restoreWrappers();
 }
 
 
@@ -325,6 +336,7 @@ function doAddressBreak(words) {
 
 
 function doExamine(words) {
+  disableWrappers();
 
   if (words.length > 1) {
     let result = 0n;
@@ -338,6 +350,7 @@ function doExamine(words) {
     } catch(e) {
       console.error(`Error evaluating "${toEval}":
 ${e.msg}`);
+      restoreWrappers();
       return;
     }
 
@@ -349,6 +362,8 @@ ${e.msg}`);
   } else {
     console.log(`Examine what?`);
   }
+
+  restoreWrappers();
 }
 
 
