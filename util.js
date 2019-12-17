@@ -144,9 +144,21 @@ module.exports.defaultPreAction = defaultPreAction;
 function defaultPostAction({result, stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
   --wrapDepth;
-  if (wrapperEnableLevel) console.log(`\
+
+  if (wrapperEnableLevel) {
+    let resultString = result;
+
+    try {
+      resultString = o.vToString(result);
+    } catch(e) {
+      resultString = result;
+    }
+
+    console.log(`\
 ${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
- after value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}`);
+ after value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}  returns ${resultString}`);
+  }
+
   return result;
 }
 module.exports.defaultPostAction = defaultPostAction;

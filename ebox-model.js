@@ -1375,13 +1375,13 @@ const FE = ShiftReg({name: 'FE', bitWidth: 10n, input: `SCAD`, control: `FEcontr
 const SH = Reg.methods({
 
   getInputs() {
-    const count = SC.get();
     const func = this.getControl();
     let result;
 
     switch (func) {
     default:
     case 0n:
+      const count = SC.get();
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
       result = (count < 0 || count > 35) ? arx0 : src0 << count;
@@ -1396,12 +1396,12 @@ const SH = Reg.methods({
       break;
 
     case 3n:
-      const src3 = AR.get();
-      result = (src3 >> 18n) | (src3 << 18n);
+      const [lh, rh] = [ARL.get(), ARR.get()];
+      result = (rh << 18n) | lh;
       break;
     }
 
-    return result;
+    return result & this.ones;
   },
 }) ({name: 'SH', bitWidth: 36n, inputs: `[AR, ARX]`, control: `CR.SH`});
 
@@ -1486,8 +1486,8 @@ const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
                   control: `CR.AR`});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 
-// XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
-// NOTE "CRAM ARL SEL 4,2,1" really means AR/=<24:26> right?
+// XXX each field of AR has a corresponding clear (CLR). See p. 15 E52
+// OR gate. NOTE "CRAM ARL SEL 4,2,1" really means AR/=<24:26> right?
 // CTL ARR LOAD = CTL1 REG CTL # 02 & (
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
@@ -1519,7 +1519,7 @@ const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
 const ARL = BitCombiner({name: 'ARL', bitWidth: 18n, inputs: `[AR00_08, AR09_17]`});
 
 // XXX needs to implement AR/ARMM, SPEC/REG CTL as a special getInputs() method.
-const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[AR00_08, AR09_17, ARR]`});
+const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
 
 const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`,
                 clock: FieldMatchClock({name: 'BR_CLOCK',
