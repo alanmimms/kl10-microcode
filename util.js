@@ -105,14 +105,14 @@ module.exports.fieldExtract = fieldExtract;
 // the method.
 let wrapDepth = 0;              // Indentation counter
 const contextSymbol = Symbol('wrapping context');
-function wrapMethod(objToWrap, method, opts) {
+function wrapMethod(objToWrap, method, opts = {preAction: defaultPreAction, postAction: defaultPostAction}) {
   const context = {
     wrappedObj: objToWrap,
     name: objToWrap.name,
     methodName: method,
     originalFunction: objToWrap[method],
-    preAction: opts.preAction || defaultPreAction,
-    postAction: opts.postAction || defaultPostAction,
+    preAction: opts.preAction,
+    postAction: opts.postAction,
     replaceAction: opts.replaceAction,
   };
 

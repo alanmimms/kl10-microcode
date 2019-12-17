@@ -345,11 +345,16 @@ and an octal value for its control input`);
 
   // Wrap `getControl()` but the wrapper is replaced with our mocked
   // value.
-  wrapMethod(unit, 'getControl', {replaceAction() {return controlValue} });
+  wrapMethod(unit, 'getControl', {
+    preAction() {},
+    postAction({result}) {return result},
+    replaceAction() {return controlValue},
+  });
   const result = unit.get();
 
   // Restore normal behavior.
   unwrapMethod(unit, 'getControl');
+  console.log(`${unitName}.get() returns ${octW(result)}`);
 }
 
 
