@@ -8,7 +8,6 @@ const {
   octal, oct6, octW, octA, octC,
   maskForBit, shiftForBit,
   fieldInsert, fieldExtract, fieldMask,
-  wrapMethod, unwrapMethod,
   centeredBanner, typeofFunction,
 } = require('./util');
 
@@ -79,6 +78,7 @@ const Named = StampIt({name: 'Named'}).statics({
   this.stamp = stamp;
   this.propName = this.name.replace(/[ .,]/g, '_');
   Named.units[this.propName] = this;
+  this.doNotWrap = {};
 }).methods({
 
   reset() { },
@@ -99,7 +99,6 @@ const Named = StampIt({name: 'Named'}).statics({
       .forEach(prop => {
         const asString = that[prop];
         that[prop] = eval(asString);
-//      console.log(`${that.name}.${prop} = ${asString}`);
       });
   },
 });
@@ -151,9 +150,9 @@ module.exports.EBOXClock = EBOXClock;
 // Derived from p. 212 Figure 3-5 Loading IR Via FM (COND/LOAD IR) and
 // p. 214 Figure 3-7 NICOND Dispatch and Waiting.
 //
-//   │[=========]<---`sampleInputs()` regs recursively load inputs to `toLatch`, output remains stable
+//   │[=========]<---sampleInputs() regs recursively load inputs to toLatch, output remains stable
 //   │[=========]<---non-regs settle inputs --> outputs
-//   │           │[========]<---`latch()` regs drive `toLatch` on their outputs
+//   │           │[========]<---latch() regs drive toLatch on their outputs
 // __│           │ __________│           │ __________│          │ _
 //   \           │/          \           │/          \          │/ EBOX CLOCK
 //   |\__________/           │\__________/           │\_________/
@@ -183,12 +182,23 @@ module.exports.EBOXClock = EBOXClock;
 // __│___________│___________│___________/           │          │\_
 //   │           │           │           │           │          │ 
 //   ^           │           ^           │           ^          │ 
-//   └───────────│───────────┴───────────│───────────┴──────────│──  `latch()`: `value = toLatch`
+//   └───────────│───────────┴───────────│───────────┴──────────│──  latch(): value = toLatch
 //               ^                       ^                      ^ 
-//               └───────────────────────┴──────────────────────┴─── `sampleInputs()`: `toLatch = input.get()`
+//               └───────────────────────┴──────────────────────┴─── sampleInputs(): toLatch = input.get()
 //                                                                   (reg outputs remain stable)
 //                                                                   (regs get non-reg state recursively)
 
+
+////////////////////////////////////////////////////////////////
+//
+// Call Flow
+//
+// get() retrieves the output value of a Unit. Use this to retrieve
+// the current latched value of a Clocked Unit or output of a
+// Combinatorial Unit.
+//
+// All sampleInputs(), recursively calling unit.get().
+// All latch(), registers saving value from toLatch.
 
 ////////////////////////////////////////////////////////////////
 // Stamps
@@ -323,7 +333,11 @@ module.exports.EBOX = EBOX;
 
 
 // Use this mixin to define a Combinatorial unit that is unclocked.
-const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).methods({
+const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() {
+  this.doNotWrap.reset = true;
+  this.doNotWrap.latch = true;
+  this.doNotWrap.sampleInputs = true;
+}).methods({
   sampleInputs() { },
   latch() { },
 
@@ -378,6 +392,9 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
         this.bitWidth = BigInt(bitWidth);
         this.ones = (1n << this.bitWidth) - 1n;
         this.value = value >= 0n ? value : value & this.ones;
+        this.doNotWrap.reset = true;
+        this.doNotWrap.latch = true;
+        this.doNotWrap.get = true;
       }).methods({
         getInputs() {return this.value},
 
@@ -395,7 +412,8 @@ module.exports.ONES = ONES;
 ////////////////////////////////////////////////////////////////
 // Take a group of inputs and concatenate them into a single wide
 // field.
-const BitCombiner = Combinatorial.compose({name: 'BitCombiner'}).methods({
+const BitCombiner = Combinatorial.compose({name: 'BitCombiner'}).init(function() {
+}).methods({
 
   getInputs() {
     assert(this.inputs, `${this.name}.inputs not null`);
@@ -1090,6 +1108,8 @@ const FM = RAM.props({
     case CR.FMADR.AC3:
       return blkShifted | (ac + op) & 15n;
 
+      // NOTE: SHM1 lower left corner has SHM1 XR mux and INDEXED determination.
+      // XXX This is not taken into account yet. p. 334.
     case CR.FMADR.XR:
       return blkShifted | ARX_14_17.get();
 
@@ -1372,38 +1392,48 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
 const FE = ShiftReg({name: 'FE', bitWidth: 10n, input: `SCAD`, control: `FEcontrol`,
                      clock: FieldMatchClock({name: 'FE_CLOCK',
                                              input: 'CR.FE', matchValue: CR.FE.SCAD})});
-const SH = Reg.methods({
+const SH = LogicUnit.init(function() {
+  this.doNotWrap.get = false;
+}).methods({
 
-  getInputs() {
+  get() {
     const func = this.getControl();
+    const count = SC.get();
     let result;
 
     switch (func) {
     default:
-    case 0n:
-      const count = SC.get();
+    case CR.SH['SHIFT AR!ARX']: // 0: Shift AR,,,ARX
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
+      // Shift count < 0 || count > 35 means inhibit shifter
       result = (count < 0 || count > 35) ? arx0 : src0 << count;
       break;
 
-    case 1n:
+    case CR.SH['AR']:           // 1: Shift inhibit, AR
       result = AR.get();
       break;
 
-    case 2n:
+    case CR.SH['ARX']:          // 2: Shift inhibit, ARX, shift 36
+      // NOTE: This DOES take into account E41 p. 334 (SHM1) where
+      // CRAM SH-ARMM SEL 1 is ANDed with SHIFT INH to produce SHM1
+      // SHIFT 36. There is no mux taking the SH field and selecting
+      // outputs. Instead, SHM1 SHIFT 36 effectively selects AR when
+      // true or ARX when false, selected by CRAM SH-ARMM SEL 1. We
+      // just do it a little differently by interpreting the CR.SH
+      // field using this switch statement.
       result = ARX.get();
       break;
 
-    case 3n:
+    case CR.SH['AR SWAP']:      // 3: Shift inhibit, AR SWAP, shift 50
       const [lh, rh] = [ARL.get(), ARR.get()];
       result = (rh << 18n) | lh;
       break;
     }
 
-    return result & this.ones;
+    return this.value = result & this.ones;
   },
-}) ({name: 'SH', bitWidth: 36n, inputs: `[AR, ARX]`, control: `CR.SH`});
+}) ({name: 'SH', bitWidth: 36n, inputs: ZERO, control: `CR.SH`});
 
 
 ////////////////////////////////////////////////////////////////
