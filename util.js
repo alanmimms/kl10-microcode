@@ -99,18 +99,26 @@ module.exports.fieldExtract = fieldExtract;
 // the name of the object method was invoked for, its parent stamp
 // name (if any) and its result. The `wrapAction` function can be
 // specified if some other action is needed in the wrapper (e.g.,
-// maintaining statistics, debugging, etc.).
+// maintaining statistics, debugging, etc.). Pass an object for `opts`
+// to specify preAction, postAction, and replaceAction functions to be
+// used before, after, and in place of the unwrapped implementation of
+// the method.
 let wrapDepth = 0;              // Indentation counter
 const contextSymbol = Symbol('wrapping context');
-function wrapMethod(objToWrap, method, preAction = defaultPreAction, postAction = defaultPostAction) {
+function wrapMethod(objToWrap, method, opts) {
   const context = {
     wrappedObj: objToWrap,
     name: objToWrap.name,
     methodName: method,
-    originalFunction: objToWrap[method].bind(objToWrap),
-    preAction,
-    postAction,
+    originalFunction: objToWrap[method],
+    preAction: opts.preAction || defaultPreAction,
+    postAction: opts.postAction || defaultPostAction,
+    replaceAction: opts.replaceAction,
   };
+
+  // Do not wrap methods we are told not to.
+  if (objToWrap.doNotWrap[method]) return objToWrap;
+
   objToWrap[method] = wrapper.bind(context);
   objToWrap[method][contextSymbol] = context;
   return objToWrap;
@@ -121,7 +129,8 @@ function wrapMethod(objToWrap, method, preAction = defaultPreAction, postAction 
     const name = `${this.name}@${stamp.name}`;
     const bitWidth = Number(this.wrappedObj.bitWidth || 36);
     this.preAction({stamp, name, bitWidth, context});
-    const result = this.originalFunction(...a);
+    const fToBind = opts.replaceAction ? opts.replaceAction : this.originalFunction;
+    const result = fToBind.apply(objToWrap, a);
     return this.postAction({result, stamp, name, bitWidth});
   }
 }
@@ -143,6 +152,7 @@ module.exports.defaultPreAction = defaultPreAction;
 
 function defaultPostAction({result, stamp, name, bitWidth, context}) {
   const o = this.wrappedObj;
+
   --wrapDepth;
 
   if (wrapperEnableLevel) {
@@ -167,6 +177,10 @@ module.exports.defaultPostAction = defaultPostAction;
 // The antidote to `wrapMethod()` to unwrap. Note this must be done in
 // LIFO order if nested wrapping on the method.
 function unwrapMethod(wrappedObj, method) {
+
+  // Do not unwrap methods we are told not to.
+  if (wrappedObj.doNotWrap[method]) return;
+
   const context = wrappedObj[method][contextSymbol];
   wrappedObj[method] = context.originalFunction;
 }
