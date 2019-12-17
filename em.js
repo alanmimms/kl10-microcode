@@ -135,6 +135,11 @@ const commands = [
    doFn: doTil,
   },
 
+  {name: 'mux',
+   description: 'Display the output of a specified mux ("mixer") when its control input is a specified value.',
+   doFn: doMux,
+  },
+
   {name: 'ab',
    description: 'Continue until access of specified address.',
    doFn: doAddressBreak,
@@ -322,6 +327,29 @@ function doCPUStop(words) {
   EBOX.run = false;
   console.log(`[Stopping CPU at ${octA(PC.get())}; EBOX waiting]`);
   restoreWrappers();
+}
+
+
+function doMux(words) {
+
+  if (words.length !== 3) {
+    console.error(`\
+The "mux" command needs the name of a Combinatorial unit \
+and an octal value for its control input`);
+    return;
+  }
+
+  const unitName = words[1];
+  const unit = Named.units[unitName];
+  const controlValue = BigInt(parseInt(words[2], 8));
+
+  // Wrap `getControl()` but the wrapper is replaced with our mocked
+  // value.
+  wrapMethod(unit, 'getControl', {replaceAction() {return controlValue} });
+  const result = unit.get();
+
+  // Restore normal behavior.
+  unwrapMethod(unit, 'getControl');
 }
 
 
