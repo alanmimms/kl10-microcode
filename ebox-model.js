@@ -30,9 +30,11 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 
 // For each XXXXis(name) function, return 1n iff XXXX/${name} is true.
 const SPECis = matcherFactory('SPEC');
-const CONDis = matcherFactory('COND');
+const CONDis = matcherFactory('COND') ;
 const VMAXis = matcherFactory('VMAX');
 const  MEMis = matcherFactory('MEM');
+const   BRis = matcherFactory('BR');
+const  BRXis = matcherFactory('BRX');
 
 
 // Return 1n iff CR[fieldName] has value of the constant
@@ -111,25 +113,29 @@ module.exports.Named = Named;
 const Clock = Named.init(function({drives = []}) {
   this.drives = drives;
   this.wrappableMethods = `cycle,addUnit`.split(/,\s*/);
+  this.phase = 'INIT';
 }).methods({
   addUnit(unit) { this.drives.push(unit) },
 
-  cycle(debug = false) {
-    if (debug) this.debugBanner(`sampleInputs`);
+  cycle() {
+    if (EBOX.debugCLOCK) console.log(`<< ${this.name} cycle SAMPLE`);
+    this.phase = 'SAMPLE';
 
     this.drives.forEach(unit => {
       assert(typeof unit.sampleInputs === typeofFunction, `${unit.name} sampleInputs() must exist`); 
-     unit.sampleInputs();
+      if (unit.clockGate()) unit.sampleInputs();
     });
 
-    if (debug) this.debugBanner(`latch`);
+    if (EBOX.debugCLOCK) console.log(`<< ${this.name} cycle LATCH`);
+    this.phase = 'LATCH';
 
     this.drives.forEach(unit => {
       assert(typeof unit.latch === typeofFunction, `${unit.name} latch() must exist`);
-      unit.latch();
+      if (unit.clockGate()) unit.latch();
     });
 
-    if (debug) this.debugBanner('cycle complete');
+    if (EBOX.debugCLOCK) console.log(`<< ${this.name} cycle END`);
+    this.phase = 'END';
   },
 });
 module.exports.Clock = Clock;
@@ -253,7 +259,10 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     this.inputs = inputs;       //  but not both (`input` wins over `inputs`)
     this.control = control;
     this.addr = addr;
-    this.bitWidth = BigInt(bitWidth || 0);
+    assert(typeof bitWidth === 'bigint' || typeof bitWidth === 'number', `${name} needs to define bitWidth`);
+    this.bitWidth = BigInt(bitWidth);
+    this.ones = (1n << this.bitWidth) - 1n;
+    this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
     this.value = this.toLatch = 0n;
     this.debugFormat = debugFormat;
     this.wrappableMethods = `\
@@ -268,14 +277,15 @@ reset,cycle,getAddress,getControl,getInputs,get,latch,sampleInputs
 
     reset() {
       this.value = 0n;
-      this.bitWidth = BigInt(this.bitWidth || 1n);
-      this.ones = (1n << this.bitWidth) - 1n;
-      this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
     },
 
     getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
     getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
-    getInputs()  { assert(this.input, `${this.name}.input not null`); return this.input.get() & this.ones },
+    getInputs() {
+      if (this.clock) assert(this.clock.phase === 'SAMPLE', `${this.name}.getInputs must only be called in SAMPLE phase`);
+      assert(typeof this.input.get === typeofFunction, `${this.name}.input=${this.input.name}.get must be a function`);
+      return this.input.get();
+    },
 
     getLH(v = this.value) { return (v >> 18n) & this.halfOnes },
     getRH(v = this.value) { return v & this.halfOnes },
@@ -323,8 +333,10 @@ const EBOX = StampIt.compose(Named, {
   },
 
   cycle() {
+    if (EBOX.debugCLOCK) console.log(`<< ${this.name} cycle BEGIN`);
     this.clock.cycle(this.debugCLOCK);
     CRAMClock.cycle(this.debugCLOCK); // Explicitly set up CRAM for next cycle.
+    if (EBOX.debugCLOCK) console.log(`>> ${this.name} cycle END`);
     ++this.microInstructionsExecuted;
   },
 
@@ -342,11 +354,13 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() 
   this.doNotWrap.reset = true;
   this.doNotWrap.latch = true;
   this.doNotWrap.sampleInputs = true;
+  this.doNotWrap.cycle = true;
 }).methods({
+
+  // None of these methods applies to non-clocked combinatorial logic.
   sampleInputs() { console.error(`ERROR: ${this.name}.sampleInputs() called`); },
   latch() { console.error(`ERROR: ${this.name}.latch() called`); },
-
-  cycle() {},
+  cycle() { console.error(`ERROR: ${this.name}.cycle() called`); },
 
   get() { 
     assert(typeof this.getInputs() === 'bigint', `${this.name}.getInputs returned non-BigInt`);
@@ -356,15 +370,24 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() 
 
 
 // Use this mixin to define a Clocked unit.
-const Clocked = EBOXUnit.compose({name: 'Clocked'}).init(function({clock = EBOXClock}) {
+const Clocked = EBOXUnit.compose({name: 'Clocked'}).init(function({clockGate = () => 1, clock = EBOXClock}) {
+  assert(!clockGate || typeof clockGate === typeofFunction, `${this.name}.clockGate must be a function`);
+  this.clockGate = clockGate;
   this.clock = clock;
   clock.addUnit(this);
 }).methods({
-  sampleInputs() { this.toLatch = this.getInputs() },
+
+  sampleInputs() {
+    assert(typeof this.getInputs === typeofFunction, `${this.name}.getInputs (Clocked) must be a function`);
+    this.toLatch = this.getInputs();
+  },
 
   cycle() {
-    this.sampleInputs();
-    this.latch();
+
+    if (this.clockGate()) {
+      this.sampleInputs();
+      this.latch();
+    }
   },
 
   latch() { this.value = this.toLatch },
@@ -381,18 +404,18 @@ const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, 
   this.name = name;
   this.s = s;
   this.e = e;
-  this.bitWidth = BigInt(e - s + 1);
 }).methods({
 
   reset() {
     assert(this.input, `${this.name}.input not null`);
     this.wordWidth = Number(this.input.bitWidth);
+    assert(typeof this.input.bitWidth === 'bigint', `${this.name} must input.bitWidth`);
     this.shift = shiftForBit(this.e, this.input.bitWidth);
-    this.ones = (1n << this.bitWidth) - 1n;
   },
 
   getInputs() {
     const v = this.input.get();
+    assert(typeof this.shift === 'bigint', `${this.name} must define bigint shift`);
     const shifted = v >> BigInt(this.shift);
     return shifted & this.ones;
   },
@@ -402,21 +425,18 @@ module.exports.BitField = BitField;
 
 ////////////////////////////////////////////////////////////////
 // Use this for inputs that are always zero.
-const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'})
-      .init(function ({value = 0, bitWidth}) {
-        value = BigInt(value);
-        this.bitWidth = BigInt(bitWidth);
-        this.ones = (1n << this.bitWidth) - 1n;
-        this.value = value >= 0n ? value : value & this.ones;
-        this.doNotWrap.reset = true;
-        this.doNotWrap.latch = true;
-        this.doNotWrap.get = true;
-      }).methods({
-        getInputs() {return this.value},
+const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'}).init(function ({value = 0, bitWidth}) {
+  value = BigInt(value);
+  this.value = value >= 0n ? value : value & this.ones;
+  this.doNotWrap.reset = true;
+  this.doNotWrap.latch = true;
+  this.doNotWrap.get = true;
+}).methods({
+  getInputs() { return this.value },
 
-        // Neuter to prevent this.value being replaced with 0n
-        reset() {},
-      });
+  // Neuter to prevent this.value being replaced with 0n
+  reset() {},
+});
 module.exports.ConstantUnit = ConstantUnit;
 
 const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36n, value: 0n});
@@ -496,47 +516,14 @@ module.exports.RAM = RAM;
 // when `COND/FM WRITE` with:
 //      input: 'CR.COND', matchValue: "CR.COND['FM WRITE']"
 const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
-      .init(function({bitWidth = 1n,
-                      matchValue,
-                      matchF = (cur => cur === this.matchValue)}) {
+      .init(function({matchValue, matchF = (cur => cur === this.matchValue)}) {
         this.matchValue = matchValue;
         this.matchF = matchF;
-        this.bitWidth = bitWidth;
       }).methods({
 
         getInputs() {
           const cur = this.input.get();
           return this.value = BigInt(!!this.matchF(cur));
-        },
-      });
-
-// Use this for example as a `control` for a RAM to write when
-// `COND/FM WRITE` with {input: 'CR.COND', matchValue: "CR.COND['FM WRITE']"}.
-const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
-      .init(function({input, clock = EBOXClock, matchValue = 0n, matchF}) {
-        this.input = input;
-        this.matchValue = matchValue;
-        this.matchF = matchF || (cur => cur === this.matchValue);
-        this.clock = clock;
-        clock.addUnit(this);
-      }).methods({
-
-        sampleInputs() { },     // XXX this needs to be fixed?
-
-        latch() { this.cycle() },
-
-        cycle() {
-          assert(this.input && typeof this.input.get === typeofFunction,
-                 `${this.name}.input must be defined`);
-          const cur = this.input.get();
-          this.value = BigInt(this.matchF(cur));
-
-          if (this.value) {
-            this.drives.forEach(unit => {
-              assert(typeof unit.cycle === typeofFunction, `${unit.name}.cycle must be a function`);
-              unit.cycle();
-            });
-          }
         },
       });
 
@@ -796,7 +783,7 @@ const CRAM = RAM.methods({
 
 // This simply passes CRAM current addressed word through so we can
 // extract bitfields.
-const CR = Combinatorial({name: 'CR', bitWidth: 84n, input: `CRAM`});
+const CR = Combinatorial({name: 'CR', bitWidth: 84n, input: CRAM});
 
 // Populate CR with properties representing CRAM bit fields. Ignore
 // the unusued bits.
@@ -879,6 +866,7 @@ const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n,
 // condition normally while forcing the IR.value from the external
 // sources when appropriate.
 const COND_LOAD_IR = CR.COND['LOAD IR'];
+
 const IR = Reg.init(function() {
   const fields = {
     op: {s: 0, e: 8},
@@ -903,56 +891,53 @@ const IR = Reg.init(function() {
       set(v) {that.value = fieldInsert(that.value, v, s, e, that.bitWidth)},
     });
   });
-}) ({name: 'IR', bitWidth: 36n, input: `MBOX`,
-                clock: FieldMatchClock({name: 'IR_CLOCK', input: 'CR.COND',
-                                        matchValue: 'COND_LOAD_IR'})});
+}) ({name: 'IR', bitWidth: 36n, input: `MBOX`, clockGate: () => {
+  const result = CONDis('LOAD IR');
+  console.log(`IR clock gate=${result}`);
+  return result;
+}});
 
 // AC subfield of IR.
-const IRAC = BitField({name: 'IRAC', s: 9, e: 12, input: `IR`});
+const IRAC = BitField({name: 'IRAC', s: 9, e: 12, bitWidth: 4, input: `IR`});
 
 // State Register (internal machine state during instructions)
 // This is CON3 E35 p. 150.
 // This is also used for PXCT bits (see PXCT/=<75:77>).
 // See SR_xxx macros for more info.
 const SR = Reg({name: 'SR', bitWidth: 4n, input: `CR['#']`,
-                clock: FieldMatchClock({name: 'SR_CLOCK', input: 'CR.COND',
-                                        matchF: cond => cond === CR.COND['SR_#']})});
+                clockGate: () => CONDis('SR_#')});
 
 // EBOX STATE (UCODE STATE) Register (internal machine state during instructions)
 // This is CON4 E50 p. 161.
 // * MTR4 E54 input CON UCODE STATE 01 is an OR condition for MTR PERF CNT CLOCK
 // * MTR2 E40 input CON UCODE STATE 03 controls MTR CACHE CNT EN
 const EBOX_STATE = Reg({name: 'EBOX_STATE', bitWidth: 4n, input: `CR['#']`,
-                        clock: FieldMatchClock({name: 'EBOX_STATE_CLOCK', input: 'CR.COND',
-                                                matchF: cond => cond === CR.COND['EBOX STATE']})});
+                        clockGate: () => CONDis('EBOX STATE')});
 
 const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
   this.bitWidth = BigInt(bitWidth);
+  this.ones = (1n << this.bitWidth) - 1n;
 }).props({
   name: 'ALU10181',
 }).methods({
 
-  reset() {
-    this.ONES = (1n << this.bitWidth) - 1n;
-  },
-
   add(a, b, cin = 0n) {
     const sum = a + b + cin;
-    const cout = sum > this.ONES ? 1n : 0n;
-    return {value: sum & this.ONES, cout};
+    const cout = sum > this.ones ? 1n : 0n;
+    return {value: sum & this.ones, cout};
   },
 
   sub(a, b, cin = 0n) {
     const diff = a - b + cin;
-    const cout = diff > this.ONES ? 1n : 0n;      // XXX Need to support diff < 0
-    return {value: diff & this.ONES, cout};
+    const cout = diff > this.ones ? 1n : 0n;      // XXX Need to support diff < 0
+    return {value: diff & this.ones, cout};
   },
 
   // This side-effect sets this.cout for carry and returns the value.
   do(func, a, b, cin = 0n) {
     assert(typeof a === 'bigint', `a is BigInt (was ${a})`);
     assert(typeof b === 'bigint', `b is BigInt (was ${b})`);
-    const ones = this.ONES;
+    const ones = this.ones;
     const NOT = x => x ^ ones;
 
     if (!cin) {            // Without hard knowledge of cin, get it from ADX cout
@@ -1023,8 +1008,6 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
 
   reset() {
     this.cout = 0n;
-    this.ones = (1n << this.bitWidth) - 1n;
-    this.alu.reset();
   },
 
   do(aluFunction, a, b, cin = 0n) {
@@ -1051,7 +1034,7 @@ a=${octW(a)}(${this.inputs[0].name}) \
 b=${octW(b)}(${this.inputs[1].name})`);
 */
 
-    const allOnes = this.alu.ONES;
+    const allOnes = this.alu.ones;
     const NOT = v => v ^ allOnes;
     const bw = this.bitWidth;
     const unsigned = x => a & allOnes;
@@ -1129,7 +1112,8 @@ const FM = RAM.props({
   },
 }) ({name: 'FM', nWords: 8*16, bitWidth: 36n,
      input: `AR`,
-     control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, matchValue: `CR.COND['FM WRITE']`})});
+     control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, bitWidth: 1,
+                            matchValue: `CR.COND['FM WRITE']`})});
 
 
 // Note many DISP field values affect carry and LONG:
@@ -1156,8 +1140,8 @@ const FM = RAM.props({
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
 const AD = DataPathALU({name: 'AD', bitWidth: 38n, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
-const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, input: `AD`});
-const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, input: `AD`});
+const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, bitWidth: 5, input: `AD`});
+const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, bitWidth: 23, input: `AD`});
 
 // This does not use the canonical EBOXUnit `control` inputs since it
 // has very complex decoding of VMA/xxx and COND/xxx values to
@@ -1232,13 +1216,10 @@ const VMA = Reg.methods({
   },
 }) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
 
-const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35,
-                            input: `VMA`});
-const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n,
-                      input: `VMA`});
-const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n,
-                           input: `AD_13_17`});
-const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17,
+const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, bitWidth: 4, input: `VMA`});
+const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n, input: `VMA`});
+const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n, input: `AD_13_17`});
+const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17, bitWidth: 5,
                                       input: `VMA_PREV_SECT`});
 // XXX VERY temporary input
 const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13n,
@@ -1250,7 +1231,7 @@ const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36n,
 const VMA_HELD_OR_PC = Mux.methods({
   getInputs() { return BigInt(+this.getControl()) },
 }) ({name: 'VMA HELD OR PC', bitWidth: 36n, inputs: '[PC, VMA_HELD]',
-     control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND',
+     control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND', bitWidth: 1,
                             matchValue: CR.COND['VMA HELD']})});
 
 const PC = Reg.methods({
@@ -1265,21 +1246,12 @@ const PC = Reg.methods({
   },
 }) ({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`});
 
-const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17,
-                           input: `PC`});
+const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, bitWidth: 5, input: `PC`});
 const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n,
                                    inputs: `[SCD_FLAGS, PC]`});
 
-const DIAG_FUNC = CR['DIAG FUNC'];
-const DATAO_APR = CR['DIAG FUNC']['DATAO APR'];
-const COND_DIAG_FUNC = CR.COND['DIAG FUNC'];
-const ADR_BREAK_matchF = (cur => cur === COND_DIAG_FUNC && DIAG_FUNC.get() === DATAO_APR);
-const ADR_BREAK_CLOCK = FieldMatchClock({name: 'ADR_BREAK_CLOCK',
-                                         input: DIAG_FUNC,
-                                         matchF: ADR_BREAK_matchF, matchValue: DATAO_APR});
-const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n,
-                       input: `AD_13_35`,
-                       clock: ADR_BREAK_CLOCK});
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n, input: `AD_13_35`,
+                       clockGate: () => CONDis('DIAG FUNC') && CR['DIAG FUNC'].get() === DATAO_APR});
 
 const MQ = Reg.methods({
 
@@ -1294,7 +1266,7 @@ const MQ = Reg.methods({
     result = this.inputs[x].get();
 
     // Some of the cases yield > 36 bits and need trimming.
-    return this.value = result &= ONES.value;
+    return this.value = result & this.ones;
   },
 }) ({name: 'MQ', bitWidth: 36n, inputs: `[MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD]`});
 
@@ -1308,13 +1280,13 @@ const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36n, input: `MQ`, h
 
 ////////////////////////////////////////////////////////////////
 // BitField splitters used by various muxes and logic elements.
-const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, input: `AR`});
-const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, input: `AR`});
-const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, input: `AR`});
-const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, input: `AR`});
+const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, bitWidth: 9, input: `AR`});
+const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, bitWidth: 8, input: `AR`});
+const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, bitWidth: 6, input: `AR`});
+const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, bitWidth: 6, input: `AR`});
 // XXX needs AR18 to determine direction of shift
-const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, input: `AR`});
-const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, input: `AR`});
+const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, bitWidth: 8, input: `AR`});
+const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, bitWidth: 13, input: `AR`});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
@@ -1336,11 +1308,6 @@ const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36n, input: 'ARX', l
 const SCAD = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 }).methods({
-
-  reset() {
-    this.ones = (1n << this.bitWidth) - 1n;
-    this.alu.reset();
-  },
 
   getInputs() {
     const func = Number(this.getControl());
@@ -1392,8 +1359,8 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
       }) ({name: 'FEcontrol', bitWidth: 2n});
 
 const FE = ShiftReg({name: 'FE', bitWidth: 10n, input: `SCAD`, control: `FEcontrol`,
-                     clock: FieldMatchClock({name: 'FE_CLOCK',
-                                             input: 'CR.FE', matchValue: CR.FE.SCAD})});
+                     clockGate: () => CR.FE.get() === CR.FE.SCAD});
+
 const SH = LogicUnit.init(function() {
   this.doNotWrap.get = false;
 }).methods({
@@ -1458,8 +1425,8 @@ const ARSIGN_SMEAR = LogicUnit.methods({
   getInputs() { return BigInt(+!!(AR.get() & maskForBit(0, 9))) },
 }) ({name: 'ARSIGN_SMEAR', bitWidth: 9n});
 
-const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, input: `SCAD`});
-const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, input: `SCAD`});
+const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, bitWidth: 9, input: `SCAD`});
+const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, bitWidth: 6, input: `SCAD`});
 
 const MAGIC_NUMBER = CR['#'];
 
@@ -1524,23 +1491,19 @@ const ARR_LOADmask = AR_CTL['ARR LOAD'];
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
 const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
-                 clock: FieldMatchClock({name: 'ARR_CLOCK', input: AR_CTL,
-                                         matchF: cur => (cur & ARR_LOADmask ||
-                                                         CR.AR !== CR.AR.AR)})});
-const ARL_LOADmask = AR_CTL['ARL LOAD'];
+                 clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR !== CR.AR.AR});
 
+const ARL_LOADmask = AR_CTL['ARL LOAD'];
+const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND();
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML00_08`,
-                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
-                                             matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
+const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML00_08`, clockGate: ARLgateF});
+
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML09_17`,
-                     clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
-                                             matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
+const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML09_17`, clockGate: ARLgateF});
 const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9n, s: 0, e: 9, input: `ARML`});
 const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9n, s: 9, e: 17, input: `ARML`});
 
@@ -1548,19 +1511,15 @@ const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
 const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
-const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, input: `ARX`});
+const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, bitWidth: 4, input: `ARX`});
 
 const ARL = BitCombiner({name: 'ARL', bitWidth: 18n, inputs: `[AR00_08, AR09_17]`});
 
 // XXX needs to implement AR/ARMM, SPEC/REG CTL as a special getInputs() method.
 const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
 
-const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`,
-                clock: FieldMatchClock({name: 'BR_CLOCK',
-                                        input: `CR.BR`, matchValue: CR.BR.AR})});
-const BRX = Reg({name: 'BRX', bitWidth: 36n, input: `ARX`,
-                 clock: FieldMatchClock({name: 'BRX_CLOCK',
-                                         input: `CR.BRX`, matchValue: CR.BRX.ARX})});
+const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`, clockGate: () => BRis('AR')});
+const BRX = Reg({name: 'BRX', bitWidth: 36n, input: `ARX`, clockGate: () => BRXis('ARX')});
 
 const SC = Reg.methods({
 
@@ -1598,10 +1557,7 @@ const SCADB = Mux({name: 'SCADB', bitWidth: 10n,
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13n,
                        input: 'AR_00_12',
-                       clock: FieldMatchClock({name: 'SET_FLAGS',
-                                               input: 'CR.SPEC',
-                                               matchF: (spec => spec === CR.SPEC['FLAG CTL'] &&
-                                                        fieldIs('FLAG CTL', 'SET FLAGS'))})});
+                       clockGate: () => SPECis('FLAG CTL') && fieldIs('FLAG CTL', 'SET FLAGS')});
 
 
 ////////////////////////////////////////////////////////////////
