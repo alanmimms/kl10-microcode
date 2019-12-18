@@ -105,7 +105,18 @@ module.exports.fieldExtract = fieldExtract;
 // the method.
 let wrapDepth = 0;              // Indentation counter
 const contextSymbol = Symbol('wrapping context');
-function wrapMethod(objToWrap, method, opts = {preAction: defaultPreAction, postAction: defaultPostAction}) {
+function wrapMethod(objToWrap, method,
+                    opts = {
+                      verbose: false,
+                      preAction: defaultPreAction,
+                      postAction: defaultPostAction,
+                      replaceAction: null,
+                    })
+{
+  opts.preAction = opts.preAction || defaultPreAction;
+  opts.postAction = opts.postAction || defaultPostAction;
+  opts.replaceAction = opts.replaceAction;
+
   const context = {
     wrappedObj: objToWrap,
     name: objToWrap.name,
@@ -114,6 +125,7 @@ function wrapMethod(objToWrap, method, opts = {preAction: defaultPreAction, post
     preAction: opts.preAction,
     postAction: opts.postAction,
     replaceAction: opts.replaceAction,
+    verbose: opts.verbose,
   };
 
   // Do not wrap methods we are told not to.
@@ -142,9 +154,14 @@ function defaultPreAction({stamp, name, bitWidth, context}) {
   this.beforeValue = o.value;
   this.beforeToLatch = o.toLatch;
 
-  if (wrapperEnableLevel) console.log(`\
-${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
+  if (this.verbose) {
+    if (wrapperEnableLevel) console.log(`\
+${''.padStart(wrapDepth*2)}${name}.${this.methodName}: \
 before value=${o.vToString(this.beforeValue)} toLatch=${o.vToString(this.beforeToLatch)}`);
+  } else {
+    // Not verbose. Do nothing in preAction.
+  }
+  
   ++wrapDepth;
 }
 module.exports.defaultPreAction = defaultPreAction;
@@ -161,12 +178,17 @@ function defaultPostAction({result, stamp, name, bitWidth, context}) {
     try {
       resultString = o.vToString(result);
     } catch(e) {
-      resultString = result;
+      resultString = result || '<>';
     }
 
-    console.log(`\
-${''.padStart(wrapDepth*2)}${name} ${this.methodName}: \
+    if (this.verbose) {
+      console.log(`\
+${''.padStart(wrapDepth*2)}${name}.${this.methodName} \
  after value=${o.vToString(o.value)} toLatch=${o.vToString(o.toLatch)}  returns ${resultString}`);
+    } else {
+      console.log(`\
+${''.padStart(wrapDepth*2)}${resultString} from ${name}.${this.methodName}`);
+    }
   }
 
   return result;
@@ -203,6 +225,7 @@ function restoreWrappers() {
   ++wrapperEnableLevel;
 }
 module.exports.restoreWrappers = restoreWrappers;
+
 
 
 // Return a list of names of methods that have wrappers or [] if none.
