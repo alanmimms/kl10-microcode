@@ -23,7 +23,7 @@ const KLX_CRAM_lines = require('./cram-lines.js');
 
 const {
   EBOX, MBOX, FM,
-  CRAM, CR, DRAM, DR,
+  CRAMClock, CRAM, CR, DRAM, DR,
   AR, ARX, BR, BRX, MQ, VMA, PC, IR,
   Named, EBOXUnit,
 } = EBOXmodel;
@@ -167,8 +167,10 @@ const commands = [
   },
 
   {name: 'history',
-   description: `Display CRAs 25 (or specified count) backward in time up to ${historyMax}.
-Use 'history on' or 'history off' to enable or disable history mechanism.`,
+   description: `\
+Display CRAs 25 (or specified count) backward in time up to
+${historyMax}. Use 'history on' or 'history off' to enable or disable
+history mechanism.`,
    doFn: doHistory,
   },
 
@@ -183,10 +185,21 @@ Use 'history on' or 'history off' to enable or disable history mechanism.`,
   },
 
   {name: 'debug',
-   description: `With no args, display current registered debug flags and their values.
-With arguments, set specified flag to specified value. If value is unspecified, toggle.
-Use "debug EBOX-unit-name method" (or "*" for all methods) to log or unlog actions.`,
-   doFn: doDebug,
+   description: `\
+With no args, display current registered debug flags and their values.
+With arguments, set specified flag to specified value. If value is
+unspecified, toggle. Use "debug EBOX-unit-name method" (or "*" for all
+methods) to log or unlog actions.`,
+   doFn: words => doDebug(words, false),
+  },
+
+  {name: 'vdebug',
+   description: `\
+VERBOSE debug: With no args, display current registered debug flags
+and their values. With arguments, set specified flag to specified
+value. If value is unspecified, toggle. Use "debug EBOX-unit-name
+method" (or "*" for all methods) to log or unlog actions.`,
+   doFn: words => doDebug(words, true),
   },
 
   {name: 'reset',
@@ -423,7 +436,7 @@ function doValue(words) {
 const EBOXDebugFlags = `NICOND,CLOCK`.split(/,\s*/);
 
 
-function doDebug(words) {
+function doDebug(words, verbose = false) {
 
   if (words.length === 1) {
     displayDebugFlags();
@@ -435,12 +448,12 @@ function doDebug(words) {
   if (words.length === 2) {
 
     if (Named.units[name]) {
-      wrapUnit(name, '*');
+      wrapUnit(name, '*', verbose);
     } else {
       setDebugFlag(name);
     }
   } if (words.length === 3) { // "debug unit-name method-or-*"
-    wrapUnit(name, words[2]);
+    wrapUnit(name, words[2], verbose);
   }
 
 
@@ -475,8 +488,9 @@ function doDebug(words) {
   }
 
 
-  function wrapUnit(unitName, method) {
+  function wrapUnit(unitName, method, verbose = false) {
     const unit = Named.units[unitName];
+    const v = verbose ? 'v' : '';
 
     if (!unit) return;
 
@@ -489,10 +503,10 @@ function doDebug(words) {
 
           if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
             unwrapMethod(unit, method);
-            console.log(`${unit.name} ${method} debug now off`);
+            console.log(`${unit.name} ${method} ${v}debug now off`);
           } else {                             // Not wrapped, so wrap
-            wrapMethod(unit, method);
-            console.log(`${unit.name} ${method} debug now on`);
+            wrapMethod(unit, method, {verbose});
+            console.log(`${unit.name} ${method} ${v}debug now on`);
           }
         });
     } else {
@@ -503,10 +517,10 @@ function doDebug(words) {
 
         if (methodIsWrapped(unit, method)) { // Already wrapped, so unwrap
           unwrapMethod(unit, method);
-          console.log(`${unit.name} ${method} debug now off`);
+          console.log(`${unit.name} ${method} ${v}debug now off`);
         } else {                             // Not wrapped, so wrap
-          wrapMethod(unit, method);
-          console.log(`${unit.name} ${method} debug now on`);
+          wrapMethod(unit, method, {verbose});
+          console.log(`${unit.name} ${method} ${v}debug now on`);
         }
       }
     }
@@ -876,7 +890,7 @@ function doReset() {
   MBOX.data[2] = assemble(0o271, 0o11, 0, 0, 0o4321n);
 
   // Prefetch CR content for first cycle
-  CRAM.cycle();
+  CRAMClock.cycle();
 }
 
 
