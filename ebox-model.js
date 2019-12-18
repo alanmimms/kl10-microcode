@@ -65,7 +65,7 @@ const Named = StampIt({name: 'Named'}).statics({
   // This is the list of property names that should be fixed up. That
   // is, replace their string values with the result of evaluating
   // that string at the end of the module.
-  mayFixup: `input,inputs,func,control,addr,matchValue,enableF,loBits,hiBits`.split(/,\s*/),
+  mayFixup: `input,inputs,control,addr,matchValue,enableF,loBits,hiBits`.split(/,\s*/),
 
   // This is the STAMP (not instance) method invoked at the end of
   // this module to fix up all of the `mayFixup` properties on all
@@ -143,6 +143,20 @@ module.exports.NOCLOCK = NOCLOCK;
 // The EBOX-wide clock that drives the whole kaboodle.
 const EBOXClock = Clock({name: 'EBOXClock'});
 module.exports.EBOXClock = EBOXClock;
+
+// The CRAM clock which is stepped AFTER everything has settled to
+// prep for the next cycle.
+const CRAMClock = Clock({name: 'CRAMClock'});
+module.exports.CRAMClock = CRAMClock;
+
+////////////////////////////////////////////////////////////////
+// The rules for a Unit:
+//
+// * Clocked units can only change their state in latch(). Calls to
+//   get() must be idempotent and pure.
+//
+// * Combinatorial units have no state. Calls to get() are idempotent
+//   and pure.
 
 
 ////////////////////////////////////////////////////////////////
@@ -233,20 +247,17 @@ module.exports.EBOXClock = EBOXClock;
 //   this just returns the transformed inputs.
 //
 const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
-  function({name, bitWidth, input, inputs, addr, func, control, clock = EBOXClock, debugFormat = 'octW'}) {
+  function({name, bitWidth, input, inputs, addr, control, debugFormat = 'octW'}) {
     this.name = name;
-    this.clock = clock;
     this.input = input;         // We can use singular OR plural
     this.inputs = inputs;       //  but not both (`input` wins over `inputs`)
-    this.func = func;
     this.control = control;
-    clock.addUnit(this);        // Because of this `clock` cannot be on `mayFixup` list
     this.addr = addr;
     this.bitWidth = BigInt(bitWidth || 0);
     this.value = this.toLatch = 0n;
     this.debugFormat = debugFormat;
     this.wrappableMethods = `\
-reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
+reset,cycle,getAddress,getControl,getInputs,get,latch,sampleInputs
 `.trim().split(/,\s*/);
   }).props({
     value: 0n,
@@ -262,13 +273,7 @@ reset,cycle,getAddress,getFunc,getControl,getInputs,get,latch,sampleInputs
       this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
     },
 
-    cycle() {
-      this.sampleInputs();
-      this.latch();
-    },
-
     getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
-    getFunc()    { assert(this.func, `${this.name}.func not null`); return this.func.get() },
     getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
     getInputs()  { assert(this.input, `${this.name}.input not null`); return this.input.get() & this.ones },
 
@@ -311,7 +316,7 @@ const EBOX = StampIt.compose(Named, {
     this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
 
     // RESET always generates several clocks with zero CRAM and DRAM.
-    CRAM.cycle();               // Explicitly set up CRAM for this cycle.
+    CRAMClock.cycle();       // Explicitly set up CRAM for this cycle.
     _.range(4).forEach(k => this.cycle());
 
     this.resetActive = false;
@@ -319,7 +324,7 @@ const EBOX = StampIt.compose(Named, {
 
   cycle() {
     this.clock.cycle(this.debugCLOCK);
-    CRAM.cycle(this.debugCLOCK); // Explicitly set up CRAM for next cycle.
+    CRAMClock.cycle(this.debugCLOCK); // Explicitly set up CRAM for next cycle.
     ++this.microInstructionsExecuted;
   },
 
@@ -338,8 +343,10 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() 
   this.doNotWrap.latch = true;
   this.doNotWrap.sampleInputs = true;
 }).methods({
-  sampleInputs() { },
-  latch() { },
+  sampleInputs() { console.error(`ERROR: ${this.name}.sampleInputs() called`); },
+  latch() { console.error(`ERROR: ${this.name}.latch() called`); },
+
+  cycle() {},
 
   get() { 
     assert(typeof this.getInputs() === 'bigint', `${this.name}.getInputs returned non-BigInt`);
@@ -349,8 +356,17 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() 
 
 
 // Use this mixin to define a Clocked unit.
-const Clocked = EBOXUnit.compose({name: 'Clocked'}).methods({
+const Clocked = EBOXUnit.compose({name: 'Clocked'}).init(function({clock = EBOXClock}) {
+  this.clock = clock;
+  clock.addUnit(this);
+}).methods({
   sampleInputs() { this.toLatch = this.getInputs() },
+
+  cycle() {
+    this.sampleInputs();
+    this.latch();
+  },
+
   latch() { this.value = this.toLatch },
   get() { return this.value },
 });
@@ -458,7 +474,6 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
       // whatever is addressed during read.
       this.value = this.toLatch = this.data[this.latchedAddr] & this.ones;
     }
-
   },
 
   latch() {
@@ -500,15 +515,17 @@ const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
 const FieldMatchClock = Clock.compose({name: 'FieldMatchClock'})
       .init(function({input, clock = EBOXClock, matchValue = 0n, matchF}) {
         this.input = input;
-        this.clock = clock;
         this.matchValue = matchValue;
         this.matchF = matchF || (cur => cur === this.matchValue);
+        this.clock = clock;
         clock.addUnit(this);
       }).methods({
 
         sampleInputs() { },     // XXX this needs to be fixed?
 
-        latch() {
+        latch() { this.cycle() },
+
+        cycle() {
           assert(this.input && typeof this.input.get === typeofFunction,
                  `${this.name}.input must be defined`);
           const cur = this.input.get();
@@ -620,16 +637,8 @@ const CRAM = RAM.methods({
     this.stack = [];
   },
 
-  sampleInputs() {},
-  latch() {},
-
-  cycle(debug = false) {
-    if (debug) this.debugBanner(`sampleInputs`);
-    this.latchedAddr = this.getAddress();
-    if (debug) this.debugBanner(`latch`);
-    this.value = this.data[this.latchedAddr];
-    if (debug) this.debugBanner(`cycle complete`);
-  },
+  // Our "front end" always writes directly to CRAM.data.
+  isWrite() { return false },
 
   get() { return this.value },
 
@@ -781,16 +790,9 @@ const CRAM = RAM.methods({
       this.stack.push(this.latchedAddr);
     }
 
-/*
-    console.log(`CRAM getAddress: \
-this.latchedAddr=${octal(this.latchedAddr)} \
-orBits=${octal(orBits)} \
-CR.J=${octal(CR.J.get())}`);
-*/
-
     return CR.J.get() | orBits;
   },
-}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n, clock: NOCLOCK});
+}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n, clock: CRAMClock});
 
 // This simply passes CRAM current addressed word through so we can
 // extract bitfields.
@@ -1035,7 +1037,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     assert(this.inputs, `${this.name}.inputs not null`);
     assert(this.inputs[0], `${this.name}.inputs[0] not null`);
     assert(this.inputs[1], `${this.name}.inputs[1] not null`);
-    const func = this.getFunc();
+    const func = this.getControl();
     const f = Number(func) & 0o37;
     const a = this.inputs[0].get();
     assert(typeof a === 'bigint', `${this.name} A is BigInt`);
@@ -1074,7 +1076,7 @@ const ADX = DataPathALU.compose({name: 'ADX'}).methods({
   // XXX this needs an implementation
   getCRY_02() { return 0n },
 
-}) ({name: 'ADX', bitWidth: 36n, inputs: `[ADXA, ADXB, ZERO]`, func: `CR.AD`});
+}) ({name: 'ADX', bitWidth: 36n, inputs: `[ADXA, ADXB, ZERO]`, control: `CR.AD`});
 
 // XXX Need to implement APR3 FM EXTENDED/APR FM 36 bit from p. 384 lower left corner.
 const FM = RAM.props({
@@ -1153,13 +1155,13 @@ const FM = RAM.props({
 // 			;is 0, clear AR left; otherwise, poke ARL select
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
-const AD = DataPathALU({name: 'AD', bitWidth: 38n, inputs: `[ADA, ADB, ZERO]`, func: `CR.AD`});
+const AD = DataPathALU({name: 'AD', bitWidth: 38n, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, input: `AD`});
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, input: `AD`});
 
-// This does not use the canonical EBOXUnit `control` or `func` inputs
-// since it has very complex decoding of VMA/xxx and COND/xxx values
-// to determine its operation.
+// This does not use the canonical EBOXUnit `control` inputs since it
+// has very complex decoding of VMA/xxx and COND/xxx values to
+// determine its operation.
 const VMA = Reg.methods({
 
   sampleInputs() {
@@ -1341,7 +1343,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
   },
 
   getInputs() {
-    const func = Number(this.getFunc());
+    const func = Number(this.getControl());
     const a = this.inputs[0].get();
     const b = this.inputs[1].get();
     let result;
@@ -1362,7 +1364,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
            `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
     return result;
   },
-}) ({name: 'SCAD', bitWidth: 10n, inputs: `[SCADA, SCADB, ZERO]`, func: `CR.SCAD`});
+}) ({name: 'SCAD', bitWidth: 10n, inputs: `[SCADA, SCADB, ZERO]`, control: `CR.SCAD`});
 
 
 const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
@@ -1530,15 +1532,17 @@ const ARL_LOADmask = AR_CTL['ARL LOAD'];
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML`,
+const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML00_08`,
                      clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
                                              matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML`,
+const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML09_17`,
                      clock: FieldMatchClock({name: 'ARL_CLOCK', input: AR_CTL,
                                              matchF: cur => (cur & ARL_LOADmask || ARL_IND())})});
+const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9n, s: 0, e: 9, input: `ARML`});
+const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9n, s: 9, e: 17, input: `ARML`});
 
 const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
@@ -1619,6 +1623,7 @@ const MBOX = RAM.props({
     EBOX.fetchCycle = true;   // Start a memory cycle
   },
 
+  // XXX this is not idempotent. It may need to be rethought.
   get() {
     const op = this.getControl(); // MEM/op
     const addr = this.getAddress();
@@ -1642,7 +1647,7 @@ const MBOX = RAM.props({
     case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
 
       if (DR.B.get() & 2n) {
-        console.log(`================ DRAM B MBOX writeCycle start`);
+        if (!this.writeCycle) console.log(`================ DRAM B MBOX writeCycle start`);
         this.writeCycle = true;
       }
 
