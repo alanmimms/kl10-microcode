@@ -322,6 +322,15 @@ function doCPUStep(words) {
 
 
 function doGo(words) {
+  let a = CRAM.latchedAddr;
+
+  if (words.length === 2) a = BigInt(parseInt(words[1], 8));
+
+  if (a !== CRAM.latchedAddr) {
+    CRAM.latchedAddr = a;
+    CRAMClock.cycle();          // Fetch new CRAM location
+  }
+
   console.log(`[Running from ${octA(CRAM.latchedAddr)}]`);
   run();
 }
@@ -372,7 +381,15 @@ and an octal value for its control input`);
 
 
 function doTil(words) {
-  console.log(`Not yet implemented.`);
+
+  if (words.length !== 2) {
+    console.error(`"til" command must have an argument with the address to stop at`);
+    return;
+  }
+
+  const a = BigInt(parseInt(words[1], 8));
+  breakpoint[a] = 'til';
+  doGo([]);
 }
 
 
