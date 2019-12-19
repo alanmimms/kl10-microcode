@@ -891,11 +891,7 @@ const IR = Reg.init(function() {
       set(v) {that.value = fieldInsert(that.value, v, s, e, that.bitWidth)},
     });
   });
-}) ({name: 'IR', bitWidth: 36n, input: `MBOX`, clockGate: () => {
-  const result = CONDis('LOAD IR');
-  console.log(`IR clock gate=${result}`);
-  return result;
-}});
+}) ({name: 'IR', bitWidth: 36n, input: `MBOX`, clockGate: () => CONDis('LOAD IR')});
 
 // AC subfield of IR.
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12, bitWidth: 4, input: `IR`});
@@ -1026,13 +1022,6 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     assert(typeof a === 'bigint', `${this.name} A is BigInt`);
     const b = this.inputs[1].get();
     assert(typeof b === 'bigint', `${this.name} B is BigInt`);
-
-/*
-    console.log(`\
-${this.name} \
-a=${octW(a)}(${this.inputs[0].name}) \
-b=${octW(b)}(${this.inputs[1].name})`);
-*/
 
     const allOnes = this.alu.ones;
     const NOT = v => v ^ allOnes;
@@ -1469,19 +1458,26 @@ const ARML = Mux.methods({
     const ctl = arlIND ? CR.ARL.get() : CR.AR.get();
     return (ctl === 0n && arlIND) ? 8n : ctl;
   },
+
+  // This is overridden to take the left half of the input, but only
+  // when the input is at least 36 bits wide.
+  get() {
+    const ctl = this.getControl();
+    const inValue = this.inputs[ctl].get();
+    const shift = this.inputs[ctl].bitWidth < 36n ? 0n : 18n;
+    return (inValue >> shift) & this.ones;
+  },
 }) ({name: 'ARML', bitWidth: 18n,
-     inputs: `[ARL, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
+     inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
 
 // ARL_IND is defined in MEM/, SPEC/, and COND/ and they are ORed
 // together in E31 in middle of p.365.
-function ARL_IND() {
-  return CONDis('ARL IND') || SPECis('ARL IND') || MEMis('ARL IND');
-}
+const ARL_IND = () => CONDis('ARL IND') || SPECis('ARL IND') || MEMis('ARL IND');
 
 // XXX this is enabled by COND/REG CTL (CTL2)
 const AR_CTL = CR['AR CTL'];
 const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
-                  inputs: `[ARR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
+                  inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 
