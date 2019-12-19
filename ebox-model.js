@@ -439,9 +439,9 @@ const ConstantUnit = Combinatorial.compose({name: 'ConstantUnit'}).init(function
 });
 module.exports.ConstantUnit = ConstantUnit;
 
-const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36n, value: 0n});
+const ZERO = ConstantUnit({name: 'ZERO', bitWidth: 36, value: 0n});
 module.exports.ZERO = ZERO;
-const ONES = ConstantUnit({name: 'ONES', bitWidth: 36n, value: (1n << 36n) - 1n});
+const ONES = ConstantUnit({name: 'ONES', bitWidth: 36, value: (1n << 36n) - 1n});
 module.exports.ONES = ONES;
 
 
@@ -779,11 +779,11 @@ const CRAM = RAM.methods({
 
     return CR.J.get() | orBits;
   },
-}) ({name: 'CRAM', nWords: 2048, bitWidth: 84n, clock: CRAMClock});
+}) ({name: 'CRAM', nWords: 2048, bitWidth: 84, clock: CRAMClock});
 
 // This simply passes CRAM current addressed word through so we can
 // extract bitfields.
-const CR = Combinatorial({name: 'CR', bitWidth: 84n, input: CRAM});
+const CR = Combinatorial({name: 'CR', bitWidth: 84, input: CRAM});
 
 // Populate CR with properties representing CRAM bit fields. Ignore
 // the unusued bits.
@@ -818,7 +818,7 @@ const DRAM = RAM.methods({
 
     return this.value = result;
   },
-}) ({name: 'DRAM', nWords: 512, bitWidth: 24n, input: `ONES`, control: `ZERO`, addr: `CR.J`});
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24, input: `ONES`, control: `ZERO`, addr: `CR.J`});
 
 // This clock is pulsed in next cycle after IR is stable but not on
 // prefetch. XXX this is not used right now.
@@ -843,15 +843,13 @@ const DR = Reg.methods({
 
     return dw;
   },
-}) ({name: 'DR', bitWidth: 24n,
-     // XXX not used XXX clock: DR_CLOCK,
-     input: `DRAM`});
+}) ({name: 'DR', bitWidth: 24, input: `DRAM`});
 defineBitFields(DR, DRAMdefinitions);
 
 // XXX this should probably be eliminated and replaced with explicit
 // loading of CURRENT_BLOCK as a side effect of some other operation.
 const LOAD_AC_BLOCKS = Clock({name: 'LOAD_AC_BLOCKS'});
-const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3n,
+const CURRENT_BLOCK = Reg({name: 'CURRENT_BLOCK', bitWidth: 3,
                            clock: LOAD_AC_BLOCKS, input: `EBUS`});
 
 // Instruction register. This flows from CACHE (eventually) and AD.
@@ -891,7 +889,7 @@ const IR = Reg.init(function() {
       set(v) {that.value = fieldInsert(that.value, v, s, e, that.bitWidth)},
     });
   });
-}) ({name: 'IR', bitWidth: 36n, input: `MBOX`, clockGate: () => CONDis('LOAD IR')});
+}) ({name: 'IR', bitWidth: 36, input: `MBOX`, clockGate: () => CONDis('LOAD IR')});
 
 // AC subfield of IR.
 const IRAC = BitField({name: 'IRAC', s: 9, e: 12, bitWidth: 4, input: `IR`});
@@ -900,17 +898,17 @@ const IRAC = BitField({name: 'IRAC', s: 9, e: 12, bitWidth: 4, input: `IR`});
 // This is CON3 E35 p. 150.
 // This is also used for PXCT bits (see PXCT/=<75:77>).
 // See SR_xxx macros for more info.
-const SR = Reg({name: 'SR', bitWidth: 4n, input: `CR['#']`,
+const SR = Reg({name: 'SR', bitWidth: 4, input: `CR['#']`,
                 clockGate: () => CONDis('SR_#')});
 
 // EBOX STATE (UCODE STATE) Register (internal machine state during instructions)
 // This is CON4 E50 p. 161.
 // * MTR4 E54 input CON UCODE STATE 01 is an OR condition for MTR PERF CNT CLOCK
 // * MTR2 E40 input CON UCODE STATE 03 controls MTR CACHE CNT EN
-const EBOX_STATE = Reg({name: 'EBOX_STATE', bitWidth: 4n, input: `CR['#']`,
+const EBOX_STATE = Reg({name: 'EBOX_STATE', bitWidth: 4, input: `CR['#']`,
                         clockGate: () => CONDis('EBOX STATE')});
 
-const ALU10181 = StampIt.init(function({bitWidth = 36n}) {
+const ALU10181 = StampIt.init(function({bitWidth = 36}) {
   this.bitWidth = BigInt(bitWidth);
   this.ones = (1n << this.bitWidth) - 1n;
 }).props({
@@ -999,7 +997,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
       this.parentALU = parentALU;
     }).methods({
       getInputs() { return this.parentALU.cout },
-    }) ({name: this.name + '.getCarry', bitWidth: 1n, parentALU: this});
+    }) ({name: this.name + '.getCarry', bitWidth: 1, parentALU: this});
 }).methods({
 
   reset() {
@@ -1048,12 +1046,12 @@ const ADX = DataPathALU.compose({name: 'ADX'}).methods({
   // XXX this needs an implementation
   getCRY_02() { return 0n },
 
-}) ({name: 'ADX', bitWidth: 36n, inputs: `[ADXA, ADXB, ZERO]`, control: `CR.AD`});
+}) ({name: 'ADX', bitWidth: 36, inputs: `[ADXA, ADXB, ZERO]`, control: `CR.AD`});
 
 // XXX Need to implement APR3 FM EXTENDED/APR FM 36 bit from p. 384 lower left corner.
 const FM = RAM.props({
   curBlock: 0n,
-  alu: ALU10181({bitWidth: 4n}),
+  alu: ALU10181({bitWidth: 4}),
 }).methods({
 
   // XXX this needs more ACB possibilities.
@@ -1085,10 +1083,10 @@ const FM = RAM.props({
       // NOTE: SHM1 lower left corner has SHM1 XR mux and INDEXED determination.
       // XXX This is not taken into account yet. p. 334.
     case CR.FMADR.XR:
-      return blkShifted | ARX_14_17.get();
+      return blkShifted | ARX14_17.get();
 
     case CR.FMADR.VMA:
-      return blkShifted | VMA_32_35.get();
+      return blkShifted | VMA32_35.get();
 
     case CR.FMADR['AC+#']:
       const magic = MAGIC_NUMBER.get();
@@ -1099,7 +1097,7 @@ const FM = RAM.props({
       return MAGIC_NUMBER.get() & 0o177n;
     }
   },
-}) ({name: 'FM', nWords: 8*16, bitWidth: 36n,
+}) ({name: 'FM', nWords: 8*16, bitWidth: 36,
      input: `AR`,
      control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, bitWidth: 1,
                             matchValue: `CR.COND['FM WRITE']`})});
@@ -1128,7 +1126,7 @@ const FM = RAM.props({
 // 			;is 0, clear AR left; otherwise, poke ARL select
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
-const AD = DataPathALU({name: 'AD', bitWidth: 38n, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
+const AD = DataPathALU({name: 'AD', bitWidth: 38, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, bitWidth: 5, input: `AD`});
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, bitWidth: 23, input: `AD`});
 
@@ -1203,23 +1201,22 @@ const VMA = Reg.methods({
       break;
     }
   },
-}) ({name: 'VMA', bitWidth: 35n - 13n + 1n, input: `ONES`});
+}) ({name: 'VMA', bitWidth: 35 - 13 + 1, input: `ONES`});
 
-const VMA_32_35 = BitField({name: 'VMA_32_35', s: 32, e: 35, bitWidth: 4, input: `VMA`});
-const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35n - 13n + 1n, input: `VMA`});
-const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17n - 13n + 1n, input: `AD_13_17`});
-const VMA_PREV_SECT_13_17 = BitField({name: 'VMA_PREV_SECT_13_17', s: 13, e: 17, bitWidth: 5,
-                                      input: `VMA_PREV_SECT`});
+const VMA32_35 = BitField({name: 'VMA32_35', s: 32, e: 35, bitWidth: 4, input: `VMA`});
+const VMA_HELD = Reg({name: 'VMA HELD', bitWidth: 35 - 13 + 1, input: `VMA`});
+const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1, input: `AD_13_17`});
+const VMA_PREV_SECT13_17 = BitField({name: 'VMA_PREV_SECT13_17', s: 13, e: 17, bitWidth: 5,
+                                     input: `VMA_PREV_SECT`});
 // XXX VERY temporary input
-const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13n,
-                       input: `ZERO`});
+const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, input: `ZERO`});
 
-const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36n,
+const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36,
                                     inputs: `[VMA_FLAGS, VMA_HELD]`});
 
 const VMA_HELD_OR_PC = Mux.methods({
   getInputs() { return BigInt(+this.getControl()) },
-}) ({name: 'VMA HELD OR PC', bitWidth: 36n, inputs: '[PC, VMA_HELD]',
+}) ({name: 'VMA HELD OR PC', bitWidth: 36, inputs: '[PC, VMA_HELD]',
      control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND', bitWidth: 1,
                             matchValue: CR.COND['VMA HELD']})});
 
@@ -1233,13 +1230,13 @@ const PC = Reg.methods({
     const input = SPECis('LOAD PC') ? AR : VMA;
     return input.get();
   },
-}) ({name: 'PC', bitWidth: 35n - 13n + 1n, input: `VMA`});
+}) ({name: 'PC', bitWidth: 35 - 13 + 1, input: `VMA`});
 
-const PC_13_17 = BitField({name: 'PC_13_17', s: 13, e: 17, bitWidth: 5, input: `PC`});
-const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36n,
+const PC13_17 = BitField({name: 'PC13_17', s: 13, e: 17, bitWidth: 5, input: `PC`});
+const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36,
                                    inputs: `[SCD_FLAGS, PC]`});
 
-const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35n - 13n + 1n, input: `AD_13_35`,
+const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1, input: `AD_13_35`,
                        clockGate: () => CONDis('DIAG FUNC') && CR['DIAG FUNC'].get() === DATAO_APR});
 
 const MQ = Reg.methods({
@@ -1257,10 +1254,10 @@ const MQ = Reg.methods({
     // Some of the cases yield > 36 bits and need trimming.
     return this.value = result & this.ones;
   },
-}) ({name: 'MQ', bitWidth: 36n, inputs: `[MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD]`});
+}) ({name: 'MQ', bitWidth: 36, inputs: `[MQ, MQx2, MQ, ZERO, SH, MQdiv4, ONES, AD]`});
 
-const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36n, input: `MQ`, loBits: `ADX`});
-const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36n, input: `MQ`, hiBits: `ADX`});
+const MQx2 = ShiftMult({name: 'MQx2', shift: 1, bitWidth: 36, input: `MQ`, loBits: `ADX`});
+const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36, input: `MQ`, hiBits: `ADX`});
 
 
 // POSSIBLY MISSING REGISTERS:
@@ -1269,20 +1266,19 @@ const MQdiv4 = ShiftDiv({name: 'MQdiv4', shift: 2, bitWidth: 36n, input: `MQ`, h
 
 ////////////////////////////////////////////////////////////////
 // BitField splitters used by various muxes and logic elements.
-const AR_00_08 = BitField({name: 'AR_00_08', s: 0, e: 8, bitWidth: 9, input: `AR`});
 const AR_EXP = BitField({name: 'AR_EXP', s: 1, e: 8, bitWidth: 8, input: `AR`});
 const AR_SIZE = BitField({name: 'AR_SIZE', s: 6, e: 11, bitWidth: 6, input: `AR`});
 const AR_POS = BitField({name: 'AR_POS', s: 0, e: 5, bitWidth: 6, input: `AR`});
 // XXX needs AR18 to determine direction of shift
 const AR_SHIFT = BitField({name: 'AR_SHIFT', s: 28, e: 35, bitWidth: 8, input: `AR`});
-const AR_00_12 = BitField({name: 'AR_00_12', s: 0, e: 12, bitWidth: 13, input: `AR`});
+const AR00_12 = BitField({name: 'AR00_12', s: 0, e: 12, bitWidth: 13, input: `AR`});
 
 ////////////////////////////////////////////////////////////////
 // Logic units.
-const BRx2 = ShiftMult({name: 'BRx2', shift: 1, bitWidth: 36n, input: 'BR', loBits: `ARX`});
-const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36n, input: 'AR', loBits: `ARX`});
-const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36n, input: 'BRX', loBits: `MQ`});
-const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36n, input: 'ARX', loBits: `MQ`});
+const BRx2 = ShiftMult({name: 'BRx2', shift: 1, bitWidth: 36, input: 'BR', loBits: `ARX`});
+const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36, input: 'AR', loBits: `ARX`});
+const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36, input: 'BRX', loBits: `MQ`});
+const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36, input: 'ARX', loBits: `MQ`});
 
 // SCAD CONTROL
 // 0    A
@@ -1320,7 +1316,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
            `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
     return result;
   },
-}) ({name: 'SCAD', bitWidth: 10n, inputs: `[SCADA, SCADB, ZERO]`, control: `CR.SCAD`});
+}) ({name: 'SCAD', bitWidth: 10, inputs: `[SCADA, SCADB, ZERO]`, control: `CR.SCAD`});
 
 
 const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
@@ -1345,9 +1341,9 @@ const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
           return result;
         },
 
-      }) ({name: 'FEcontrol', bitWidth: 2n});
+      }) ({name: 'FEcontrol', bitWidth: 2});
 
-const FE = ShiftReg({name: 'FE', bitWidth: 10n, input: `SCAD`, control: `FEcontrol`,
+const FE = ShiftReg({name: 'FE', bitWidth: 10, input: `SCAD`, control: `FEcontrol`,
                      clockGate: () => CR.FE.get() === CR.FE.SCAD});
 
 const SH = LogicUnit.init(function() {
@@ -1391,53 +1387,53 @@ const SH = LogicUnit.init(function() {
 
     return this.value = result & this.ones;
   },
-}) ({name: 'SH', bitWidth: 36n, inputs: ZERO, control: `CR.SH`});
+}) ({name: 'SH', bitWidth: 36, inputs: ZERO, control: `CR.SH`});
 
 
 ////////////////////////////////////////////////////////////////
 // Muxes
-const ADA = Mux({name: 'ADA', bitWidth: 36n,
+const ADA = Mux({name: 'ADA', bitWidth: 36,
                  inputs: `[AR, ARX, MQ, PC, ZERO, ZERO, ZERO, ZERO]`,
                  // Note three bit field
                  control: `CR.ADA`});
-const ADB = Mux({name: 'ADB', bitWidth: 36n,
+const ADB = Mux({name: 'ADB', bitWidth: 36,
                  inputs: `[FM, BRx2, BR, ARx4]`,
                  control: `CR.ADB`});
-const ADXA = Mux({name: 'ADXA', bitWidth: 36n,
+const ADXA = Mux({name: 'ADXA', bitWidth: 36,
                   inputs: `[ARX, ARX, ARX, ARX, ZERO, ZERO, ZERO]`,
                   control: `CR.ADA`});
-const ADXB = Mux({name: 'ADXB', bitWidth: 36n,
+const ADXB = Mux({name: 'ADXB', bitWidth: 36,
                   inputs: `[ZERO, BRXx2, BRX, ARXx4]`,
                   control: `CR.ADB`});
 
 const ARSIGN_SMEAR = LogicUnit.methods({
   getInputs() { return BigInt(+!!(AR.get() & maskForBit(0, 9))) },
-}) ({name: 'ARSIGN_SMEAR', bitWidth: 9n});
+}) ({name: 'ARSIGN_SMEAR', bitWidth: 9});
 
 const SCAD_EXP = BitField({name: 'SCAD_EXP', s: 0, e: 8, bitWidth: 9, input: `SCAD`});
 const SCAD_POS = BitField({name: 'SCAD_POS', s: 0, e: 5, bitWidth: 6, input: `SCAD`});
 
 const MAGIC_NUMBER = CR['#'];
 
-const ARMML = Mux({name: 'ARMML', bitWidth: 9n,
+const ARMML = Mux({name: 'ARMML', bitWidth: 9,
                    inputs: `[MAGIC_NUMBER, ARSIGN_SMEAR, SCAD_EXP, SCAD_POS]`,
                    control: `CR.ARMM`});
 
 const ARMMR = Mux.methods({
   getInputs() { return VMAXis('PREV SEC') },
-}) ({name: 'ARMMR', bitWidth: 17n - 13n + 1n,
-     inputs: `[PC_13_17, VMA_PREV_SECT_13_17]`,
+}) ({name: 'ARMMR', bitWidth: 17 - 13 + 1,
+     inputs: `[PC13_17, VMA_PREV_SECT13_17]`,
      control: `CR.VMAX`});
 
-const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36n, input: 'AD', loBits: 'ADX'});
-const ADXx2 = ShiftMult({name: 'ADXx2', shift: 1, bitWidth: 36n, input: 'ADX', loBits: 'MQ'});
+const ADx2 = ShiftMult({name: 'ADx2', shift: 1, bitWidth: 36, input: 'AD', loBits: 'ADX'});
+const ADXx2 = ShiftMult({name: 'ADXx2', shift: 1, bitWidth: 36, input: 'ADX', loBits: 'MQ'});
 
-const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36n, input: 'AD', hiBits: `ZERO`});
-const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', shift: 2, bitWidth: 36n, input: 'ADX', hiBits: 'AD'});
+const ADdiv4 = ShiftDiv({name: 'ADdiv4', shift: 2, bitWidth: 36, input: 'AD', hiBits: `ZERO`});
+const ADXdiv4 = ShiftDiv({name: 'ADXdiv4', shift: 2, bitWidth: 36, input: 'ADX', hiBits: 'AD'});
 
 const SERIAL_NUMBER = ConstantUnit.methods({
   reset() { this.value = BigInt(EBOX.serialNumber) },
-}) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18n});
+}) ({name: 'SERIAL_NUMBER', value: 0n, bitWidth: 18});
 module.exports.SERIAL_NUMBER = SERIAL_NUMBER;
 
 // XXX very temporary. Needs implementation.
@@ -1467,7 +1463,7 @@ const ARML = Mux.methods({
     const shift = this.inputs[ctl].bitWidth < 36n ? 0n : 18n;
     return (inValue >> shift) & this.ones;
   },
-}) ({name: 'ARML', bitWidth: 18n,
+}) ({name: 'ARML', bitWidth: 18,
      inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
 
 // ARL_IND is defined in MEM/, SPEC/, and COND/ and they are ORed
@@ -1476,7 +1472,7 @@ const ARL_IND = () => CONDis('ARL IND') || SPECis('ARL IND') || MEMis('ARL IND')
 
 // XXX this is enabled by COND/REG CTL (CTL2)
 const AR_CTL = CR['AR CTL'];
-const ARMR = Mux({name: 'ARMR', bitWidth: 18n,
+const ARMR = Mux({name: 'ARMR', bitWidth: 18,
                   inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
@@ -1486,7 +1482,7 @@ const ARR_LOADmask = AR_CTL['ARR LOAD'];
 // CTL ARR LOAD = CTL1 REG CTL # 02 & (
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
-const ARR = Reg({name: 'ARR', bitWidth: 18n, input: `ARMR`,
+const ARR = Reg({name: 'ARR', bitWidth: 18, input: `ARMR`,
                  clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR !== CR.AR.AR});
 
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
@@ -1494,28 +1490,28 @@ const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND();
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9n, input: `ARML00_08`, clockGate: ARLgateF});
+const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9, input: `ARML00_08`, clockGate: ARLgateF});
 
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9n, input: `ARML09_17`, clockGate: ARLgateF});
-const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9n, s: 0, e: 9, input: `ARML`});
-const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9n, s: 9, e: 17, input: `ARML`});
+const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9, input: `ARML09_17`, clockGate: ARLgateF});
+const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9, s: 0, e: 8, input: `ARML`});
+const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9, s: 9, e: 17, input: `ARML`});
 
-const ARXM = Mux({name: 'ARXM', bitWidth: 36n,
+const ARXM = Mux({name: 'ARXM', bitWidth: 36,
                   inputs: `[ARX, CACHE, AD, MQ, SH, ADXx2, ADX, ADXdiv4]`,
                   control: `CR.ARX`});
-const ARX = Reg({name: 'ARX', bitWidth: 36n, input: `ARXM`});
-const ARX_14_17 = BitField({name: 'ARX_14_17', s: 14, e: 17, bitWidth: 4, input: `ARX`});
+const ARX = Reg({name: 'ARX', bitWidth: 36, input: `ARXM`});
+const ARX14_17 = BitField({name: 'ARX14_17', s: 14, e: 17, bitWidth: 4, input: `ARX`});
 
-const ARL = BitCombiner({name: 'ARL', bitWidth: 18n, inputs: `[AR00_08, AR09_17]`});
+const ARL = BitCombiner({name: 'ARL', bitWidth: 18, inputs: `[AR00_08, AR09_17]`});
 
 // XXX needs to implement AR/ARMM, SPEC/REG CTL as a special getInputs() method.
-const AR = BitCombiner({name: 'AR', bitWidth: 36n, inputs: `[ARL, ARR]`});
+const AR = BitCombiner({name: 'AR', bitWidth: 36, inputs: `[ARL, ARR]`});
 
-const BR = Reg({name: 'BR', bitWidth: 36n, input: `AR`, clockGate: () => BRis('AR')});
-const BRX = Reg({name: 'BRX', bitWidth: 36n, input: `ARX`, clockGate: () => BRXis('ARX')});
+const BR = Reg({name: 'BR', bitWidth: 36, input: `AR`, clockGate: () => BRis('AR')});
+const BRX = Reg({name: 'BRX', bitWidth: 36, input: `ARX`, clockGate: () => BRXis('ARX')});
 
 const SC = Reg.methods({
 
@@ -1541,18 +1537,18 @@ const SC = Reg.methods({
 
     return result;
   },
-}) ({name: 'SC', bitWidth: 10n, inputs: `[SC, FE, AR, SCAD]`});
+}) ({name: 'SC', bitWidth: 10, inputs: `[SC, FE, AR, SCAD]`});
 
-const SCADA = Mux({name: 'SCADA', bitWidth: 10n,
+const SCADA = Mux({name: 'SCADA', bitWidth: 10,
                    // SCADA/= includes SCADA EN/= as its MSB.
                    inputs: `[FE, AR_POS, AR_EXP, MAGIC_NUMBER, ZERO, ZERO, ZERO, ZERO]`,
                    control: `CR.SCADA`});
-const SCADB = Mux({name: 'SCADB', bitWidth: 10n,
-                   inputs: `[FE, AR_SIZE, AR_00_08, MAGIC_NUMBER]`,
+const SCADB = Mux({name: 'SCADB', bitWidth: 10,
+                   inputs: `[FE, AR_SIZE, AR00_08, MAGIC_NUMBER]`,
                    control: `CR.SCADB`});
 
-const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13n,
-                       input: 'AR_00_12',
+const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13,
+                       input: 'AR00_12',
                        clockGate: () => SPECis('FLAG CTL') && fieldIs('FLAG CTL', 'SET FLAGS')});
 
 
@@ -1641,12 +1637,12 @@ ${octW(addr)}=${octW(result)}`);
 
     return result;
   },
-}) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36n, 
+}) ({name: 'MBOX', nWords: 4 * 1024 * 1024, bitWidth: 36, 
      input: 'MBUS', addr: 'VMA', control: 'CR.MEM'});
 
 // Use MBOX as input here to force MBOX to issue a `get()` each cycle
 // since its decoding drives the IR/ARX latching of instructions.
-const MBUS = Reg({name: 'MBUS', bitWidth: 36n, input: 'MBOX'});
+const MBUS = Reg({name: 'MBUS', bitWidth: 36, input: 'MBOX'});
 
 // XXX very temporary. Needs implementation.
 const CACHE = MBUS;
