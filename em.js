@@ -904,6 +904,7 @@ function doReset() {
   MBOX.data[1] = assemble(0o515, 0o12, 0, 0, 0o1234n);
 
   // ADDI 11,4321
+// │U 1014, 0010,0600,2000,4000,0025,1333,0000	; 5350	ADD:	AR_AR*AC0,AD/A+B,AD FLAGS,EXIT
   MBOX.data[2] = assemble(0o271, 0o11, 0, 0, 0o4321n);
 
   // Prefetch CR content for first cycle
