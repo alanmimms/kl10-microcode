@@ -1209,6 +1209,7 @@ const VMA_PREV_SECT = Reg({name: 'VMA PREV SECT', bitWidth: 17 - 13 + 1, input: 
 const VMA_PREV_SECT13_17 = BitField({name: 'VMA_PREV_SECT13_17', s: 13, e: 17, bitWidth: 5,
                                      input: `VMA_PREV_SECT`});
 // XXX VERY temporary input
+// XXX Need to implement COND/AD FLAGS
 const VMA_FLAGS = Reg({name: 'VMA_FLAGS', bitWidth: 13, input: `ZERO`});
 
 const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36,
@@ -1483,10 +1484,13 @@ const ARR_LOADmask = AR_CTL['ARR LOAD'];
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
 const ARR = Reg({name: 'ARR', bitWidth: 18, input: `ARMR`,
-                 clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR !== CR.AR.AR});
+                 clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR.get() === CR.AR.AR});
 
+// Bitmask for both pieces of ARL to be loaded.
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
-const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND();
+
+const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND() || CR.AR.get() === CR.AR.AD;;
+
 // XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
