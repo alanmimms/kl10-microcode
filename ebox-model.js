@@ -1471,35 +1471,57 @@ const ARML = Mux.methods({
 // together in E31 in middle of p.365.
 const ARL_IND = () => CONDis('ARL IND') || SPECis('ARL IND') || MEMis('ARL IND');
 
-// XXX this is enabled by COND/REG CTL (CTL2)
+// AR/7 ARM input selector for AR[N+0] is [N/6+1, AD EX -2, AD 04, AD 10, AD 16, AD 22, AD 28]
+// AR/7 ARM input selector for AR[N+1] is [N/6+1, AD EX -1, AD 05, AD 11, AD 17, AD 223, AD 29]
+// AR/7 ARM input selector for AR[N+2..4] is AD[N+0..2]
+// AR/7 ARM input selector for AR[N+5] is [N/30+1, AD [N+6], ADX 00]
+//
+// AR CLR is [N/6+1, CTL AR 00-11 CLR, CTL AR00-11 CLR, CTL AR 12-17 CLR,
+//                   CTL ARR CLK, CTL ARR CLK, CTL ARR CLK]
+// Inputs: [ARMM, CACHE, AD, EBUS, SH, {AD1-35,ADX0}, ADX, AD0-37]
+
+// XXX ??? this is enabled by COND/REG CTL (CTL2)
 const AR_CTL = CR['AR CTL'];
 const ARMR = Mux({name: 'ARMR', bitWidth: 18,
                   inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4]`,
                   control: `CR.AR`});
 const ARR_LOADmask = AR_CTL['ARR LOAD'];
 
-// XXX each field of AR has a corresponding clear (CLR). See p. 15 E52
+// AR Load Signals (p.15)
+// AR[N+0..N+2]: [N/6+1, CTL AR 00-08 LOAD, CTL AR 00-08 LOAD, CTL AR 09-17 LOAD,
+//                       CTL ARR LOAD, CTL ARR LOAD, CTL ARR LOAD]
+//
+// AR[N+3..N+5]: [N/6+1, CTL AR 00-08 LOAD, CTL AR 09-17 LOAD, CTL AR 09-17 LOAD,
+//                       CTL ARR LOAD, CTL ARR LOAD, CTL ARR LOAD]
+//
 // OR gate. NOTE "CRAM ARL SEL 4,2,1" really means AR/=<24:26> right?
 // CTL ARR LOAD = CTL1 REG CTL # 02 & (
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
-const ARR = Reg({name: 'ARR', bitWidth: 18, input: `ARMR`,
-                 clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR.get() === CR.AR.AR});
+const ARR = Reg.methods({
+  sampleInputs() { this.toLatch = CONDis('AR CLR') ? 0n : this.input.get();
+                   console.log(`ARR sampleInputs() CONDis('AR CLR')=${CONDis('AR CLR')}`); },
+}) ({name: 'ARR', bitWidth: 18, input: `ARMR`,
+     clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CONDis('AR CLR')})
 
 // Bitmask for both pieces of ARL to be loaded.
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
 
-const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND() || CR.AR.get() === CR.AR.AD;;
+const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND() || CR.AR.get() === CR.AR.AD;
 
-// XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR00_08 = Reg({name: 'AR00_08', bitWidth: 9, input: `ARML00_08`, clockGate: ARLgateF});
+const AR00_08 = Reg.methods({
+  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get();
+                   console.log(`AR00_08 sampleInputs() CONDis('ARL CLR')=${CONDis('ARL CLR')}`); },
+}) ({name: 'AR00_08', bitWidth: 9, input: `ARML00_08`, clockGate: ARLgateF});
 
-// XXX each field of AR has a corresponding CLR. See p. 15 E52 OR gate.
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
-const AR09_17 = Reg({name: 'AR09_17', bitWidth: 9, input: `ARML09_17`, clockGate: ARLgateF});
+const AR09_17 = Reg.methods({
+  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get();
+                   console.log(`AR09_17 sampleInputs() CONDis('ARL CLR')=${CONDis('ARL CLR')}`); },
+}) ({name: 'AR09_17', bitWidth: 9, input: `ARML09_17`, clockGate: ARLgateF});
 const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9, s: 0, e: 8, input: `ARML`});
 const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9, s: 9, e: 17, input: `ARML`});
 
