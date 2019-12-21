@@ -907,7 +907,7 @@ function doReset() {
   MBOX.data[a++] = assemble(I.MOVEI, 0o11, 0, 0, 0o3333n);
   MBOX.data[a++] = assemble(I.ADDI, 0o11, 0, 0, 0o4321n);
   MBOX.data[a++] = assemble(I.SUBI, 0o11, 0, 0, 0o2222n);
-  MBOX.data[a++] = assemble(I.ADDI, 0o10, 0, 0o11, 0o7777);
+  MBOX.data[a++] = assemble(I.MOVEI, 0o10, 0, 0o11, 0o77);
 
   // Prefetch CR content for first cycle
   CRAMClock.cycle();
