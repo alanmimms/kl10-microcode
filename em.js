@@ -16,6 +16,9 @@ const {
   typeofFunction,
 } = require('./util');
 
+// Each opcode with mnemonics for the property names.
+const I = require('./instructions');
+
 const EBOXmodel = require('./ebox-model');
 const KLX_CRAM = require('./cram.js');
 const KLX_DRAM = require('./dram.js');
@@ -897,18 +900,13 @@ function doReset() {
     KLX_DRAM.forEach((dw, addr) => DRAM.data[addr] = dw);
   };
 
-  // HRROI 13,123456
-  MBOX.data[0] = assemble(0o561, 0o13, 0, 0, 0o123456n);
-
-  // HRLZI 12,1234
-  MBOX.data[1] = assemble(0o515, 0o12, 0, 0, 0o1234n);
-
-  // MOVEI 11,3333
-  MBOX.data[2] = assemble(0o201, 0o11, 0, 0, 0o3333n);
-
-  // ADDI 11,4321
-// │U 1014, 0010,0600,2000,4000,0025,1333,0000	; 5350	ADD:	AR_AR*AC0,AD/A+B,AD FLAGS,EXIT
-  MBOX.data[3] = assemble(0o271, 0o11, 0, 0, 0o4321n);
+  // Some test code
+  let a = 0;
+  MBOX.data[a++] = assemble(I.HRROI, 0o13, 0, 0, 0o123456n);
+  MBOX.data[a++] = assemble(I.HRLZI, 0o12, 0, 0, 0o1234n);
+  MBOX.data[a++] = assemble(I.MOVEI, 0o11, 0, 0, 0o3333n);
+  MBOX.data[a++] = assemble(I.ADDI, 0o11, 0, 0, 0o4321n);
+  MBOX.data[a++] = assemble(I.SUBI, 0o11, 0, 0, 0o2222n);
 
   // Prefetch CR content for first cycle
   CRAMClock.cycle();
