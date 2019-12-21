@@ -24,6 +24,7 @@ const SIGN18 = maskForBit(18);
 // LH or full word sign bit
 const SIGN00 = maskForBit(0);
 
+const RHMASK = fieldMask(18, 35);
 
 // EBOX notes:
 //
@@ -920,12 +921,25 @@ const ALU10181 = StampIt.init(function({bitWidth = 36}) {
   this.ones = (1n << this.bitWidth) - 1n;
 }).props({
   name: 'ALU10181',
+  INH_CRY18: 0o001, // specialFlags value to inhibit CRY18 for EA calc
 }).methods({
 
-  add(a, b, cin = 0n) {
-    const sum = a + b + cin;
-    const cout = sum > this.ones ? 1n : 0n;
-    return {value: sum & this.ones, cout};
+  add(a, b, cin = 0n, specialFlags = 0) {
+
+    if (specialFlags & this.INH_CRY18) { // Inhibit carry for EA calc
+      const sum18 = (a & RHMASK) + (b & RHMASK) + cin;
+      let sum = a + b + cin;
+
+      // Prevent carry out of bit 18
+      if (sum18 > RHMASK) sum -= RHMASK + 1n;
+
+      const cout = sum > this.ones ? 1n : 0n;
+      return {value: sum & this.ones, cout};
+    } else {                             // Normal case
+      const sum = a + b + cin;
+      const cout = sum > this.ones ? 1n : 0n;
+      return {value: sum & this.ones, cout};
+    }
   },
 
   sub(a, b, cin = 0n) {
@@ -1017,6 +1031,10 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     return value;
   },
 
+  // Override this in derivative stamps to create special behavior
+  // in the ALU (e.g., INH CRY18).
+  specialFlags() { return 0 },
+
   get() {
     assert(this.inputs, `${this.name}.inputs not null`);
     assert(this.inputs[0], `${this.name}.inputs[0] not null`);
@@ -1032,6 +1050,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     const NOT = v => v ^ allOnes;
     const bw = this.bitWidth;
     const unsigned = x => a & allOnes;
+    const specialFlags = this.specialFlags();
 
     // If 0o40 mask is lit, force cin.
     const cin = (func & 0o40n) ? 1n : this.inputs[2].get();
@@ -1043,7 +1062,7 @@ const DataPathALU = LogicUnit.init(function({bitWidth}) {
     //
     // Also note the schematic symbols XXX CRY 36 mean the carry INTO
     // the LSB of the adder for XXX (i.e., from a bit to the right).
-    return this.do(f, a, b, cin) & allOnes;
+    return this.do(f, a, b, cin, specialFlags) & allOnes;
   },
 });
 
@@ -1133,7 +1152,13 @@ const FM = RAM.props({
 // 			;is 0, clear AR left; otherwise, poke ARL select
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
-const AD = DataPathALU({name: 'AD', bitWidth: 38, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
+const AD = DataPathALU.methods({
+
+  // If AD is computing EA for DISP/DRAM A RD we need to inhibit CRY18.
+  specialFlags() {
+    return this.INH_CRY18;
+  },
+}) ({name: 'AD', bitWidth: 38, inputs: `[ADA, ADB, ZERO]`, control: `CR.AD`});
 const AD_13_17 = BitField({name: 'AD_13_17', s: 13, e: 17, bitWidth: 5, input: `AD`});
 const AD_13_35 = BitField({name: 'AD_13_35', s: 13, e: 35, bitWidth: 23, input: `AD`});
 
@@ -1638,12 +1663,14 @@ const MBOX = RAM.props({
 
     case CR.MEM['ARL IND']:	// CONTROL AR LEFT MUX FROM # FIELD
     case CR.MEM['RESTORE VMA']:	// AD FUNC WITHOUT GENERATING A REQUEST
-    case CR.MEM['A RD']:	// OPERAND READ and load PXCT bits
     case CR.MEM['REG FUNC']:	// MBOX REGISTER FUNCTIONS
     case CR.MEM['AD FUNC']:	// FUNCTION LOADED FROM AD LEFT
     case CR.MEM['EA CALC']:	// FUNCTION DECODED FROM # FIELD
     case CR.MEM['LOAD AR']:
     case CR.MEM['LOAD ARX']:
+      break;
+
+    case CR.MEM['A RD']:	// OPERAND READ and load PXCT bits
       break;
 
     case CR.MEM['B WRITE']:	// CONDITIONAL WRITE ON DRAM B 01
