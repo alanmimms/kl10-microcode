@@ -1152,6 +1152,16 @@ const FM = RAM.props({
 // 			;is 0, clear AR left; otherwise, poke ARL select
 // 			;to set bit 2 (usually gates AD left into ARL)
 // XXX cin needs to be correctly defined.
+
+// Note the following droll comment from the microcode source:
+//
+// The effective address dispatch logic is quite arcane.  It appears
+// that MEM/A RD,DISP/DRAM A RD, and SH/2 interact to get the section
+// number from either AD (if the AC > 777777) or from VMA section, but
+// in order for that to work, we must do something with the VMA, even
+// though we don't actually use it here if the address computation
+// is complete.  Thus the VMA/LOAD has been added for the index case.
+//
 const AD = DataPathALU.methods({
 
   // If AD is computing EA for DISP/DRAM A RD we need to inhibit CRY18.
@@ -1550,10 +1560,12 @@ const ARR_LOADmask = AR_CTL['ARR LOAD'];
 // CTL ARR LOAD = CTL1 REG CTL # 02 & (
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
+//
+// MEM/A RD and DRAM A/x1xx (binary) implies AR load (p. 372 E73, MCL2).
 const ARR = Reg.methods({
   sampleInputs() { this.toLatch = CONDis('AR CLR') ? 0n : this.input.get() },
 }) ({name: 'ARR', bitWidth: 18, input: `ARMR`,
-     clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR.get() !== CR.AR.AR || CONDis('AR CLR')})
+     clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR.get() !== CR.AR.AR || CONDis('AR CLR') || MEMis('LOAD AR')})
 
 // Bitmask for both pieces of ARL to be loaded.
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
@@ -1562,7 +1574,8 @@ const ARLgateF = () =>
       (AR_CTL.get() & ARL_LOADmask) ||
       ARL_IND() ||
       CR.AR.get() !== 0n ||
-      CONDis('ARL CLR');
+      CONDis('ARL CLR') ||
+      MEMis('LOAD AR');
 
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
@@ -1651,6 +1664,8 @@ const MBOX = RAM.props({
   },
 
   // XXX this is not idempotent. It may need to be rethought.
+  // XXX need to take into account the comment from MEM/=<56:59>:
+  // "Note:  MB WAIT is implicit whenever bit 58 is set."
   get() {
     const op = this.getControl(); // MEM/op
     const addr = this.getAddress();
