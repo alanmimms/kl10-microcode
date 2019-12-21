@@ -19,6 +19,12 @@ const utilFormats = require('./util');
 const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 
 
+// RH sign bit
+const SIGN18 = maskForBit(18);
+// LH or full word sign bit
+const SIGN00 = maskForBit(0);
+
+
 // EBOX notes:
 //
 // M8539 APR module is replaced by M8545 in KL10 model B.
@@ -31,6 +37,7 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 // For each XXXXis(name) function, return 1n iff XXXX/${name} is true.
 const SPECis = matcherFactory('SPEC');
 const CONDis = matcherFactory('COND') ;
+const DISPis = matcherFactory('DISP') ;
 const VMAXis = matcherFactory('VMAX');
 const  MEMis = matcherFactory('MEM');
 const   BRis = matcherFactory('BR');
@@ -1453,7 +1460,22 @@ const ARML = Mux.methods({
   getControl() {
     const arlIND = ARL_IND();
     const ctl = arlIND ? CR.ARL.get() : CR.AR.get();
-    return (ctl === 0n && arlIND) ? 8n : ctl;
+
+    if (DISPis('EA MOD')) {
+
+      // This dispatch sneakily sign extends RH of ARX with output of
+      // AD (which is set by AD/1S as part of EA MOD DISP at XCTGO for
+      // example). So if ARR is negative we select AD else ZEROS.
+      if (ARR.get() & SIGN18) { // Negative, so select AD
+        return 9n;
+      } else {                  // Non-negative, so select ZEROS
+        return 10n;
+      }
+    } else if (ctl === 0n && arlIND) {
+      return 8n;
+    } else {
+      return ctl;
+    }
   },
 
   // This is overridden to take the left half of the input, but only
@@ -1465,7 +1487,12 @@ const ARML = Mux.methods({
     return (inValue >> shift) & this.ones;
   },
 }) ({name: 'ARML', bitWidth: 18,
-     inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML]`});
+     // Note inputs[9..10] (AD,ZERO) are special case in
+     // getControl() above to allow Y sign extension using AD/1S.
+     //
+     // Note inputs[8] (ARMML) is special case in getControl() above.
+     //        0   1      2   3     4   5     6    7       8      9   10
+     inputs: `[AR, CACHE, AD, EBUS, SH, ADx2, ADX, ADdiv4, ARMML, AD, ZERO]`});
 
 // ARL_IND is defined in MEM/, SPEC/, and COND/ and they are ORed
 // together in E31 in middle of p.365.
@@ -1499,28 +1526,29 @@ const ARR_LOADmask = AR_CTL['ARR LOAD'];
 //                CRAM ARM SEL 4 | CTL ARR SEL 2 | CTL ARR SEL 1 |
 //                CTL ARR CLR | CTL2 COND/ARR LOAD)
 const ARR = Reg.methods({
-  sampleInputs() { this.toLatch = CONDis('AR CLR') ? 0n : this.input.get();
-                   console.log(`ARR sampleInputs() CONDis('AR CLR')=${CONDis('AR CLR')}`); },
+  sampleInputs() { this.toLatch = CONDis('AR CLR') ? 0n : this.input.get() },
 }) ({name: 'ARR', bitWidth: 18, input: `ARMR`,
-     clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CONDis('AR CLR')})
+     clockGate: () => (AR_CTL.get() & ARR_LOADmask) || CR.AR.get() !== CR.AR.AR || CONDis('AR CLR')})
 
 // Bitmask for both pieces of ARL to be loaded.
 const ARL_LOADmask = AR_CTL['ARL LOAD'];
 
-const ARLgateF = () => (AR_CTL.get() & ARL_LOADmask) || ARL_IND() || CR.AR.get() === CR.AR.AD;
+const ARLgateF = () => 
+      (AR_CTL.get() & ARL_LOADmask) ||
+      ARL_IND() ||
+      CR.AR.get() !== 0n ||
+      CONDis('ARL CLR');
 
 // CTL AR 00-08 LOAD = CTL2 COND/ARLL LOAD | CTL1 REG CTL # 00 | (CTL2 ARL IND & CRAM # 01) |
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
 const AR00_08 = Reg.methods({
-  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get();
-                   console.log(`AR00_08 sampleInputs() CONDis('ARL CLR')=${CONDis('ARL CLR')}`); },
+  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get() },
 }) ({name: 'AR00_08', bitWidth: 9, input: `ARML00_08`, clockGate: ARLgateF});
 
 // CTL AR 09-17 LOAD = CTL2 COND/ARLR LOAD | CTL1 REG CTL # 01 | 
 //                     CTL AR 00-11 CLR | CTL ARL SEL 4,2,1
 const AR09_17 = Reg.methods({
-  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get();
-                   console.log(`AR09_17 sampleInputs() CONDis('ARL CLR')=${CONDis('ARL CLR')}`); },
+  sampleInputs() { this.toLatch = CONDis('ARL CLR') ? 0n : this.input.get() },
 }) ({name: 'AR09_17', bitWidth: 9, input: `ARML09_17`, clockGate: ARLgateF});
 const ARML00_08 = BitField({name: 'ARML00_08', bitWidth: 9, s: 0, e: 8, input: `ARML`});
 const ARML09_17 = BitField({name: 'ARML09_17', bitWidth: 9, s: 9, e: 17, input: `ARML`});
