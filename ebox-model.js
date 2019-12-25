@@ -63,6 +63,13 @@ function matcherFactory(fieldName) {
 }
 
 
+function CONDControlFactory(fieldValueName) {
+  return {
+    get() {return CONDis(fieldValueName)}
+  };
+}
+
+
 ////////////////////////////////////////////////////////////////
 // Wire up an EBOX block diagram.
 ////////////////////////////////////////////////////////////////
@@ -519,21 +526,6 @@ const RAM = Clocked.compose({name: 'RAM'}).init(function({nWords, initValue = 0n
 });
 module.exports.RAM = RAM;
 
-
-// Use this for example as a `control` for a RAM (e.g., FM) to write
-// when `COND/FM WRITE` with:
-//      input: 'CR.COND', matchValue: "CR.COND['FM WRITE']"
-const FieldMatcher = Combinatorial.compose({name: 'FieldMatcher'})
-      .init(function({matchValue, matchF = (cur => cur === this.matchValue)}) {
-        this.matchValue = matchValue;
-        this.matchF = matchF;
-      }).methods({
-
-        getInputs() {
-          const cur = this.input.get();
-          return this.value = BigInt(!!this.matchF(cur));
-        },
-      });
 
 ////////////////////////////////////////////////////////////////
 // Given a control input and a series of selectable inputs, produce
@@ -1123,10 +1115,7 @@ const FM = RAM.props({
       return MAGIC_NUMBER.get() & 0o177n;
     }
   },
-}) ({name: 'FM', nWords: 8*16, bitWidth: 36,
-     input: `AR`,
-     control: FieldMatcher({name: 'FM_WRITE', input: `CR.COND`, bitWidth: 1,
-                            matchValue: `CR.COND['FM WRITE']`})});
+}) ({name: 'FM', nWords: 8*16, bitWidth: 36, input: `AR`, control: CONDControlFactory('FM WRITE')});
 
 
 // Note many DISP field values affect carry and LONG:
@@ -1260,8 +1249,7 @@ const VMA_PLUS_FLAGS = BitCombiner({name: 'VMA_PLUS_FLAGS', bitWidth: 36,
 const VMA_HELD_OR_PC = Mux.methods({
   getInputs() { return BigInt(+this.getControl()) },
 }) ({name: 'VMA HELD OR PC', bitWidth: 36, inputs: '[PC, VMA_HELD]',
-     control: FieldMatcher({name: 'VMA_HELD_OR_PC_CONTROL', input: 'CR.COND', bitWidth: 1,
-                            matchValue: CR.COND['VMA HELD']})});
+     control: CONDControlFactory('VMA HELD')});
 
 const PC = Reg.methods({
 
@@ -1280,7 +1268,8 @@ const PC_PLUS_FLAGS = BitCombiner({name: 'PC_PLUS_FLAGS', bitWidth: 36,
                                    inputs: `[SCD_FLAGS, PC]`});
 
 const ADR_BREAK = Reg({name: 'ADR BREAK', bitWidth: 35 - 13 + 1, input: `AD_13_35`,
-                       clockGate: () => CONDis('DIAG FUNC') && CR['DIAG FUNC'].get() === DATAO_APR});
+                       clockGate: () => CONDis('DIAG FUNC') &&
+                       fieldIs('DIAG FUNC', 'DATAO APR')});
 
 const MQ = Reg.methods({
 
