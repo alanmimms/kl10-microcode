@@ -1115,7 +1115,8 @@ const FM = RAM.props({
       return MAGIC_NUMBER.get() & 0o177n;
     }
   },
-}) ({name: 'FM', nWords: 8*16, bitWidth: 36, input: `AR`, control: CONDControlFactory('FM WRITE')});
+}) ({name: 'FM', nWords: 8*16, bitWidth: 36, input: `AR`,
+     control: CONDControlFactory('FM WRITE')});
 
 
 // Note many DISP field values affect carry and LONG:
