@@ -1,5 +1,7 @@
 # KL10 microcode level emulator
 
+[![forthebadge](https://forthebadge.com/images/badges/powered-by-electricity.svg)](https://forthebadge.com)
+
 (NOTE: This is a work in progress.)
 
 The goal of this project is to build an emulator for the hardware of a
