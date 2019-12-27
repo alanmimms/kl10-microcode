@@ -358,10 +358,16 @@ const EBOX = StampIt.compose(Named, {
   // Used by doExamine to allow arbitrary expression evaluation for
   // debugging.
   eval(s) {
-    return eval(s);
+    return moduleEval(s);
   },
 }) ({name: 'EBOX', serialNumber: 0o6543n});
 module.exports.EBOX = EBOX;
+
+
+function moduleEval(s) {
+  return eval(s);
+}
+module.exports.moduleEval = moduleEval;
 
 
 // Use this mixin to define a Combinatorial unit that is unclocked.
@@ -549,18 +555,6 @@ module.exports.Mux = Mux;
 // Latch input for later retrieval.
 const Reg = Clocked.compose({name: 'Reg'});
 module.exports.Reg = Reg;
-
-
-////////////////////////////////////////////////////////////////
-// Latch input or shift or hold. Equivalent to ECL 10141.
-// The `control` input provides a function code:
-// 0: LOAD
-// 1: SHIFT RIGHT
-// 2: SHIFT LEFT
-// 3: HOLD
-// XXX needs implementation
-const ShiftReg = Clocked.compose({name: 'ShiftReg'});
-module.exports.ShiftReg = ShiftReg;
 
 
 ////////////////////////////////////////////////////////////////
@@ -1318,20 +1312,19 @@ const ARx4 = ShiftMult({name: 'ARx4', shift: 2, bitWidth: 36, input: 'AR', loBit
 const BRXx2 = ShiftMult({name: 'BRXx2', shift: 1, bitWidth: 36, input: 'BRX', loBits: `MQ`});
 const ARXx4 = ShiftMult({name: 'ARXx4', shift: 2, bitWidth: 36, input: 'ARX', loBits: `MQ`});
 
-// SCAD CONTROL
-// 0    A
-// 1    A-B-1
-// 2    A+B
-// 3    A-1
-// 4    A+1
-// 5    A-B
-// 6    A|B
-// 7    A&B
-// XXX no implementation yet.
 const SCAD = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 }).methods({
 
+  // SCAD CONTROL
+  // 0    A
+  // 1    A-B-1
+  // 2    A+B
+  // 3    A-1
+  // 4    A+1
+  // 5    A-B
+  // 6    A|B
+  // 7    A&B
   get() {
     const func = Number(this.getControl());
     const a = this.inputs[0].get();
@@ -1357,32 +1350,48 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
 }) ({name: 'SCAD', bitWidth: 10, inputs: `[SCADA, SCADB, ZERO]`, control: `CR.SCAD`});
 
 
-const FEcontrol = LogicUnit.compose({name: 'FEcontrol'})
-      .methods({
+const FE = Clocked.methods({
 
-        // This takes the two CR fields we depend on for our
-        // control function and returns
-        // 0: LOAD
-        // 1: SHIFT RIGHT
-        // 2: SHIFT LEFT
-        // 3: HOLD
-        getInputs() {
-          let result;
+  // This takes the two CR fields we depend on for our
+  // control function and returns
+  // 0: LOAD
+  // 1: SHIFT RIGHT
+  // 2: SHIFT LEFT
+  // 3: HOLD
+  getControl() {
 
-          if (CR.FE.get())
-            result = 0;
-          else if (CONDis('FE SHRT'))
-            result = 1;
-          else
-            result = 3;
+    // Logic on p. 139 SCD2 E65 cannot generate SHIFT LEFT.
+    if (CR.FE.get())
+      return 0;                 // LOAD
+    else if (CONDis('FE SHRT'))
+      return 1;                 // SHIFT RIGHT
+    else
+      return 3;                 // HOLD
+  },
 
-          return result;
-        },
+  sampleInputs() {
+    const op = this.getControl();
 
-      }) ({name: 'FEcontrol', bitWidth: 2});
+    switch(op) {
+    case 0:                     // LOAD
+      this.toLatch = SCAD.get();
+      break;
 
-const FE = ShiftReg({name: 'FE', bitWidth: 10, input: `SCAD`, control: `FEcontrol`,
-                     clockGate: () => CR.FE.get() === CR.FE.SCAD});
+    case 1:                     // SHIFT RIGHT (replicate sign bit)
+      this.toLatch = (this.value >> 1n) | (this.value & maskForBit(0, 10));
+      break;
+
+    case 2:                     // SHIFT LEFT (not used)
+      this.toLatch = this.value << 1n;
+      break;
+
+    default:
+    case 3:                     // HOLD
+      this.toLatch = this.value;
+      break;
+    }
+  },
+}) ({name: 'FE', bitWidth: 10, input: `SCAD`, control: `ZERO`});
 
 const SH = LogicUnit.init(function() {
   this.doNotWrap.get = false;
@@ -1637,7 +1646,8 @@ const SCADB = Mux({name: 'SCADB', bitWidth: 10,
 
 const SCD_FLAGS = Reg({name: 'SCD_FLAGS', bitWidth: 13,
                        input: 'AR00_12',
-                       clockGate: () => SPECis('FLAG CTL') && fieldIs('FLAG CTL', 'SET FLAGS')});
+                       clockGate: () => SPECis('FLAG CTL') &&
+                                        fieldIs('FLAG CTL', 'SET FLAGS')});
 
 
 ////////////////////////////////////////////////////////////////
