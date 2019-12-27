@@ -28,6 +28,7 @@ const {
   EBOX, MBOX, FM,
   CRAMClock, CRAM, CR, DRAM, DR,
   AR, ARR, ARX, BR, BRX, MQ, VMA, PC, SC, FE, IR,
+  SCAD,
   Named, EBOXUnit,
 } = EBOXmodel;
 
@@ -149,8 +150,13 @@ const commands = [
   },
 
   {name: 'examine',
-   description: 'Display memory at specified address.',
+   description: 'Evaluate expression.',
    doFn: doExamine,
+  },
+
+  {name: 'ei',
+   description: 'Evaluate expression for internal debugging.',
+   doFn: words => doExamine(words, false),
   },
 
   {name: 'list',
@@ -400,7 +406,7 @@ function doAddressBreak(words) {
 }
 
 
-function doExamine(words) {
+function doExamine(words, forceGet = true) {
   disableWrappers();
 
   if (words.length > 1) {
@@ -411,7 +417,7 @@ function doExamine(words) {
       result = EBOX.eval(toEval);
 
       // So you can say "ex AR" and get content of AR.
-      if (typeof result === 'object') result = result.get();
+      if (forceGet && typeof result === 'object') result = result.get();
     } catch(e) {
       console.error(`Error evaluating "${toEval}":
 ${e.msg}`);
