@@ -762,13 +762,18 @@ const CRAM = RAM.methods({
 
       break;
 
+    case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
+      if (VMA_FLAGS.get() & maskForBit(4)) orBits |= 4n;
+      if (AR.get() & maskForBit(12)) orBits |= 2n;
+      if (SCAD.get() & maskForBit(0)) orBits |= 1n;
+      break;
+
     case CR.DISP['DIAG']:
     case CR.DISP['PG FAIL']:  // PAGE FAIL TYPE DISP
     case CR.DISP['SR']:	// 16 WAYS ON STATE REGISTER
     case CR.DISP['SH0-3']:    // [337] 16 WAYS ON HIGH-ORDER BITS OF SHIFTER
     case CR.DISP['DIV']:      // FE0*4 + BR0*2 + AD CRY0; implies MQ SHIFT, AD LONG
     case CR.DISP['SIGNS']:    // ARX0*8 + AR0*4 + BR0*2 + AD0
-    case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
     case CR.DISP['NORM']:     // See normalization for details. Implies AD LONG
       break;
     }

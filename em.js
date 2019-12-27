@@ -27,7 +27,7 @@ const KLX_CRAM_lines = require('./cram-lines.js');
 const {
   EBOX, MBOX, FM,
   CRAMClock, CRAM, CR, DRAM, DR,
-  AR, ARR, ARX, BR, BRX, MQ, VMA, PC, SC, IR,
+  AR, ARR, ARX, BR, BRX, MQ, VMA, PC, SC, FE, IR,
   Named, EBOXUnit,
 } = EBOXmodel;
 
@@ -288,7 +288,7 @@ function curInstruction() {
 
 function doDump(words) {
   disableWrappers();
-  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, SC, IR]
+  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, SC, FE, IR]
         .map(r => `${r.name.padStart(4)}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
