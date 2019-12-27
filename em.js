@@ -27,7 +27,7 @@ const KLX_CRAM_lines = require('./cram-lines.js');
 const {
   EBOX, MBOX, FM,
   CRAMClock, CRAM, CR, DRAM, DR,
-  AR, ARR, ARX, BR, BRX, MQ, VMA, PC, IR,
+  AR, ARR, ARX, BR, BRX, MQ, VMA, PC, SC, IR,
   Named, EBOXUnit,
 } = EBOXmodel;
 
@@ -288,7 +288,7 @@ function curInstruction() {
 
 function doDump(words) {
   disableWrappers();
-  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, IR]
+  const dump = [AR, ARX, BR, BRX, MQ, VMA, PC, SC, IR]
         .map(r => `${r.name.padStart(4)}=${octW(r.get())}`)
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
@@ -313,8 +313,7 @@ function doCDump(words) {
 
 function doStep(words) {
   const n = words.length > 1 ? parseInt(words[1]) : 1;
-  run(n);
-  doDump();
+  run(n, doDump);
 }
 
 
@@ -721,7 +720,7 @@ function startEmulator() {
 const insnsPerTick = 100;
 
 
-function run(maxCount = Number.POSITIVE_INFINITY) {
+function run(maxCount = Number.POSITIVE_INFINITY, doAfterFn) {
   stopCommandLine();
   setImmediate(runAsync);
 
@@ -761,6 +760,7 @@ function run(maxCount = Number.POSITIVE_INFINITY) {
 	startOfLastStep = 0;	// Report full count next time if not in a step
       }
 
+      if (doAfterFn) doAfterFn();
       startCommandLine();
     }
   }
@@ -956,7 +956,7 @@ function loadDECSAV(fd) {
 
       const w1 = fetchC36Word(fd, fileOfs);
       const w2 = fetchC36Word(fd, fileOfs + 1);
-      console.log(`nWords=${octW(nWords)}, addr=${octW(addr)}: ${octW(w1)}  ${octW(w2)}`);
+//    console.log(`nWords=${octW(nWords)}, addr=${octW(addr)}: ${octW(w1)}  ${octW(w2)}`);
 
       if (addr < ev.loAddr) ev.loAddr = addr;
 
@@ -1030,16 +1030,21 @@ function doReset() {
     KLX_DRAM.forEach((dw, addr) => DRAM.data[addr] = dw);
   };
 
-  installTestCode();
-
   // Prefetch CR content for first cycle
   CRAMClock.cycle();
+
+  // Run 1000 cycles while EBOX.run is false to get microcode
+  // initialized.
+//  _.range(1000).forEach(c => EBOX.cycle());
+
+  installTestCode();
 }
 
 
 function main()
 {
   doReset();
+//  EBOX.run = true;              // Microcode initialized, so prepare to run
   setImmediate(startEmulator);
 }
 

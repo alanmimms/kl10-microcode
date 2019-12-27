@@ -322,7 +322,7 @@ const EBOX = StampIt.compose(Named, {
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
   wrappableMethods: `cycle,reset`.split(/,\s*/),
-  run: false,
+  run: false,         // We need to do a bunch of cycles without RUN flag to init
   memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
   fetchCycle: false,            // Initiated by MEM/IFET, cleared by MEM/MB WAIT
 }).methods({
@@ -334,7 +334,7 @@ const EBOX = StampIt.compose(Named, {
 
     this.resetActive = true;
     this.ucodeRun = false;
-    this.run = true;            // By default I usually just want to go while testing microcode
+    this.run = false;
     this.unitArray = Object.values(Named.units).concat([this]);
 
     // Reset every Unit back to initial value.
@@ -1327,7 +1327,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
   this.alu = ALU10181({bitWidth});
 }).methods({
 
-  getInputs() {
+  get() {
     const func = Number(this.getControl());
     const a = this.inputs[0].get();
     const b = this.inputs[1].get();
@@ -1346,7 +1346,7 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
     }
 
     assert(typeof result === 'bigint',
-           `SCAD.getInputs() func=${func.toString(8)} return non-Bigint`);
+           `SCAD.get() func=${func.toString(8)} return non-Bigint`);
     return result;
   },
 }) ({name: 'SCAD', bitWidth: 10, inputs: `[SCADA, SCADB, ZERO]`, control: `CR.SCAD`});
@@ -1394,7 +1394,8 @@ const SH = LogicUnit.init(function() {
       const arx0 = ARX.get();
       const src0 = (AR.get() << 36n) | arx0;
       // Shift count < 0 || count > 35 means inhibit shifter
-      result = (count < 0 || count > 35) ? arx0 : src0 << count;
+      result = (count < 0n || count > 35n) ? arx0 : src0 << count;
+      result = (result >> 36n) & this.ones;
       break;
 
     case CR.SH['AR']:           // 1: Shift inhibit, AR
