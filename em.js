@@ -11,7 +11,7 @@ const CLU = require('command-line-usage');
 
 const {
   octal, oct6, octW, octA, octC,
-  shiftForBit, fieldExtract,
+  shiftForBit, fieldExtract, maskForBit, fieldMask,
   wrapMethod, unwrapMethod, wrappedMethods, methodIsWrapped, disableWrappers, restoreWrappers,
   typeofFunction,
 } = require('./util');
@@ -847,9 +847,35 @@ uasm['${line}']:
 
 
 function assemble(op, a, i, x, y) {
+  if (typeof op === 'string') op = I[op];
+
+  // Allow i, x to be left out for simpler addressing modes
+  if (x === null && y === null) {
+    x = 0;
+    y = i;
+  }
+  
   return 0n |
     BigInt(op) << shiftForBit(8) |
     BigInt(a) << shiftForBit(12) |
+    BigInt(i) << shiftForBit(13) |
+    BigInt(x) << shiftForBit(17) |
+    BigInt(y);
+}
+
+
+function assembleIO(op, dev, i, x, y) {
+  if (typeof op === 'string') op = I[op];
+
+  // Allow i, x to be left out for simpler addressing modes
+  if (x === null && y === null) {
+    x = 0;
+    y = i;
+  }
+  
+  return 0n |
+    BigInt(op) << shiftForBit(12) |
+    BigInt(dev) << shiftForBit(9) |
     BigInt(i) << shiftForBit(13) |
     BigInt(x) << shiftForBit(17) |
     BigInt(y);
@@ -888,6 +914,178 @@ ADA/MQ,ADB/AR*4,AD/A+B,AR/AD*.25, J/0000
 }
 
 
+function installTestCode() {
+  // Device numbers
+  const APR = 0;
+  const PAG = 1;
+
+  // WREBR/RDEBR and CONO/CONI PAG flags
+  const PGCLKE = maskForBit(18);                // CACHE LOOK ENABLE
+  const PGCLDE = maskForBit(19);                // CACHE LOAD ENABLE
+  const PGKLMD = maskForBit(21);                // KL20 PAGING MODE
+  const PGTPEN = maskForBit(22);                // TRAP ENABLE
+  const PGEBRM = fieldMask(23, 35);             // EXEC BASE REGISTER
+
+  // KL APR bits
+  const AP = {
+    RES: maskForBit(19),			// IOB RESET (SAME ON KI AND KL)
+    CLR: maskForBit(22),
+    SET: maskForBit(23),
+    NXM: maskForBit(25),
+    RNX: maskForBit(22) | maskForBit(25),
+  };
+
+  // BOOT.MAC ACs
+  const F = 0;				// FLAGS
+  const T1 = 1;				// GP TEMP
+  const T2 = 2;				//  ...
+  const T3 = 3;				//  ...
+  const T4 = 4;				//  ...
+  const Q1 = 5;				// GENERALLY HOLDS A SINGLE CHARACTER
+  const Q2 = 6;				// BYTE POINTER TO AN INPUT STRING
+  const Q3 = 7;				// BYTE POINTER TO AN OUTPUT STRING
+  const P1 = 10;			// OFTEN PRESERVED
+  const P2 = 11;			//  ..
+  const P3 = 12;			// A NUMBER
+  const P4 = 13;			// DESTINATION POINTER (DISK ADDR, BYTE PTR)
+  const P5 = 14;			// DISK ADDRESS OR PARSER STATE
+  const P6 = 15;			// DEVICE TYPE INDEX
+  const CX = 16;			// RETURN ADDRESS FOR VBOOT ENTRY FROM MONITOR
+        				//  NO INTERNAL BOOT CODE MUST USE THIS AC!!!
+  const P = 17;				// STACK POINTER
+
+  // ;Bits provided by KLINIT on a special load condition
+
+  const F11 = {
+    LD: maskForBit(0),			// DO DEFAULT LOAD
+    DM: maskForBit(1),                  // DO DUMP OF CORE
+    OK: maskForBit(35),                 // [7.1224] (flag to monitor) BOOTFL is valid
+  };
+
+  // ; EXEC PROCESS TABLE LOCATIONS
+  const EPTEST = 0o540n;		// INDEX TO EXEC SECTION TABLE
+  const EPTATR = 0o421n;		// INDEX TO ARITHMETIC TRAP INSTRUCTION
+  const EPTPDO = 0o422n;		// INDEX FOR PDL OVERFLOW
+  const EPTSPT = 0o760n;		// INDEX TO SPT (ONE WORD TABLE FOR VBOOT)
+
+  // ;UPT DEFINITIONS
+  const UPTPFW = 0o500n;		// PAGE FAIL ADDRESS
+  const UPTPFN = 0o503n;		// INDEX TO PAGE FAIL WORD
+  const UPTPFO = 0o502n;		// PAGE FAIL PC WORD
+
+
+  // Some test code
+  let a = 0;
+  MBOX.data[a++] = assemble(`HRROI`, 0o13, 0o123456n);
+  MBOX.data[a++] = assemble(`HRLZI`, 0o12, 0o1234n);
+  MBOX.data[a++] = assemble(`MOVEI`, 0o11, 0o3333n);
+  MBOX.data[a++] = assemble(`ADDI`, 0o11, 0o4321n);
+  MBOX.data[a++] = assemble(`SUBI`, 0o11, 0o2222n);
+  MBOX.data[a++] = assemble(`MOVEI`, 0o10, 0, 0o11, 0o77);
+
+  // CONO APR,AP.RES		;IOB RESET - CLEAR I/O DEVICES
+  const ENT = a;
+  MBOX.data[a++] = assembleIO('CONO', APR, AP.RES);
+  // CONI PAG,15		;GET CURRENT STATE OF PAGER
+  MBOX.data[a++] = assembleIO('CONI', PAG, 0o15);
+  // ANDI 15,PGCLKE!PGCLDE	;CLEAR ALL BUT CACHE STRATEGY BITS
+  MBOX.data[a++] = assemble(`ANDI`, 0o15, PGCLKE | PGCLDE);
+  // CONO PAG,0(15)		;TURN OFF PAGING
+  MBOX.data[a++] = assembleIO(`CONO`, PAG, 0, 0o15, 0);
+
+//;Figure out where we landed and determine offset for self-relocating code.
+
+  // MOVSI 17,(<JRST (16)>)	;RETURN INST
+  MBOX.data[a++] = assemble(`MOVSI`, 0o17, 0, 0, assemble(`JRST`, 0, 0o16, 0) >> 18n);
+  // JSP 16,17    		;GET CURRENT PC
+  MBOX.data[a++] = assemble(`JSP`, 0o16, 0o17);
+  // SUBI 16,.-ENT		;RETURN HERE
+  const a0 = a - ENT;
+  MBOX.data[a++] = assemble(`SUBI`, 0o16, a0);
+  //                               16 NOW CONTAINS RUNTIME ORIGIN OF BOOT
+  // AND F,[F11.DM!F11.LD]-ENT(16) ;SAVE ONLY DEFINED BITS
+  makeLiteral(a, F11.DM | F11.LD);
+  MBOX.data[a++] = assemble(`AND`, F, 0, 0o16, negateRH(ENT));
+
+//;Set up the UPT and EPT to be the same page, starting at the end of the
+//;code. Point to a page fault handler. AC 15 contains control bits used in
+//;previous CONO PAG/WREBR.
+  // MOVEI T1,PAGTRP-ENT(16)	;THE PAGE FAULT HANDLER
+  forward(a, 'PAGTRP');
+  MBOX.data[a++] = assemble(`MOVEI`, T1, 0, 0o16, negateRH(ENT));
+// MOVEM T1,CODEND-ENT+UPTPFN(16) ;SET UP TEMPORARY EPT/UPT
+  forward(a, `CODEND`);
+  MBOX.data[a++] = assemble(`MOVEM`, T1, 0, 0o16, negateRH(ENT) + UPTPFN);
+  // MOVEI T1,CODEND-ENT(16) ;GET LOCAL ADDRESS OF EPT (END OF CODE)
+  forward(a, `CODEND`);
+  MBOX.data[a++] = assemble(`MOVEI`, T1, 0, 0o16, negateRH(ENT));
+  // LSH T1,-11		;MAKE IT A PAGE NUMBER
+  MBOX.data[a++] = assemble(`LSH`, T1, 0, 0, negateRH(0o11));
+  // IOR 15,T1		;ADD PAGE NUMBER TO THE CONTROL BITS
+  MBOX.data[a++] = assemble(`IOR`, 0o15, 0, 0, T1);
+  // CONO PAG,0(15)		;MAKE EBR POINT TO THAT PAGE
+  MBOX.data[a++] = assembleIO(`CONO`, PAG, 0, 0o15, 0);
+  // TDO T1,[1B2+1B18]-ENT(16) ;AND SET UBR AND INHIBIT METER UPDATE
+  makeLiteral(a, maskForBit(2) + maskForBit(18));
+  MBOX.data[a++] = assemble(`TDO`, T1, 0, 0o16, negateRH(ENT));
+  // DATAO PAG,T1		;MAKE UBR POINT TO ITS PAGE
+  MBOX.data[a++] = assembleIO(`DATAO`, PAG, 0, 0, T1);
+
+  a = allocateLiterals(a);
+}
+
+
+// Return the halfword for `value` negated.
+function negateRH(value) {
+  return maskForBit(17) - BigInt(value);
+}
+
+
+// Add a and b modulo 18 bits and return the result.
+function addRH(a, b) {
+  return (BigInt(a) + BigInt(b)) & 0o777777n;
+}
+
+
+const forwardRefs = {};
+
+// Remember a forward referenced symbol `name` whose address, when
+// defined by `defineForward()` must be added to the RH value in
+// `fixupLoc`.
+function forward(fixupLoc, name) {
+  if (!forwardRefs[name]) forwardRefs[name] = [];
+  forwardRefs[name].push(fixupLoc);
+}
+
+
+// Define a symbol and fixup all forward references to it by adding
+// the value of symbol to the RH of each `fixupLoc` word`.
+function defineSymbol(name, value) {
+  if (!forwardRefs[name]) return; // If not forward referenced, do nothing
+  forwardRefs[name].forEach(loc => MBOX.data[loc] = addRH(MBOX.data[loc], value));
+}
+
+
+const literals = [];
+
+// Remember a MACRO style [...] literal whose address must be added to
+// the RH value in `fixupLoc`.
+function makeLiteral(fixupLoc, value) {
+  literals.push({fixupLoc, value});
+}
+
+
+// Allocate space for and initialize all of our literal words.
+function allocateLiterals(a) {
+  literals.forEach(({fixupLoc, value}) => {
+    MBOX.data[fixupLoc] = addRH(MBOX.data[fixupLoc], a);
+    MBOX.data[a++] = value;
+  });
+
+  return a;
+}
+
+
 function doReset() {
   // Reset
   EBOX.reset();
@@ -900,14 +1098,7 @@ function doReset() {
     KLX_DRAM.forEach((dw, addr) => DRAM.data[addr] = dw);
   };
 
-  // Some test code
-  let a = 0;
-  MBOX.data[a++] = assemble(I.HRROI, 0o13, 0, 0, 0o123456n);
-  MBOX.data[a++] = assemble(I.HRLZI, 0o12, 0, 0, 0o1234n);
-  MBOX.data[a++] = assemble(I.MOVEI, 0o11, 0, 0, 0o3333n);
-  MBOX.data[a++] = assemble(I.ADDI, 0o11, 0, 0, 0o4321n);
-  MBOX.data[a++] = assemble(I.SUBI, 0o11, 0, 0, 0o2222n);
-  MBOX.data[a++] = assemble(I.MOVEI, 0o10, 0, 0o11, 0o77);
+  installTestCode();
 
   // Prefetch CR content for first cycle
   CRAMClock.cycle();
