@@ -295,7 +295,7 @@ reset,cycle,getAddress,getControl,getInputs,get,latch,sampleInputs
     },
 
     getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
-    getControl() { assert(this.control, `${this.name}.control not null`); return this.control.get() },
+    getControl() { assert(this.control, `${this.name}.control not null`); return BigInt(this.control.get()) },
     getInputs() {
       if (this.clock) assert(this.clock.phase === 'SAMPLE', `${this.name}.getInputs must only be called in SAMPLE phase`);
       assert(typeof this.input.get === typeofFunction, `${this.name}.input=${this.input.name}.get must be a function`);
