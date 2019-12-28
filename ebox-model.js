@@ -757,9 +757,9 @@ const CRAM = RAM.methods({
       break;
 
     case CR.DISP['BYTE']:     // FPD*4 + AR12*2 + SCAD0--WRONG ON OVERFLOW FROM BIT 1!!
-      if (VMA_FLAGS.get() & maskForBit(4)) orBits |= 4n;
-      if (AR.get() & maskForBit(12)) orBits |= 2n;
-      if (SCAD.get() & maskForBit(0)) orBits |= 1n;
+      if (VMA_FLAGS.get() & maskForBit(4, VMA_FLAGS.bitWidth)) orBits |= 4n;
+      if (AR.get() & maskForBit(12, AR.bitWidth)) orBits |= 2n;
+      if (SCAD.get() & maskForBit(0, SCAD.bitWidth)) orBits |= 1n;
       break;
 
     case CR.DISP['DIAG']:
@@ -1326,21 +1326,21 @@ const SCAD = LogicUnit.init(function({bitWidth}) {
   // 6    A|B
   // 7    A&B
   get() {
-    const func = Number(this.getControl());
+    const func = this.getControl();
     const a = this.inputs[0].get();
     const b = this.inputs[1].get();
     let result;
 
     switch(func) {
     default:
-    case CR.SCAD.A:        result = a;                                   break;
-    case CR.SCAD['A-B-1']: result = this.alu.do(0o11n, a, b);            break;
-    case CR.SCAD['A+B']:   result = this.alu.do(0o06n, a, b);            break;
-    case CR.SCAD['A-1']:   result = this.alu.do(0o17n, a, b);            break;
-    case CR.SCAD['A+1']:   result = this.alu.do(0o00n, a, b, 1n);        break;
-    case CR.SCAD['A-B']:   result = this.alu.do(0o11n, a, b, 1n);        break;
-    case CR.SCAD.OR:       result = this.alu.do(0o04n, a, b);            break;
-    case CR.SCAD.AND:      result = this.alu.do(0o16n, a, b, 1n);        break;
+    case CR.SCAD.A:        result = a;                                  break;
+    case CR.SCAD['A-B-1']: result = this.alu.do(0o11, a, b).value;     break;
+    case CR.SCAD['A+B']:   result = this.alu.do(0o06, a, b).value;     break;
+    case CR.SCAD['A-1']:   result = this.alu.do(0o17, a, b).value;     break;
+    case CR.SCAD['A+1']:   result = this.alu.do(0o00, a, b, 1n).value; break;
+    case CR.SCAD['A-B']:   result = this.alu.do(0o11, a, b, 1n).value; break;
+    case CR.SCAD.OR:       result = this.alu.do(0o04, a, b).value;     break;
+    case CR.SCAD.AND:      result = this.alu.do(0o16, a, b, 1n).value; break;
     }
 
     assert(typeof result === 'bigint',
