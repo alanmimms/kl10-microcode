@@ -16,6 +16,8 @@ const {
   typeofFunction,
 } = require('./util');
 
+const {DTE} = require('./dte');
+
 // Each opcode with mnemonics for the property names.
 const I = require('./instructions');
 
@@ -458,8 +460,6 @@ function doValue(words) {
 }
 
 
-const EBOXDebugFlags = `NICOND,CLOCK`.split(/,\s*/);
-
 
 function doDebug(words, verbose = false) {
 
@@ -504,6 +504,11 @@ function doDebug(words, verbose = false) {
     case 'CLOCK':
       EBOX.debugCLOCK ^= 1;
       console.log(`CLOCK debug now ${EBOX.debugCLOCK ? 'ON' : 'OFF'}`);
+      break;
+
+    case 'DTE':
+      dte0.debug = !dte0.debug;
+      console.log(`DTE debug now ${dte0.debug ? 'ON' : 'OFF'}`);
       break;
 
     default:
@@ -681,7 +686,8 @@ ${curInstruction()}
 }
 
 
-var dte0;			// We need this to pass on tty input
+const dte0 = DTE({name: 'DTE0', number: 0, isMaster: true});
+
 
 function dteKeypressHandler(ch, key) {
 
@@ -996,9 +1002,6 @@ function installTestCode() {
   console.log(`\
 ${saveFileName}: \
 lo:${octW(ev.loAddr)} hi:${octW(ev.hiAddr)} startInsn=${octW(ev.startInsn)}`);
-
-  // Set initial PC for boot loader
-  ARR.value = getRH(ev.startInsn);
 }
 
 

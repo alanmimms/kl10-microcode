@@ -23,8 +23,21 @@ const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
 const SIGN18 = maskForBit(18);
 // LH or full word sign bit
 const SIGN00 = maskForBit(0);
-
+// All 18 bits in RH
 const RHMASK = fieldMask(18, 35);
+// All 36 bits in word
+const NEG1 = 0o777777n;
+// Size of pages in words
+const PAGESIZE = 0o1000n;
+// Shift to get to page number
+const PAGESHIFT = 9n;
+
+module.exports.SIGN18 = SIGN18;
+module.exports.SIGN00 = SIGN00;
+module.exports.RHMASK = RHMASK;
+module.exports.NEG1 = NEG1;
+module.exports.PAGESIZE = PAGESIZE;
+module.exports.PAGESHIFT = PAGESHIFT;
 
 // EBOX notes:
 //
@@ -277,7 +290,6 @@ const EBOXUnit = Named.compose({name: 'EBOXUnit'}).init(
     assert(typeof bitWidth === 'bigint' || typeof bitWidth === 'number', `${name} needs to define bitWidth`);
     this.bitWidth = BigInt(bitWidth);
     this.ones = (1n << this.bitWidth) - 1n;
-    this.halfOnes = (1n << (this.bitWidth / 2n)) - 1n;
     this.value = this.toLatch = 0n;
     this.debugFormat = debugFormat;
     this.wrappableMethods = `\
@@ -294,17 +306,27 @@ reset,cycle,getAddress,getControl,getInputs,get,latch,sampleInputs
       this.value = 0n;
     },
 
-    getAddress() { assert(this.addr, `${this.name}.addr not null`); return this.addr.get() },
-    getControl() { assert(this.control, `${this.name}.control not null`); return BigInt(this.control.get()) },
+    getAddress() {
+      assert(this.addr, `${this.name}.addr not null`);
+      return this.addr.get();
+    },
+
+    getControl() {
+      assert(this.control, `${this.name}.control not null`);
+      return BigInt(this.control.get());
+    },
+
     getInputs() {
-      if (this.clock) assert(this.clock.phase === 'SAMPLE', `${this.name}.getInputs must only be called in SAMPLE phase`);
-      assert(typeof this.input.get === typeofFunction, `${this.name}.input=${this.input.name}.get must be a function`);
+      if (this.clock) assert(this.clock.phase === 'SAMPLE',
+                             `${this.name}.getInputs must only be called in SAMPLE phase`);
+      assert(typeof this.input.get === typeofFunction,
+             `${this.name}.input=${this.input.name}.get must be a function`);
       return this.input.get();
     },
 
-    getLH(v = this.value) { return (v >> 18n) & this.halfOnes },
-    getRH(v = this.value) { return v & this.halfOnes },
-    joinHalves(lh, rh) { return (lh << 18n) | (rh & this.halfOnes) },
+    getLH(v = this.value) { return (v >> 18n) & RHMASK },
+    getRH(v = this.value) { return v & RHMASK },
+    joinHalves(lh, rh) { return (lh << 18n) | (rh & RHMASK) },
   });
 module.exports.EBOXUnit = EBOXUnit;
 
@@ -318,6 +340,7 @@ const EBOX = StampIt.compose(Named, {
   this.executionTime = 0;
   this.debugNICOND = false;
   this.debugCLOCK = false;
+  this.debugFlags = `NICOND,CLOCK`.split(/,\s*/);
 }).props({
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
@@ -325,7 +348,18 @@ const EBOX = StampIt.compose(Named, {
   run: false,         // We need to do a bunch of cycles without RUN flag to init
   memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
   fetchCycle: false,            // Initiated by MEM/IFET, cleared by MEM/MB WAIT
+
+  // Pager state.
+  userBase: 0n,
+  execBase: 0n,
 }).methods({
+
+
+  // Exec/User process table accessors.
+  gettEPT(offset) {return MBOX.data[(this.execBase << PAGESHIFT) + offset]},
+  putEPT(offset, value) {MBOX.data[(this.execBase << PAGESHIFT) + offset] = value},
+  gettUPT(offset) {return MBOX.data[(this.userBase << PAGESHIFT) + offset]},
+  putUPT(offset, value) {MBOX.data[(this.userBase << PAGESHIFT) + offset] = value},
 
   reset() {
     // Substitute real object references for strings we placed in
