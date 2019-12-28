@@ -287,7 +287,6 @@ function curInstruction() {
   const result = `\
 ┌${bar}
 │${(sourceLines[CRAM.latchedAddr] || '').split(/\n/).join(`\n│`)}
-│     CR=${octC(CR.get())}
 └${bar}`;
   restoreWrappers();
   return result;
@@ -739,7 +738,7 @@ function run(maxCount = Number.POSITIVE_INFINITY, doAfterFn) {
   function runAsync() {
     EBOX.ucodeRun = true;
     const startCount = EBOX.microInstructionsExecuted;
-    const startTime = process.hrtime();
+    const startT = process.hrtime();
 
     for (let n = insnsPerTick; EBOX.ucodeRun && n; --n) {
       EBOX.cycle();
@@ -760,14 +759,13 @@ function run(maxCount = Number.POSITIVE_INFINITY, doAfterFn) {
     } else {
 
       if (!maxCount || breakpoint[CRAM.latchedAddr]) {
-	const stopTime = process.hrtime();
-	const nSec = (stopTime[0] - startTime[0]) + (stopTime[1] - startTime[1]) / 1e9;
+	const stopT = process.hrtime();
+	const nSec = (stopT[0] - startT[0]) + (stopT[1] - startT[1]) / 1e9;
 
 	EBOX.executionTime += nSec;
 	const nInstructions = EBOX.instructionsExecuted - startOfLastStep;
 	const ips =  nInstructions / EBOX.executionTime;
-	console.log(`[Executed ${nInstructions} micro-instructions ` +
-		    `or ${ips.toFixed(1)}/s]`);
+	console.log(`[Executed ${nInstructions} μinsns or ${ips.toFixed(1)}/s]`);
 
 	startOfLastStep = 0;	// Report full count next time if not in a step
       }
