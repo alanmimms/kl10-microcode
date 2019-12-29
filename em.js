@@ -370,8 +370,8 @@ function doDump(words) {
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
-  if (EBOX.run) console.log(`[CPU running]`);
-  if (EBOX.start) console.log(`[CPU start flag set]`);
+  console.log(`[CPU ${EBOX.run ? '' : 'NOT '}running]`);
+  console.log(`[CPU start flag ${EBOX.start}]`);
   restoreWrappers();
 }
 
@@ -418,9 +418,12 @@ function doGo(words) {
 
 
 function doStart(words) {
+  let a = PC.get();
+  if (words.length === 2) a = BigInt(parseInt(words[1], 8));
   EBOX.run = true;
+  PC.value = a;
   disableWrappers();
-  console.log(`[Starting CPU from ${octA(PC.get())}; EBOX waiting]`);
+  console.log(`[Starting CPU from ${octA(a)}; EBOX waiting]`);
   restoreWrappers();
 }
 
