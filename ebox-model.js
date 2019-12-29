@@ -349,8 +349,7 @@ const EBOX = StampIt.compose(Named, {
   fetchCycle: false,            // Initiated by MEM/IFET, cleared by MEM/MB WAIT
 
   run: false,                   // CPU is RUNNING
-  continue: false,              // CONTINUE button pressed
-  start: false,                 // START button pressed
+  start: false,                 // CONTINUE button pressed
 
   // Pager state.
   userBase: 0n,
@@ -368,11 +367,17 @@ const EBOX = StampIt.compose(Named, {
     // Substitute real object references for strings we placed in
     // properties whose names are in `unit.stamp.mayFixup`.
     Named.fixupForwardReferences();
+    this.unitArray = [...Object.values(Named.units), this];
 
     this.resetActive = true;
     this.ucodeRun = false;
+    this.memCycle = false;
+    this.fetchCycle = false;
     this.run = false;
-    this.unitArray = Object.values(Named.units).concat([this]);
+    this.start = false;
+
+    this.userBase = 0n;
+    this.execBase = 0n;
 
     // Reset every Unit back to initial value.
     this.unitArray.filter(unit => unit !== this).forEach(unit => unit.reset());
@@ -698,7 +703,16 @@ const CRAM = RAM.methods({
       orBits = 0o1n;          // XXX for now we are always in KERNEL mode
       break;
 
-    case CR.SKIP['-START']:   // Needed?
+    case CR.SKIP['-START']:
+
+      if (EBOX.start) {
+        EBOX.start = false;     // Clear flag like it timed out in hardware
+      } else {
+        orBits |= 1;
+      }
+
+      break;
+
     case CR.SKIP.FETCH:       // Soon
     case CR.SKIP.USER:
     case CR.SKIP.PUBLIC:
