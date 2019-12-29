@@ -708,7 +708,7 @@ const CRAM = RAM.methods({
       if (EBOX.start) {
         EBOX.start = false;     // Clear flag like it timed out in hardware
       } else {
-        orBits |= 1;
+        orBits |= 1n;
       }
 
       break;
