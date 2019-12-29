@@ -96,6 +96,64 @@ microcode on simulated hardware.`,
 }
 
 
+// From AA-H352B-TK_RSX-20F-Nov81.pdf CHAPTER 4:
+// When you enter the PARSER, you receive one of the following prompts:
+//
+//    PAR>     This indicates that the PARSER is ready to accept
+//             commands and the HL is running (that is, the KL clock
+//             is running the KL run flop is on).
+//
+//    PAR%     This indicates the PARSER is ready to accept
+//             commands but the KL microcode is in the HALT loop.
+//             (The KL clock is running but the KL run flop is off.)
+//    PAR#     This indicates that the PARSER si ready to accept
+//             commands bu the KL clock is stopped and the KL is not
+//             running.
+
+// The CONTINUE command takes the KL out of the HALT loop and starts
+// execution at the instruction pointed to by the PC.
+
+// HALT
+//      The HALT command tries to put the KL into the HALT loop by
+//      clearing the RUN flop (FXCT 10) and waiting. If the KL refuses
+//      to go into the HALT loop, the front end tries for orce it in by
+//      using BURST mode. If this does not work, the following error
+//      message is issued:
+//          PAR -- [HALT] CFH - CAN'T FIND KL HALT LOOP
+
+// JUMP
+//      The JUMP command starts the KL a tthe specified address and exits
+//      from PARSER. A this point, the CTY is connected to the
+//      TOPS-10 or TOPS-20 operating system. THe argument addr must be
+//      an octal, positive, nonzero address with a maximum value of
+//      17,,777777.
+
+// SHUTDOWN
+//      The SHUTDOWN command deposits a minus one into the KL EXEC,
+//      virtual location 30 (octal). This command is used to bring down
+//      a running system gracefully.
+
+// RESET
+// RESET ALL
+// RESET APR
+// RESET DTE-20
+// RESET ERROR
+// RESET INITIALIZE
+// RESET IO
+// RESET PAG
+// RESET PI
+// 
+
+
+// DEPOSIT AR=newdata
+//      The DEPOSIT AR command sets the contents of the arithmetic
+//      register to new data.
+
+// EXAMINE KL
+//      The EXAMINE KL command performs the EXAMINE PC, EXAMINE VMA,
+//      EXAMINE PI, and the EXAMINE FLAGS commands, in that order.
+
+
 // User can enter short substrings, and it's not the unambiguous match
 // but rather the first (case-insensitive) match that is used. PUT
 // THESE IN ORDER OF PRECEDENCE IN CASE OF AMBIGUITY OF THE SHORTENED
@@ -112,8 +170,33 @@ const commands = [
   },
   
   {name: 'step',
-   description: 'Step N times, where N is 1 if not specified',
+   description: 'Step microcode N times, where N is 1 if not specified',
    doFn: doStep,
+  },
+
+  {name: 'go',
+   description: 'Continue microcode execution.',
+   doFn: doGo,
+  },
+
+  {name: 'til',
+   description: 'Continue microcode execution until CRA reaches a specified address.',
+   doFn: doTil,
+  },
+
+  {name: 'start',
+   description: 'Start CPU at specified address.',
+   doFn: doStart,
+  },
+
+  {name: 'halt',
+   description: 'Stop CPU (instructions) execution.',
+   doFn: doHalt,
+  },
+
+  {name: 'continue',
+   description: 'Continue CPU (instructions) execution from PC.',
+   doFn: doContinue,
   },
 
   {name: 'cstep',
@@ -121,28 +204,10 @@ const commands = [
    doFn: doCPUStep,
   },
 
-  {name: 'go',
-   description: 'Continue execution.',
-   doFn: doGo,
-  },
-
-  {name: 'cgo',
-   description: 'Run CPU (instructions).',
-   doFn: doCPUGo,
-  },
-
-  {name: 'cstop',
-   description: 'Stop CPU (instructions) execution.',
-   doFn: doCPUStop,
-  },
-
-  {name: 'til',
-   description: 'Continue execution until CRA reaches a specified address.',
-   doFn: doTil,
-  },
-
   {name: 'mux',
-   description: 'Display the output of a specified mux ("mixer") when its control input is a specified value.',
+   description: `\
+Display the output of a specified mux ("mixer") when its
+control input is a specified value.`,
    doFn: doMux,
   },
 
@@ -345,18 +410,26 @@ function doGo(words) {
 }
 
 
-function doCPUGo(words) {
+function doStart(words) {
   EBOX.run = true;
   disableWrappers();
-  console.log(`[CPU Running from ${octA(PC.get())}; EBOX waiting]`);
+  console.log(`[Starting CPU from ${octA(PC.get())}; EBOX waiting]`);
   restoreWrappers();
 }
 
 
-function doCPUStop(words) {
+function doHalt(words) {
   disableWrappers();
   EBOX.run = false;
-  console.log(`[Stopping CPU at ${octA(PC.get())}; EBOX waiting]`);
+  console.log(`[Halting CPU at ${octA(PC.get())}; EBOX waiting]`);
+  restoreWrappers();
+}
+
+
+function doContinue(words) {
+  disableWrappers();
+  EBOX.continue = true;
+  console.log(`[CONTINUING CPU at ${octA(PC.get())}; EBOX waiting]`);
   restoreWrappers();
 }
 

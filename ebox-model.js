@@ -345,9 +345,12 @@ const EBOX = StampIt.compose(Named, {
   unitArray: [],      // List of all EBOX Units as an array of objects
   clock: EBOXClock,
   wrappableMethods: `cycle,reset`.split(/,\s*/),
-  run: false,         // We need to do a bunch of cycles without RUN flag to init
   memCycle: false,              // Initiated by MEM/xxx, cleared by MEM/MB WAIT
   fetchCycle: false,            // Initiated by MEM/IFET, cleared by MEM/MB WAIT
+
+  run: false,                   // CPU is RUNNING
+  continue: false,              // CONTINUE button pressed
+  start: false,                 // START button pressed
 
   // Pager state.
   userBase: 0n,
@@ -424,30 +427,34 @@ const Combinatorial = EBOXUnit.compose({name: 'Combinatorial'}).init(function() 
 });
 
 
-// Use this mixin to define a Clocked unit.
-const Clocked = EBOXUnit.compose({name: 'Clocked'}).init(function({clockGate = () => 1, clock = EBOXClock}) {
-  assert(!clockGate || typeof clockGate === typeofFunction, `${this.name}.clockGate must be a function`);
-  this.clockGate = clockGate;
-  this.clock = clock;
-  clock.addUnit(this);
-}).methods({
+// Use this stamp to define a Clocked unit.
+const Clocked = EBOXUnit.compose({name: 'Clocked'})
+      .init(
+        function({clockGate = () => 1, clock = EBOXClock}) {
+          assert(!clockGate || typeof clockGate === typeofFunction,
+                 `${this.name}.clockGate must be a function`);
+          this.clockGate = clockGate;
+          this.clock = clock;
+          clock.addUnit(this);
+        }).methods({
 
-  sampleInputs() {
-    assert(typeof this.getInputs === typeofFunction, `${this.name}.getInputs (Clocked) must be a function`);
-    this.toLatch = this.getInputs();
-  },
+          sampleInputs() {
+            assert(typeof this.getInputs === typeofFunction,
+                   `${this.name}.getInputs (Clocked) must be a function`);
+            this.toLatch = this.getInputs();
+          },
 
-  cycle() {
+          cycle() {
 
-    if (this.clockGate()) {
-      this.sampleInputs();
-      this.latch();
-    }
-  },
+            if (this.clockGate()) {
+              this.sampleInputs();
+              this.latch();
+            }
+          },
 
-  latch() { this.value = this.toLatch },
-  get() { return this.value },
-});
+          latch() { this.value = this.toLatch },
+          get() { return this.value },
+        });
 
 
 ////////////////////////////////////////////////////////////////
@@ -851,11 +858,9 @@ const DRAM = RAM.methods({
 
     return this.value = result;
   },
-}) ({name: 'DRAM', nWords: 512, bitWidth: 24, input: `ONES`, control: `ZERO`, addr: `CR.J`});
+}) ({name: 'DRAM', nWords: 512, bitWidth: 24,
+     input: `ONES`, control: `ZERO`, addr: `CR.J`});
 
-// This clock is pulsed in next cycle after IR is stable but not on
-// prefetch. XXX this is not used right now.
-const DR_CLOCK = Clock({name: 'DR_CLOCK'});
 
 const DR = Reg.methods({
 
@@ -1291,7 +1296,7 @@ const PC = Reg.methods({
   // XXX see Figure 2-63 PC Loading or Inhibit on p. 140 for details.
 
   // Allow SPEC/LOAD PC to override our normal load from VMA.
-  getInputs() {
+  sampleInputs() {
     const input = SPECis('LOAD PC') ? AR : VMA;
     return input.get();
   },
@@ -1747,6 +1752,11 @@ const MBOX = RAM.props({
     case CR.MEM['MB WAIT']:	// WAIT FOR MBOX RESP IF PENDING
       result = this.data[addr];
 
+      console.log(`\
+================ MBOX \
+${EBOX.fetchCycle ? 'FETCH' : 'non-FETCH'} cycle end \
+${octW(addr)}=${octW(result)}`);
+
       if (EBOX.fetchCycle) {
         IR.value = IR.toLatch = result;      // XXX HACK?
         ARX.value = ARX.toLatch = result;     // XXX HACK?
@@ -1755,10 +1765,6 @@ MBOX op=${octal(op)} addr=${octW(addr)} \
 result=${octW(result)} loaded into IR and ARX`);
       }
       
-      console.log(`\
-================ MBOX \
-${EBOX.fetchCycle ? 'FETCH' : 'non-FETCH'} cycle end \
-${octW(addr)}=${octW(result)}`);
       EBOX.fetchCycle = false;  // Wait is over.
       EBOX.memCycle = false;
       this.writeCycle = false;
