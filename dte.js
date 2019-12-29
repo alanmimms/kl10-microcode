@@ -10,11 +10,11 @@ const {
   octW, octal, oct6,
 } = require('./util');
 
-const dte = {
-  // CONI DTE bit masks
+const dteBitNumbers = {
+    // CONI DTE bit numbers
   DTEPRV: 20,	// Privileged/restricted bit in CONI
 
-  // CONO DTE bit masks
+  // CONO DTE bit numbers
   TO11DB: 22,		// To 11 doorbell
   CR11B: 23,		// Clear the reload PDP-11 button
   SR11B: 24,		// Set reload PDP-11 button. Setting ROM boots PDP11.
@@ -24,7 +24,7 @@ const dte = {
   PIENB: 31,		// Set PI assignment
   PI0ENB: 32,		// Enable PI 0
 
-  // DATAO DTE bit masks
+  // DATAO DTE bit numbers
   DON10S: 15,		// Set TO10 normal termination for diags.
   DON10C: 14,		// Clear TO10 normal termination for diags.
   ERR10S: 13,		// Set TO10 error termination for diags.
@@ -42,7 +42,7 @@ const dte = {
   ERR11S:  1,		// Set TO11 error termination flag for diags.
   ERR11C:  0,		// Clear TO11 error termination flag for diags.
 
-  // DATAI DTE bit masks
+  // DATAI DTE bit numbers
   TO10ND: 15,			// TO10 byte count now zero or PDP11 set DON10S.
   TO10ER: 13,			// TO10 error during transfer.
   RAMIS0: 12,			// Data from RAM is all 0s for diags.
@@ -57,7 +57,9 @@ const dte = {
   DEXON:   2,			// Last deposit or examine has completed.
   TO11ER:  1,			// Error in TO11 byte transfer or PDP11 set ERR11S.
   INTSON:  0,			// DTE is enabled for PDP11 BR requests.
-  
+};
+
+const dte = {
   // DTE offsets in EPT
   //	First, the Channel Control Block words 
   DTEII:  0o142,		// DTE interrupt instruction
@@ -82,6 +84,12 @@ const dte = {
 };
 
 
+// Add each symbol for a bit number listed in `dteBitNumbers` as a
+// field in `dte` containing the bit mask for the named bit.
+Object.entries(dteBitNumbers)
+  .forEach(([name, bit]) => dte[name] = maskForBit(bit));
+
+
 const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
   this.number = number;
   this.isMaster = isMaster;
@@ -100,9 +108,9 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
   },
 
   conditionsIn() {
-    const v = (this.isMaster ? 0 : dte.restrictedMode * maskForBit(dte.DTEPRV)) +
-	  dte.piAssigned * maskForBit(dte.PIENB) +
-	  dte.pi0Enabled * maskForBit(dte.PI0ENB);
+    const v = (this.isMaster ? 0 : dte.restrictedMode * dte.DTEPRV) +
+	  dte.piAssigned * dte.PIENB +
+	  dte.pi0Enabled * dte.PI0ENB;
     return v;
   },
 
@@ -112,16 +120,16 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
 
     //  console.log(`CONO DTE,${oct6(e)}`);
 
-    if (e & maskForBit(dte.PI0ENB))
+    if (e & dte.PI0ENB)
       dte.pi0Enabled = 1;
     else
       dte.pi0Enabled = 0;
 
-    if (e & maskForBit(dte.PIENB)) dte.piAssigned = e & 7;
+    if (e & dte.PIENB) dte.piAssigned = e & 7;
 
     // Did the 11 get an interrupt from the 10? If so handle it
     // asynchronously.
-    if (e & maskForBit(dte.TO11DB)) {
+    if (e & dte.TO11DB) {
 
       setImmediate(() => {
 	//      console.log(`getEPT execBase=${octW(EBOX.execBase)}`);
