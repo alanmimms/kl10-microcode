@@ -199,6 +199,11 @@ const commands = [
    doFn: doContinue,
   },
 
+  {name: 'pc',
+   description: 'Set CPU PC to specified value.',
+   doFn: doPC,
+  },
+
   {name: 'cstep',
    description: 'Step N CPU instructions times, where N is 1 if not specified',
    doFn: doCPUStep,
@@ -365,6 +370,8 @@ function doDump(words) {
         .reduce((cur, rd, x) => cur + rd + ((x & 3) === 3 ? '\n' : '  '), '');
   
   console.log(dump);
+  if (EBOX.run) console.log(`[CPU running]`);
+  if (EBOX.start) console.log(`[CPU start flag set]`);
   restoreWrappers();
 }
 
@@ -428,8 +435,22 @@ function doHalt(words) {
 
 function doContinue(words) {
   disableWrappers();
-  EBOX.continue = true;
+  EBOX.start = true;
   console.log(`[CONTINUING CPU at ${octA(PC.get())}; EBOX waiting]`);
+  restoreWrappers();
+}
+
+
+function doPC(words) {
+
+  if (words.length !== 2) {
+    console.error(`You must specify a new PC value.`);
+    return;
+  }
+
+  const newPC = BigInt(parseInt(words[1], 8));
+  disableWrappers();
+  PC.value = newPC;
   restoreWrappers();
 }
 

@@ -391,6 +391,10 @@ const EBOX = StampIt.compose(Named, {
 
   cycle() {
     if (EBOX.debugCLOCK) console.log(`<< ${this.name} cycle BEGIN`);
+
+    // Microcode stops the CPU on execution of HALT instruction
+    if (SPECis('FLAG CTL') && fieldIs('FLAG CTL', 'HALT')) this.run = false;
+
     this.clock.cycle(this.debugCLOCK);
     CRAMClock.cycle(this.debugCLOCK); // Explicitly set up CRAM for next cycle.
     if (EBOX.debugCLOCK) console.log(`>> ${this.name} cycle END`);
