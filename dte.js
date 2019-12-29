@@ -11,7 +11,7 @@ const {
 } = require('./util');
 
 const dteBitNumbers = {
-    // CONI DTE bit numbers
+  // CONI DTE bit numbers
   DTEPRV: 20,	// Privileged/restricted bit in CONI
 
   // CONO DTE bit numbers
@@ -127,9 +127,7 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
 
     // Did the 11 get an interrupt from the 10? If so handle it
     // asynchronously.
-    if (e & dte.TO11DB) {
-
-      setImmediate(() => {
+    if (e & dte.TO11DB) setImmediate(() => {
 	let w = EBOX.getEPT(dte.DTECMD);
 	let monitorModeCmd = fieldExtract(w, 27, 4);
 
@@ -186,7 +184,6 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
 	  break;
 	}
       });
-    }
   },
 });
 module.exports.DTE = DTE;
