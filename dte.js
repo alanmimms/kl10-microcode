@@ -118,21 +118,18 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
     const prefix = 'FE says: ';
     const PCprefix = `${prefix}PC=${octW(PC.value)}`;
 
-    //  console.log(`CONO DTE,${oct6(e)}`);
-
     if (e & dte.PI0ENB)
-      dte.pi0Enabled = 1;
+      dte.pi0Enabled = 1n;
     else
-      dte.pi0Enabled = 0;
+      dte.pi0Enabled = 0n;
 
-    if (e & dte.PIENB) dte.piAssigned = e & 7;
+    if (e & dte.PIENB) dte.piAssigned = e & 7n;
 
     // Did the 11 get an interrupt from the 10? If so handle it
     // asynchronously.
     if (e & dte.TO11DB) {
 
       setImmediate(() => {
-	//      console.log(`getEPT execBase=${octW(EBOX.execBase)}`);
 	let w = EBOX.getEPT(dte.DTECMD);
 	let monitorModeCmd = fieldExtract(w, 27, 4);
 
@@ -141,8 +138,6 @@ const DTE = Named.compose({name: 'DTE'}).init(function({number, isMaster}) {
 	  w &= 0x7F;
 	  const ch = String.fromCharCode(w);
 	  process.stdout.write(ch);
-	  //	console.log(`TTY Output: '${ch}'=${octal(w)}`);
-	  // Set "ready for more output" flag asynchronously.
 	  setImmediate(() => EBOX.putEPT(BigInt(dte.DTEMTD), NEG1));
 	  break;
 
