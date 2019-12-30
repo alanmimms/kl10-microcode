@@ -55,6 +55,13 @@ yet implemented or are simply hacks to get past some bug I was working
 on) are for controlling microcode emulation.
 
 
+## Yarn
+I use `yarn` for package management. Some people use `npm`. I like
+mine. You can use `yarn run` to select from the scripts to run. Or
+just specify `yarn run build` and then `yarn run run` to run the
+emulator.
+
+
 ## DEC Documentation
 You will find a lot of useful information about the PDP-10, TOPS-20,
 and associated technology in my Google Drive folder for large
