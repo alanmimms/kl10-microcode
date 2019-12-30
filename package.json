@@ -1,13 +1,17 @@
 {
-  "name": "microcode",
-  "version": "1.0.0",
+  "name": "kl10-microcode",
+  "version": "0.0.1",
   "description": "",
-  "main": "digest.js",
+  "main": "em.js",
   "scripts": {
     "build": "node ./gencode.js",
-    "test": "mocha"
+    "test": "mocha",
+    "run": "node em"
   },
-  "author": "",
+  "engines": {
+    "node": ">=12.0"
+  },
+  "author": "Alan Mimms <alanmimms@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "@stamp/arg-over-prop": "^1.0.4",
