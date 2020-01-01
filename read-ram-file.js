@@ -4,6 +4,7 @@ const fs = require('fs');
 const util = require('util');
 const {octal, oct6, fieldExtract} = require('./util');
 const {cramFields} = require('./fields-model');
+const {unusedCRAMFields, CR} = require('./ebox-model');
 
 
 // List of field names in an array indexed by leftmost bit.
@@ -79,7 +80,14 @@ function decodeLines(lines) {
 
 function disassembleCRAMWord(w, a) {
   const wSplit = _.range(0, 84, 12).reduce((cur, s) => cur.concat([octal(fieldExtract(w, s, s+11, 84))]), []);
-  const dis = 'dis goes here';
+  CR.value = w;
+
+  const dis = fieldsByBit.filter(names => !unusedCRAMFields.includes(names[0])).map(names => {
+    const name = names[0];
+    const field = cramFields[name];
+    return `${names[0]}/${fieldExtract(w, field.s, field.e, 84)}`;
+  }).join(', ');
+
   console.log(`U ${octal(a)}: ${wSplit}  ${dis}`);
 }
 
