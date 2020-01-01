@@ -1,10 +1,19 @@
 'use strict';
+const _ = require('lodash');
 const fs = require('fs');
 const util = require('util');
-const {octal,oct6} = require('./util');
+const {octal, oct6, fieldExtract} = require('./util');
+const {cramFields} = require('./fields-model');
 
 
-function decode(s) {
+// List of field names in an array indexed by leftmost bit.
+const fieldsByBit = Object.entries(cramFields).reduce((fields, [name, o]) => {
+  fields[o.s] = (fields[o.s] || []).concat([name]);
+  return fields;
+}, []).sort((a, b) => 0);
+
+
+function decodeSplats(s) {
 
   return s.split('').reduce((sum, cur) => {
     let ch = cur.charCodeAt(0);
@@ -15,26 +24,47 @@ function decode(s) {
 }
 
 
-function dump(lines) {
+// Take a LSB-first group of six CRAM splats and turn them into a CRAM word.
+function joinSplats(a) {
+  let w = 0n;
+
+  for (let k = 0, shift = 0n; shift < 79n; ++k, shift += 16n) {
+    w = (w << shift) | BigInt(a[k]);
+  }
+
+  return w;
+}
+
+
+function decodeLines(lines) {
+  const ram = [];
 
   lines.forEach(line => {
     const recType = line[0];
     if (recType === undefined || recType === ';') return;
-
     const dataS = line.slice(2);
-    const [wc, adr, ...data] = dataS.split(/,/).map(decode);
-    const checksum = data.pop();
+    const decoded = dataS.split(/,/).map(decodeSplats);
 
     switch(recType) {
     case 'Z':
-      const count = data[0];
-      console.log(`Zero ${wc}@${octal(adr)} count=${count}`);
+      const [zWC, zAdr, zCount, zCksum] = decoded;
+      console.log(`Zero ${zWC}@${octal(zAdr)} count=${zCount}. cksum=${zCksum}.`);
       break;
 
     case 'C':
     case 'D':
-      const dataS = data.map((w, x) => oct6(w) + (x % 6 === 5 ? '\n            ' : '')).join(',');
-      console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${wc}@${octal(adr)}:${dataS}`);
+      const [wc, adr, ...a] = decoded;
+      const checksum = a.pop();
+      const dump = a.map((w, x) => oct6(w) + (x % 6 === 5 ? '\n          ' : '')).join(',');
+      console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
+
+      if (recType === 'C') {
+
+        for (let adrOffset = 0, k = 0; k < a.length; k += 6) {
+          ram[adr + adrOffset++] = joinSplats(a.slice(k, k + 6));
+        }
+      }
+
       break;
 
     default:
@@ -42,19 +72,25 @@ function dump(lines) {
       break;
     }
   });
+
+  return ram;
+}
+
+
+function disassembleCRAMWord(w, a) {
+  const wSplit = _.range(0, 84, 12).reduce((cur, s) => cur.concat([octal(fieldExtract(w, s, s+11, 84))]), []);
+  const dis = 'dis goes here';
+  console.log(`U ${octal(a)}: ${wSplit}  ${dis}`);
 }
 
 
 function main() {
-  const eboxa = fs.readFileSync('kl10-source/eboxa.ram').toString().split(/\n/);
-  console.log(`
-EBOX A:`);
-  dump(eboxa);
+  const [ramA, ramB] = ['kl10-source/eboxa.ram', 'kl10-source/eboxa.ram']
+        .map(fileName => decodeLines(fs.readFileSync(fileName)
+                                     .toString()
+                                     .split(/\n/)));
 
-  const eboxb = fs.readFileSync('kl10-source/eboxb.ram').toString().split(/\n/);
-  console.log(`
-EBOX B:`);
-  dump(eboxb);
+  ramA.forEach((w, a) => disassembleCRAMWord(w, a));
 }
 
 
