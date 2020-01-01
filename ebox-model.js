@@ -39,6 +39,11 @@ module.exports.NEG1 = NEG1;
 module.exports.PAGESIZE = PAGESIZE;
 module.exports.PAGESHIFT = PAGESHIFT;
 
+
+const unusedCRAMFields = `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/);
+module.exports.unusedCRAMFields = unusedCRAMFields;
+
+
 // EBOX notes:
 //
 // M8539 APR module is replaced by M8545 in KL10 model B.
@@ -845,7 +850,7 @@ const CR = Combinatorial({name: 'CR', bitWidth: 84, input: CRAM});
 
 // Populate CR with properties representing CRAM bit fields. Ignore
 // the unusued bits.
-defineBitFields(CR, CRAMdefinitions, `U0,U21,U23,U42,U45,U48,U51,U73`.split(/,/));
+defineBitFields(CR, CRAMdefinitions, unusedCRAMFields);
 
 
 // Mask for I bit in instruction word
