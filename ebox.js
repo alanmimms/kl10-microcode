@@ -16,7 +16,7 @@ const utilFormats = require('./util');
 
 // Read our defines.mic and gobble definitions for fields and
 // constants for CRAM and DRAM.
-const {CRAMdefinitions, DRAMdefinitions} = require('./read-defs');
+const {CRAMdefinitions, DRAMdefinitions} = require('./cram-defs');
 
 
 // RH sign bit
