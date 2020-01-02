@@ -216,6 +216,11 @@ const W = ConstantUnit({name: 'WORD', bitWidth: 84, value: 0});
 defineBitFields(W, CRAMdefinitions);
 
 
+function needsADB(ad) {
+  return W.AD.namesForValues[ad].includes('B');
+}
+
+
 function disassembleCRAMWord(w, a) {
   EBOX.reset();
   W.value = w;
@@ -242,7 +247,7 @@ function disassembleCRAMWord(w, a) {
     pieces.push(`AD/${maybeSymbolic(W.AD)}`);
 
     pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
-    pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
+    if (needsADB(ad)) pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
     if (ar) pieces.push(`AR/${maybeSymbolic(W.AR)}`);
     if (arx) pieces.push(`ARX/${maybeSymbolic(W.ARX)}`);
   }
