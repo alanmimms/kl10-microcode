@@ -39,14 +39,21 @@ function joinSplats(a) {
 
 function decodeLines(lines) {
   const ram = [];
+  const eof = lines.indexOf(';EOF');
+
+  if (eof > 0) lines = lines.slice(0, eof);
 
   lines.forEach(line => {
     const recType = line[0];
-    if (recType === undefined || recType === ';') return;
+    if (recType === undefined) return;
     const dataS = line.slice(2);
     const decoded = dataS.split(/,/).map(decodeSplats);
 
     switch(recType) {
+    case 0:                     // Ignore lines with NULs and comment lines
+    case ';':
+      break;
+
     case 'Z':
       const [zWC, zAdr, zCount, zCksum] = decoded;
 //      console.log(`Zero ${zWC}@${octal(zAdr)} count=${zCount}. cksum=${zCksum}.`);
