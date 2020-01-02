@@ -17,7 +17,7 @@ const utilFormats = require('./util');
 // Read our defines.mic and gobble definitions for fields and
 // constants for CRAM and DRAM.
 const {CRAMdefinitions, DRAMdefinitions} = require('./cram-defs');
-
+module.exports.CRAMdefinitions = CRAMdefinitions;
 
 // RH sign bit
 const SIGN18 = maskForBit(18);
@@ -492,7 +492,7 @@ const BitField = Combinatorial.compose({name: 'BitField'}).init(function({name, 
   getInputs() {
     const v = this.input.get();
     assert(typeof this.shift === 'bigint', `${this.name} must define bigint shift`);
-    const shifted = v >> BigInt(this.shift);
+    const shifted = v >> this.shift;
     return shifted & this.ones;
   },
 });
@@ -1844,6 +1844,7 @@ function defineBitFields(input, s, ignoreFields = []) {
         const bfName = `${input.name}['${fieldName}']`;
         const inputClosure = input;   // Create closure variable
         curField = BitField({name: bfName, s, e, input: inputClosure, bitWidth});
+        curField.namesForValues = {};
         const thisField = curField; // Create closure variable for getter
 
         Object.defineProperty(input, fieldName, {
@@ -1863,6 +1864,7 @@ function defineBitFields(input, s, ignoreFields = []) {
 
           if (curField) {
             curField[defName] = BigInt(parseInt(value, 8));
+            curField.namesForValues[parseInt(value, 8)] = defName;
           } else {
             console.error(`ERROR: no field context for value definition in "${line}"`);
           }
@@ -1873,6 +1875,7 @@ function defineBitFields(input, s, ignoreFields = []) {
     }
   });
 }
+module.exports.defineBitFields = defineBitFields;
 
 // Export every EBOXUnit
 module.exports = Object.assign(module.exports, Named.units);

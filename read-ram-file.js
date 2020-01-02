@@ -2,9 +2,9 @@
 const _ = require('lodash');
 const fs = require('fs');
 const util = require('util');
-const {octal, oct6, fieldExtract} = require('./util');
+const {octal, oct6, fieldExtract, maskForBit, fieldMask} = require('./util');
 const {cramFields} = require('./fields-model');
-const {unusedCRAMFields, CR} = require('./ebox');
+const {unusedCRAMFields, CRAMdefinitions, defineBitFields, EBOX, ConstantUnit} = require('./ebox');
 
 
 // List of field names in an array indexed by leftmost bit.
@@ -29,7 +29,7 @@ function decodeSplats(s) {
 function joinSplats(a) {
   let w = 0n;
 
-  for (let k = 0, shift = 0n; shift < 79n; ++k, shift += 16n) {
+  for (let k = 0, shift = 0n; shift < 80n; ++k, shift += 16n) {
     w = (w << shift) | BigInt(a[k]);
   }
 
@@ -49,7 +49,7 @@ function decodeLines(lines) {
     switch(recType) {
     case 'Z':
       const [zWC, zAdr, zCount, zCksum] = decoded;
-      console.log(`Zero ${zWC}@${octal(zAdr)} count=${zCount}. cksum=${zCksum}.`);
+//      console.log(`Zero ${zWC}@${octal(zAdr)} count=${zCount}. cksum=${zCksum}.`);
       break;
 
     case 'C':
@@ -57,7 +57,7 @@ function decodeLines(lines) {
       const [wc, adr, ...a] = decoded;
       const checksum = a.pop();
       const dump = a.map((w, x) => oct6(w) + (x % 6 === 5 ? '\n          ' : '')).join(',');
-      console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
+//      console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
 
       if (recType === 'C') {
 
@@ -69,7 +69,7 @@ function decodeLines(lines) {
       break;
 
     default:
-      console.log(`Unknown recType: "${recType}"`);
+      console.error(`Unknown recType: "${recType}"`);
       break;
     }
   });
@@ -78,27 +78,61 @@ function decodeLines(lines) {
 }
 
 
+function maybeSymbolic(field) {
+  const v = field.get();
+  return field.namesForValues[v] || octal(v);
+}
+
+
+const W = ConstantUnit({name: 'WORD', bitWidth: 84, value: 0});
+defineBitFields(W, CRAMdefinitions);
+
+
 function disassembleCRAMWord(w, a) {
+  EBOX.reset();
+  W.value = w;
   const wSplit = _.range(0, 84, 12).reduce((cur, s) => cur.concat([octal(fieldExtract(w, s, s+11, 84))]), []);
-  CR.value = w;
 
-  const dis = fieldsByBit.filter(names => !unusedCRAMFields.includes(names[0])).map(names => {
-    const name = names[0];
-    const field = cramFields[name];
-    return `${names[0]}/${fieldExtract(w, field.s, field.e, 84)}`;
-  }).join(', ');
+  // Compute mask of CRAM word bits we need to disassemble. This is
+  // gradually zeroed as we proceed disassembling this word.
+  let remainingMask = fieldMask(0, 83, 84);
+  unusedCRAMFields.forEach(name => {
+    const {s, e} = cramFields[name];
+    remainingMask &= ~fieldMask(s, e, 84);
+  });
 
-  console.log(`U ${octal(a)}: ${wSplit}  ${dis}`);
+  // Clear bits for J since we do it at the end
+  remainingMask &= ~fieldMask(W.J.s, W.J.e);
+
+  const pieces = [];
+  const [ad, ada, adb, ar, arx] = 'AD,ADA,ADB,AR,ARX'.split(/,/).map(f => W[f].get());
+
+  if (ad || ada || adb ||
+      ar === W.AR.AD || ar === W.AR['AD*2'] || ar === W.AR['AD*.25'] ||
+      arx === W.ARX.AD || arx === W.ARX['ADX*2'] || arx === W.ARX.ADX || arx === W.ARX['ADX*.25'])
+  {
+    pieces.push(`AD/${maybeSymbolic(W.AD)}`);
+
+    pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
+    pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
+    if (ar) pieces.push(`AR/${maybeSymbolic(W.AR)}`);
+    if (arx) pieces.push(`ARX/${maybeSymbolic(W.ARX)}`);
+  }
+
+  // Save the best for last
+  pieces.push(`J/${octal(W.J.get())}`);
+
+  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
 }
 
 
 function main() {
-  const [ramA, ramB] = ['kl10-source/eboxa.ram', 'kl10-source/eboxa.ram']
+  const [klx, ramA, ramB] = ['kl10-source/klx.ram', 'kl10-source/eboxa.ram', 'kl10-source/eboxa.ram']
         .map(fileName => decodeLines(fs.readFileSync(fileName)
                                      .toString()
                                      .split(/\n/)));
 
-  ramA.forEach((w, a) => disassembleCRAMWord(w, a));
+  klx.forEach((w, a) => disassembleCRAMWord(w, a));
 }
 
 
