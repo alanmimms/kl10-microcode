@@ -21,7 +21,7 @@ const {DTE} = require('./dte');
 // Each opcode with mnemonics for the property names.
 const I = require('./instructions');
 
-const EBOXmodel = require('./ebox-model');
+const EBOXmodel = require('./ebox');
 const KLX_CRAM = require('./cram.js');
 const KLX_DRAM = require('./dram.js');
 const KLX_CRAM_lines = require('./cram-lines.js');

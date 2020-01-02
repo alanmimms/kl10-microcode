@@ -14,7 +14,7 @@ const definesRE = new RegExp([
 const define_mic = fs.readFileSync('kl10-source/define.mic');
 
 if (!define_mic) {
-  console.error(`ERROR: Missing 'define.mic' file which is required for ebox-model`);
+  console.error(`ERROR: Missing 'define.mic' file which is required for EBOX`);
   process.exit(-1);
 }
 

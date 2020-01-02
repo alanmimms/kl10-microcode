@@ -4,7 +4,7 @@ const fs = require('fs');
 const util = require('util');
 const {octal, oct6, fieldExtract} = require('./util');
 const {cramFields} = require('./fields-model');
-const {unusedCRAMFields, CR} = require('./ebox-model');
+const {unusedCRAMFields, CR} = require('./ebox');
 
 
 // List of field names in an array indexed by leftmost bit.

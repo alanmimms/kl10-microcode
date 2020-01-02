@@ -3,7 +3,7 @@
 const {
   NEG1, Named,
   EBOX, PC,
-} = require('./ebox-model');
+} = require('./ebox');
 
 const {
   maskForBit, fieldExtract,

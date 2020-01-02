@@ -11,7 +11,7 @@ const util = require('util');
 const StampIt = require('@stamp/it');
 
 const {octal} = require('./util');
-const EBOX = require('./ebox-model');
+const EBOX = require('./ebox');
 const {Named, EBOXUnit, CRAM, DRAM} = EBOX;
 
 const cramDefs = {bpw: 84};
