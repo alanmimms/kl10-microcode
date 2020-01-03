@@ -174,7 +174,7 @@ function decodeLines(lines) {
 
   lines.forEach(line => {
     const recType = line[0];
-    if (recType === undefined) return;
+    if (!recType) return;
     const dataS = line.slice(2);
 
     if (recType === 0 || recType === ';') return;
@@ -188,7 +188,7 @@ function decodeLines(lines) {
       const [wc, adr, ...a] = decoded;
       const checksum = a.pop();
       const dump = a.map((w, x) => oct6(w) + (x % 6 === 5 ? '\n          ' : '')).join(',');
-//      console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
+      if (adr < 0o20) console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
 
       if (recType === 'C') {
 
@@ -255,7 +255,7 @@ function disassembleCRAMWord(w, a) {
   // Save the best for last
   pieces.push(`J/${octal(W.J.get())}`);
 
-  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
+//  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
 }
 
 
