@@ -188,7 +188,7 @@ function decodeLines(lines) {
       const [wc, adr, ...a] = decoded;
       const checksum = a.pop();
       const dump = a.map((w, x) => oct6(w) + (x % 6 === 5 ? '\n          ' : '')).join(',');
-      if (adr < 0o20) console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
+//      if (adr < 0o20) console.log(`${recType === 'C' ? 'CRAM' : 'DRAM'} ${octal(adr)}: ${dump}`);
 
       if (recType === 'C') {
 
@@ -238,24 +238,182 @@ function disassembleCRAMWord(w, a) {
   remainingMask &= ~fieldMask(W.J.s, W.J.e);
 
   const pieces = [];
-  const [ad, ada, adb, ar, arx] = 'AD,ADA,ADB,AR,ARX'.split(/,/).map(f => W[f].get());
+  const [ad, ada, adb, ar, arx, arl] = 'AD,ADA,ADB,AR,ARX,ARL'.split(/,/).map(f => W[f].get());
 
   if (ad || ada || adb ||
       ar === W.AR.AD || ar === W.AR['AD*2'] || ar === W.AR['AD*.25'] ||
       arx === W.ARX.AD || arx === W.ARX['ADX*2'] || arx === W.ARX.ADX || arx === W.ARX['ADX*.25'])
   {
-    pieces.push(`AD/${maybeSymbolic(W.AD)}`);
+    if (ad) pieces.push(`AD/${maybeSymbolic(W.AD)}`);
 
-    pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
+    if (W['ADA EN'].get())
+      pieces.push(`ADA EN/0S`);
+    else
+      pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
+
     if (needsADB(ad)) pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
     if (ar) pieces.push(`AR/${maybeSymbolic(W.AR)}`);
     if (arx) pieces.push(`ARX/${maybeSymbolic(W.ARX)}`);
   }
 
+  if (W.BR.get()) pieces.push(`BR/AR`);
+  if (W.BRX.get()) pieces.push(`BRX/ARX`);
+
+  const spec = W.SPEC.get();
+  const specName = W.SPEC.namesForValues[spec];
+  const skip = W.SKIP.get();
+  const skipName = W.SKIP.namesForValues[skip];
+  const cond = W.COND.get();
+  const condName = W.COND.namesForValues[cond];
+  const mq = W.MQ.get();
+
+  if (spec === W.SPEC['MQ SHIFT']) {
+    pieces.push(`MQ/${mq ? 'MQ*.25' : 'MQ*2'}`);
+  } else if (cond === W.COND['REG CTL']) {
+    const mqCtl = W['MQ CTL'].get();
+
+    if (mq === W.MQ['MQ SEL']) {
+      pieces.push(`MQ/MQ SEL`);
+
+      switch(mqCtl) {
+      case W['MQ CTL'].MQ:
+        pieces.push(`MQ CTL/MQ`);
+        break;
+
+      case W['MQ CTL']['MQ*2']:
+        pieces.push(`MQ CTL/MQ*2`);
+        break;
+
+      case W['MQ CTL']['0S']:
+        pieces.push(`MQ CTL/0S`);
+        break;
+      }
+    } else {
+      pieces.push(`MQ/MQM SEL`);
+
+      switch(mqCtl) {
+      case W['MQ CTL'].SH:
+        pieces.push(`MQ CTL/SH`);
+        break;
+
+      case W['MQ CTL']['MQ*.25']:
+        pieces.push(`MQ CTL/MQ*.25`);
+        break;
+
+      case W['MQ CTL']['1S']:
+        pieces.push(`MQ CTL/1S`);
+        break;
+
+      case W['MQ CTL'].AD:
+        pieces.push(`MQ CTL/AD`);
+        break;
+      }
+    }
+  } else if (mq) {
+    pieces.push(`MQ/SH`);
+  }
+
+  const fmadr = W.FMADR.get();
+
+  if (spec === W.SPEC['FM WRITE'] || fmadr) {
+    pieces.push(`FMADR/${maybeSymbolic(W.FMADR)}`);
+  }
+
+  const sc = W.SC.get();
+  const fe = W.FE.get();
+  const armm = W.ARMM.get();
+  const disp = W.DISP.get();
+
+  if (sc || fe ||
+      armm === W.ARMM['SCAD EXP'] || armm === W.ARMM['SCAD POS'] ||
+      skip === W.SKIP['SCAD0'] || skip === W.SKIP['SCAD#0'] ||
+      disp === W.DISP.BYTE)
+  {
+    pieces.push(`SCAD/${maybeSymbolic(W.SCAD)}`);
+    pieces.push(`SCADA/${maybeSymbolic(W.SCADA)}`);
+    pieces.push(`SCADB/${maybeSymbolic(W.SCADB)}`);
+  }
+
+  if (spec === W.SPEC['SCM ALT']) {
+    pieces.push(`SC/${sc ? 'FE' : 'AR SHIFT'}`);
+  } else if (sc) {
+    pieces.push(`SC/SCAD`);
+  }
+
+  if (ar === W.AR.SH || arx === W.ARX.SH || mq === W.MQ.SH || disp === W.DISP['SH0-3'] || arl === W.ARL.SH) {
+    pieces.push(`SH/${maybeSymbolic(W.SH)}`);
+  }
+  
+  if (specName) {
+    pieces.push(`SPEC/${specName}`);
+
+    switch(spec) {
+    case W.SPEC['FLAG CTL']:
+      pieces.push(`FLAG CTL/${maybeSymbolic(W['FLAG CTL'])}`);
+      break;
+
+    case W.SPEC['SP MEM CYCLE']:
+      pieces.push(`FLAG CTL/${maybeSymbolic(W['SP MEM'])}`);
+      break;
+    }
+  }
+
+  const magic = W['#'].get();
+  const acb = W['ACB'].get();
+  const acOp = W['AC-OP'].get();
+  const mem = W.MEM.get();
+
+  if (skipName) pieces.push(`SKIP/${skipName}}`);
+  if (condName) pieces.push(`COND/${condName}`);
+  if (W.VMA.get()) pieces.push(`VMA/${maybeSymbolic(W.VMA)}`);
+  // XXX missing VMAX and ARMM
+
+  if (W.MEM.get()) pieces.push(`MEM/${maybeSymbolic(W.MEM)}`);
+  if (disp) pieces.push(`DISP/${maybeSymbolic(W.DISP)}`);
+
+  if (cond === W.COND['SR_#'] || cond === W.COND['LOAD IR'] || cond === W.MEM['A RD']) {
+    pieces.push(`PXCT/${octal(W.PXCT.get(), 3)}`);
+  }
+
+  if (fmadr === W.FMADR['#B#']) pieces.push(`ACB/${maybeSymbolic(W.ACB)}`);
+  if (cond === W.COND['FM WRITE'] && acOp) pieces.push(`AC-OP/${maybeSymbolic(W['AC-OP'])}`);
+  if (acb || acOp) pieces.push(`AC#/${maybeSymbolic(W['AC#'])}`);
+
+  if (spec === W.SPEC['ARL IND']) {
+    if (W['AR0-8'].get()) pieces.push(`AR0-8/LOAD`);
+    if (W.CLR.get()) pieces.push(`CLR/${maybeSymbolic(W.CLR)}`);
+    if (W.ARL.get()) pieces.push(`CLR/${maybeSymbolic(W.ARL)}`);
+  } else if (cond === W.COND['REG CTL']) {
+    if (W['EXP TST'].get()) pieces.push(`EXP TST/AR_EXP`);
+  } else if (cond === W.COND['PCF_#']) {
+    if (W['PC FLAGS'].get()) pieces.push(`PC FLAGS/${maybeSymbolic(W['PC FLAGS'])}`);
+  } else if (spec === W.SPEC['FLAG CTL']) {
+    if (W['FLAG CTL'].get()) pieces.push(`FLAG CTL/${maybeSymbolic(W['FLAG CTL'])}`);
+  } else if (cond === W.COND['SPEC INSTR']) {
+    if (W['SPEC INSTR'].get()) pieces.push(`SPEC INSTR/${maybeSymbolic(W['SPEC INSTR'])}`);
+  } else if (mem === W.MEM.FETCH) {
+    if (W['FETCH'].get()) pieces.push(`FETCH/${maybeSymbolic(W['FETCH'])}`);
+  } else if (mem === W.MEM['EA CALC']) {
+    if (W['EA CALC'].get()) pieces.push(`EA CALC/${maybeSymbolic(W['EA CALC'])}`);
+  } else if (mem === W.MEM['SP MEM CYCLE']) {
+    if (W['SP MEM'].get()) pieces.push(`SP MEM/${maybeSymbolic(W['SP MEM'])}`);
+  } else if (mem === W.MEM['REG FUNC']) {
+    if (W['MREG FNC'].get()) pieces.push(`MREG FNC/${maybeSymbolic(W['MREG FNC'])}`);
+  } else if (mem === W.MEM['MBOX CTL']) {
+    if (W['MBOX CTL'].get()) pieces.push(`MBOX CTL/${maybeSymbolic(W['MBOX CTL'])}`);
+  } else if (spec === W.SPEC['MTR CTL']) {
+    if (W['MTR CTL'].get()) pieces.push(`MTR CTL/${maybeSymbolic(W['MTR CTL'])}`);
+  } else if (cond === W.COND['EBUS CTL']) {
+    if (W['EBUS CTL'].get()) pieces.push(`EBUS CTL/${maybeSymbolic(W['EBUS CTL'])}`);
+  } else if (cond === W.COND['DIAG FUNC']) {
+    if (W['DIAG FUNC'].get()) pieces.push(`DIAG FUNC/${maybeSymbolic(W['DIAG FUNC'])}`);
+  } else {
+    pieces.push(`#/${octal(magic, 9)}`);
+  }
+
   // Save the best for last
   pieces.push(`J/${octal(W.J.get())}`);
-
-//  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
+  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
 }
 
 
@@ -265,7 +423,7 @@ function main() {
                                      .toString()
                                      .split(/\n/)));
 
-  klx.forEach((w, a) => disassembleCRAMWord(w, a));
+  klx.slice(0, 99999).forEach((w, a) => disassembleCRAMWord(w, a));
 }
 
 
