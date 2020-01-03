@@ -216,9 +216,19 @@ const W = ConstantUnit({name: 'WORD', bitWidth: 84, value: 0});
 defineBitFields(W, CRAMdefinitions);
 
 
-function needsADB(ad) {
-  return W.AD.namesForValues[ad].includes('B');
-}
+// List of AD/xxx values that require the A parameter
+const needsAList = `\
+A+1,A+XCRY,A+ANDCB,A+AND,A*2,A*2+1,OR+1,OR+ANDCB,A+B,A+B+1,A+OR,\
+ORCB,A-B,A-B,AND+ORCB,A+ORCB,ANDCB-1,AND-1,A-1,SETCA,ORC,ORCA,ANDC,NOR,EQV,ORCB,ANDCA,\
+XOR,OR,ANDCB,AND,A,CRY A EQ -1,CRY A.B#0,CRY A#0,CRY A GE B`
+      .split(/,/)
+      .map(fieldName => W.AD[fieldName]);
+
+const needsBList = `\
+A+ANDCB,A+AND,OR+1,OR+ANDCB,A+B,A+B+1,A+OR,ORCB+1,A-B-1,A-B,AND+ORCB,A+ORCB,ANDCB-1,\
+AND-1,ORC,ORCA,ANDC,NOR,SETCB,EQV,ORCB,ANDCA,XOR,B,OR,ANDCB,AND,CRY A.B#0,CRY A GE B`
+      .split(/,/)
+      .map(fieldName => W.AD[fieldName]);
 
 
 function disassembleCRAMWord(w, a) {
@@ -249,9 +259,9 @@ function disassembleCRAMWord(w, a) {
     if (W['ADA EN'].get())
       pieces.push(`ADA EN/0S`);
     else
-      pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
+      if (needsAList.includes(ad)) pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
 
-    if (needsADB(ad)) pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
+    if (needsBList.includes(ad)) pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
     if (ar) pieces.push(`AR/${maybeSymbolic(W.AR)}`);
     if (arx) pieces.push(`ARX/${maybeSymbolic(W.ARX)}`);
   }
@@ -369,7 +379,7 @@ function disassembleCRAMWord(w, a) {
   // XXX missing VMAX and ARMM
 
   if (W.MEM.get()) pieces.push(`MEM/${maybeSymbolic(W.MEM)}`);
-  if (disp) pieces.push(`DISP/${maybeSymbolic(W.DISP)}`);
+  if (disp < 8n || disp >= 0o30n && disp < 0o40n) pieces.push(`DISP/${maybeSymbolic(W.DISP)}`);
 
   if (cond === W.COND['SR_#'] || cond === W.COND['LOAD IR'] || cond === W.MEM['A RD']) {
     pieces.push(`PXCT/${octal(W.PXCT.get(), 3)}`);
@@ -377,7 +387,7 @@ function disassembleCRAMWord(w, a) {
 
   if (fmadr === W.FMADR['#B#']) pieces.push(`ACB/${maybeSymbolic(W.ACB)}`);
   if (cond === W.COND['FM WRITE'] && acOp) pieces.push(`AC-OP/${maybeSymbolic(W['AC-OP'])}`);
-  if (acb || acOp) pieces.push(`AC#/${maybeSymbolic(W['AC#'])}`);
+  if (acb || acOp) pieces.push(`AC#/${octal(W['AC#'].get(), 2)}`);
 
   if (spec === W.SPEC['ARL IND']) {
     if (W['AR0-8'].get()) pieces.push(`AR0-8/LOAD`);
@@ -408,7 +418,7 @@ function disassembleCRAMWord(w, a) {
   } else if (cond === W.COND['DIAG FUNC']) {
     if (W['DIAG FUNC'].get()) pieces.push(`DIAG FUNC/${maybeSymbolic(W['DIAG FUNC'])}`);
   } else {
-    pieces.push(`#/${octal(magic, 9)}`);
+    pieces.push(`#/${octal(magic, 3)}`);
   }
 
   // Save the best for last
