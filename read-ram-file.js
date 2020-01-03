@@ -7,6 +7,9 @@ const {cramFields} = require('./fields-model');
 const {unusedCRAMFields, CRAMdefinitions, defineBitFields, EBOX, ConstantUnit} = require('./ebox');
 
 
+var seq = 0;
+
+
 // List of field names in an array indexed by leftmost bit.
 const fieldsByBit = Object.entries(cramFields).reduce((fields, [name, o]) => {
   fields[o.s] = (fields[o.s] || []).concat([name]);
@@ -423,7 +426,28 @@ function disassembleCRAMWord(w, a) {
 
   // Save the best for last
   pieces.push(`J/${octal(W.J.get())}`);
-  console.log(`U ${octal(a)}: ${wSplit}  ${pieces.join(', ')}`);
+
+  // Create disS with first line prefixed by codeS and all subsequent
+  // lines prefixed by the same number of blanks.
+  const codeS = `U ${octal(a)}, ${wSplit}`;
+  const makeSeq = s => s.toString().padStart(4);
+  const lineWidthMax = 130;
+
+  const disS = pieces.reduce((accum, piece, n) => {
+    const lastNL = accum.lastIndexOf('\n');
+    const lastLineLen = lastNL < 0 ? accum.length : accum.length - lastNL;
+
+    if (lastLineLen + piece.length > lineWidthMax) {
+        accum += `,\n${''.padStart(codeS.length)}\t; ${makeSeq(seq++)}    `;
+    } else if (n !== 0) {
+      accum += ', ';
+    }
+
+    accum += piece;
+    return accum;
+  }, `${codeS}\t; ${makeSeq(seq++)}  `);
+
+  console.log(disS);
 }
 
 
