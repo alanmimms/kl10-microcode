@@ -458,7 +458,7 @@ function parseMacros(src) {
     let m;
 
     if (DCODEseen) return list; // Ignore all lines afer .DCODE
-    line.replace(/;.*/, '');    // Remove comments
+    line = line.replace(/;.*/, '');    // Remove comments
 
     // Ignore .XXX directives, but note the one that is our end sentinel (.DCODE).
     if ((m = line.match(/^\s*\.([A-Za-z0-9.$%@]+)/))) {
@@ -466,7 +466,7 @@ function parseMacros(src) {
       return list;
     } else if (line.match(/^\s*$/)) return list; // Ignore blank lines
 
-    m = line.match(/^(\S+)\s+"([^"]*)/);
+    m = line.match(/^(.*)\s+"([^"]*)/);
 
     if (!m) {
       console.error(`Unrecognized MACRO.MIC line syntax: "${line}"`);
@@ -486,7 +486,6 @@ function parseMacros(src) {
 
 function main() {
   const macros = parseMacros(fs.readFileSync('kl10-source/macro.mic').toString());
-
   console.log('Macros:', util.inspect(macros));
   const [klx, eboxB] = ['kl10-source/klx.ram', 'kl10-source/eboxb.ram']
         .map(fileName => decodeLines(fs.readFileSync(fileName)
