@@ -438,7 +438,7 @@ function disassembleCRAMWord(w, a) {
     const lastLineLen = lastNL < 0 ? accum.length : accum.length - lastNL;
 
     if (lastLineLen + piece.length > lineWidthMax) {
-        accum += `,\n${''.padStart(codeS.length)}\t; ${makeSeq(seq++)}    `;
+        accum += `,\n${''.padStart(codeS.length)}\t; ${makeSeq(seq++)}          `;
     } else if (n !== 0) {
       accum += ', ';
     }
@@ -451,7 +451,43 @@ function disassembleCRAMWord(w, a) {
 }
 
 
+function parseMacros(src) {
+  let DCODEseen = false;
+
+  return src.split(/\n/).reduce((list, line) => {
+    let m;
+
+    if (DCODEseen) return list; // Ignore all lines afer .DCODE
+    line.replace(/;.*/, '');    // Remove comments
+
+    // Ignore .XXX directives, but note the one that is our end sentinel (.DCODE).
+    if ((m = line.match(/^\s*\.([A-Za-z0-9.$%@]+)/))) {
+      if (m[1] === 'DCODE') DCODEseen = true;
+      return list;
+    } else if (line.match(/^\s*$/)) return list; // Ignore blank lines
+
+    m = line.match(/^(\S+)\s+"([^"]*)/);
+
+    if (!m) {
+      console.error(`Unrecognized MACRO.MIC line syntax: "${line}"`);
+      return list;
+    }
+
+    list.push({
+      macro: m[1],
+      expansion: m[2],
+      parameterized: m[2].includes('@'),
+    });
+
+    return list;
+  }, []);
+}
+
+
 function main() {
+  const macros = parseMacros(fs.readFileSync('kl10-source/macro.mic').toString());
+
+  console.log('Macros:', util.inspect(macros));
   const [klx, eboxB] = ['kl10-source/klx.ram', 'kl10-source/eboxb.ram']
         .map(fileName => decodeLines(fs.readFileSync(fileName)
                                      .toString()
