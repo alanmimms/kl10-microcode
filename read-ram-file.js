@@ -465,7 +465,7 @@ function parseMacros(src) {
       return list;
     } else if (line.match(/^\s*$/)) return list; // Ignore blank lines
 
-    m = line.match(/^(.*)\s+"([^"]*)/);
+    m = line.match(/^(.*?)\s+"([^"]*)/);
 
     if (!m) {
       console.error(`Unrecognized MACRO.MIC line syntax: "${line}"`);
@@ -483,21 +483,45 @@ function parseMacros(src) {
 function markMacroFields(macros) {
   EBOX.reset();                 // Enables W to work properly with all bitwidths populated
 
-  Object.values(macros).forEach(mac => {
-    // Break macro expansion into field-sets so we can expand any macros therein.
-    const sets = mac.expansion.split(/,\s*/);
+  Object.entries(macros)
+    .filter(([macName, mac]) => !mac.parameterized)
+    .forEach(([macName, mac]) => {
+      // Break macro expansion into field-sets so we can expand any macros therein.
+      const sets = mac.expansion.split(/,\s*/);
+      let did1 = true;
 
-    while (true) {
+      // Keep expanding entire list over and over until no expansions occur
+      while (did1) {
+        did1 = false;
 
+        sets.forEach((set, x) => {
+          const [field, value] = set.split(/\//);
+
+          if (value == null) {    // No value means it must be a macro name
+            const m = macros[field];
+
+            if (!m) {
+              console.error(`Undefined macro "${field}" requested`);
+            } else {
+              const expansionSets = m.expansion.split(/,\s*/);
+              sets.splice(x, 1, ...expansionSets);
+              did1 = true;
+            }
+          }
+        });
+      }
+
+      // Set all bits in each bitfield covered by each field defined in
+      // the full expansion.
       sets.forEach(set => {
-        const [field, value] = fieldSet.split(/\//);
-
-        if (value == null) {    // Must be a macro
-          
-        }
+        const [field, ] = set.split(/\//);
+        console.log(`marking "${field}" for macro "${macName}"`);
+        W[field] = W[field].ones;
       });
-    }
-  });
+
+      // Remember the bits covered in this macro expansion.
+      mac.coverage = W.value;
+    });
 }
 
 
