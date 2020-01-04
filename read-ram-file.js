@@ -6,7 +6,6 @@ const {octal, oct6, fieldExtract, maskForBit, fieldMask} = require('./util');
 const {cramFields} = require('./fields-model');
 const {unusedCRAMFields, CRAMdefinitions, defineBitFields, EBOX, ConstantUnit} = require('./ebox');
 
-
 var seq = 0;
 
 
@@ -473,20 +472,38 @@ function parseMacros(src) {
       return list;
     }
 
-    list.push({
-      macro: m[1],
-      expansion: m[2],
-      parameterized: m[2].includes('@'),
-    });
-
+    const [, macro, expansion] = m;
+    const parameterized = expansion.includes('@');
+    list[macro] = {expansion, parameterized};
     return list;
-  }, []);
+  }, {});
+}
+
+
+function markMacroFields(macros) {
+  EBOX.reset();                 // Enables W to work properly with all bitwidths populated
+
+  Object.values(macros).forEach(mac => {
+    // Break macro expansion into field-sets so we can expand any macros therein.
+    const sets = mac.expansion.split(/,\s*/);
+
+    while (true) {
+
+      sets.forEach(set => {
+        const [field, value] = fieldSet.split(/\//);
+
+        if (value == null) {    // Must be a macro
+          
+        }
+      });
+    }
+  });
 }
 
 
 function main() {
   const macros = parseMacros(fs.readFileSync('kl10-source/macro.mic').toString());
-  console.log('Macros:', util.inspect(macros));
+  markMacroFields(macros);
   const [klx, eboxB] = ['kl10-source/klx.ram', 'kl10-source/eboxb.ram']
         .map(fileName => decodeLines(fs.readFileSync(fileName)
                                      .toString()
