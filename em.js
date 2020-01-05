@@ -1017,6 +1017,7 @@ function installTestCode() {
   }
 
   const ev = loadDECSAV(bootFD);
+  MBOX.data[0] = ev.startInsn;  // Copy start instruction to PC=0 (for now?)
   console.log(`\
 ${saveFileName}: \
 lo:${octW(ev.loAddr)} hi:${octW(ev.hiAddr)} startInsn=${octW(ev.startInsn)}`);
