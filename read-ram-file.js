@@ -2,11 +2,45 @@
 const _ = require('lodash');
 const fs = require('fs');
 const util = require('util');
+const CLA = require('command-line-args');
+
 const {octal, oct6, fieldExtract, maskForBit, fieldMask} = require('./util');
 const {cramFields} = require('./fields-model');
 const {unusedCRAMFields, CRAMdefinitions, defineBitFields, EBOX, ConstantUnit} = require('./ebox');
 
 var seq = 0;
+
+
+const optionList = [
+  {
+    name: 'ramName', defaultOption: true, defaultValue: 'kl10-source/eboxb.ram', type: String,
+    description: 'RAM file to load (e.g., kl1-source/eboxb.ram)',
+  },
+];
+
+
+const OPT = parseOptions(optionList);
+
+
+function parseOptions(list) {
+  let result = null;
+
+  try {
+    result = CLA(optionList, {camelCase: true});
+  } catch(e) {
+    usage(e.msg);
+  }
+
+  if (!result.ramName) usage();
+  return result;
+}
+
+
+function usage(msg) {
+  console.error(`Must specify a file to load.`);
+  process.exit();
+  return null;
+}
 
 
 // List of field names in an array indexed by leftmost bit.
@@ -552,14 +586,12 @@ function markMacroFields(macros) {
 
 
 function main() {
+  parseOptions();
   const macros = parseMacros(fs.readFileSync('kl10-source/macro.mic').toString());
   markMacroFields(macros);
-  const [klx, eboxB] = ['kl10-source/klx.ram', 'kl10-source/eboxb.ram']
-        .map(fileName => decodeLines(fs.readFileSync(fileName)
-                                     .toString()
-                                     .split(/\n/)));
 
-  klx.slice(0, 99999).forEach((w, a) => disassembleCRAMWord(w, a, macros));
+  decodeLines(fs.readFileSync(OPT.ramName).toString().split(/\n/))
+    .forEach((w, a) => disassembleCRAMWord(w, a, macros));
 }
 
 

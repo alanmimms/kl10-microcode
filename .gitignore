@@ -114,4 +114,4 @@ dist
 
 # TernJS port file
 .tern-port
-klx.udis
+*.udis
