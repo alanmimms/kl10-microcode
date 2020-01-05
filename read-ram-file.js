@@ -208,12 +208,6 @@ function decodeLines(lines) {
 }
 
 
-function maybeSymbolic(field) {
-  const v = field.get();
-  return field.namesForValues[v] || octal(v);
-}
-
-
 const W = ConstantUnit({name: 'WORD', bitWidth: 84, value: 0});
 defineBitFields(W, CRAMdefinitions);
 
@@ -233,10 +227,13 @@ AND-1,ORC,ORCA,ANDC,NOR,SETCB,EQV,ORCB,ANDCA,XOR,B,OR,ANDCB,AND,CRY A.B#0,CRY A 
       .map(fieldName => W.AD[fieldName]);
 
 
-function disassembleCRAMWord(w, a) {
+function disassembleCRAMWord(w, a, macros) {
   EBOX.reset();
   W.value = w;
-  const wSplit = _.range(0, 84, 12).reduce((cur, s) => cur.concat([octal(fieldExtract(w, s, s+11, 84))]), []);
+
+  const wSplit = _.range(0, 84, 12)
+        .reduce((cur, s) => cur.concat([octal(fieldExtract(w, s, s+11, 84))]),
+                []);
 
   // Compute mask of CRAM word bits we need to disassemble. This is
   // gradually zeroed as we proceed disassembling this word.
@@ -250,22 +247,26 @@ function disassembleCRAMWord(w, a) {
   remainingMask &= ~fieldMask(W.J.s, W.J.e);
 
   const pieces = [];
-  const [ad, ada, adb, ar, arx, arl] = 'AD,ADA,ADB,AR,ARX,ARL'.split(/,/).map(f => W[f].get());
+  const [ad, ada, adb, ar, arx, arl] = 'AD,ADA,ADB,AR,ARX,ARL'
+        .split(/,/)
+        .map(f => W[f].get());
 
   if (ad || ada || adb ||
-      ar === W.AR.AD || ar === W.AR['AD*2'] || ar === W.AR['AD*.25'] ||
-      arx === W.ARX.AD || arx === W.ARX['ADX*2'] || arx === W.ARX.ADX || arx === W.ARX['ADX*.25'])
+      ar === W.AR.AD ||
+      ar === W.AR['AD*2'] || ar === W.AR['AD*.25'] ||
+      arx === W.ARX.AD || arx === W.ARX['ADX*2'] ||
+      arx === W.ARX.ADX || arx === W.ARX['ADX*.25'])
   {
-    if (ad) pieces.push(`AD/${maybeSymbolic(W.AD)}`);
+    if (ad) pieces.push(setFor('AD'));
 
     if (W['ADA EN'].get())
       pieces.push(`ADA EN/0S`);
     else
-      if (needsAList.includes(ad)) pieces.push(`ADA/${maybeSymbolic(W.ADA)}`);
+      if (needsAList.includes(ad)) pieces.push(setFor('ADA'));
 
-    if (needsBList.includes(ad)) pieces.push(`ADB/${maybeSymbolic(W.ADB)}`);
-    if (ar) pieces.push(`AR/${maybeSymbolic(W.AR)}`);
-    if (arx) pieces.push(`ARX/${maybeSymbolic(W.ARX)}`);
+    if (needsBList.includes(ad)) pieces.push(setFor('ADB'));
+    if (ar) pieces.push(setFor('AR'));
+    if (arx) pieces.push(setFor('ARX'));
   }
 
   if (W.BR.get()) pieces.push(`BR/AR`);
@@ -328,7 +329,7 @@ function disassembleCRAMWord(w, a) {
   const fmadr = W.FMADR.get();
 
   if (spec === W.SPEC['FM WRITE'] || fmadr) {
-    pieces.push(`FMADR/${maybeSymbolic(W.FMADR)}`);
+    pieces.push(setFor('FMADR'));
   }
 
   const sc = W.SC.get();
@@ -341,9 +342,9 @@ function disassembleCRAMWord(w, a) {
       skip === W.SKIP['SCAD0'] || skip === W.SKIP['SCAD#0'] ||
       disp === W.DISP.BYTE)
   {
-    pieces.push(`SCAD/${maybeSymbolic(W.SCAD)}`);
-    pieces.push(`SCADA/${maybeSymbolic(W.SCADA)}`);
-    pieces.push(`SCADB/${maybeSymbolic(W.SCADB)}`);
+    pieces.push(setFor('SCAD'));
+    pieces.push(setFor('SCADA'));
+    pieces.push(setFor('SCADB'));
   }
 
   if (spec === W.SPEC['SCM ALT']) {
@@ -353,7 +354,7 @@ function disassembleCRAMWord(w, a) {
   }
 
   if (ar === W.AR.SH || arx === W.ARX.SH || mq === W.MQ.SH || disp === W.DISP['SH0-3'] || arl === W.ARL.SH) {
-    pieces.push(`SH/${maybeSymbolic(W.SH)}`);
+    pieces.push(setFor('SH'));
   }
   
   if (specName) {
@@ -361,11 +362,11 @@ function disassembleCRAMWord(w, a) {
 
     switch(spec) {
     case W.SPEC['FLAG CTL']:
-      pieces.push(`FLAG CTL/${maybeSymbolic(W['FLAG CTL'])}`);
+      pieces.push(setFor('FLAG CTL'));
       break;
 
     case W.SPEC['SP MEM CYCLE']:
-      pieces.push(`FLAG CTL/${maybeSymbolic(W['SP MEM'])}`);
+      pieces.push(setFor('FLAG CTL'));
       break;
     }
   }
@@ -377,48 +378,48 @@ function disassembleCRAMWord(w, a) {
 
   if (skipName) pieces.push(`SKIP/${skipName}}`);
   if (condName) pieces.push(`COND/${condName}`);
-  if (W.VMA.get()) pieces.push(`VMA/${maybeSymbolic(W.VMA)}`);
+  if (W.VMA.get()) pieces.push(setFor('VMA'));
   // XXX missing VMAX and ARMM
 
-  if (W.MEM.get()) pieces.push(`MEM/${maybeSymbolic(W.MEM)}`);
-  if (disp < 8n || disp >= 0o30n && disp < 0o40n) pieces.push(`DISP/${maybeSymbolic(W.DISP)}`);
+  if (W.MEM.get()) pieces.push(setFor('MEM'));
+  if (disp < 8n || disp >= 0o30n && disp < 0o40n) pieces.push(setFor('DISP'));
 
   if (cond === W.COND['SR_#'] || cond === W.COND['LOAD IR'] || cond === W.MEM['A RD']) {
     pieces.push(`PXCT/${octal(W.PXCT.get(), 3)}`);
   }
 
-  if (fmadr === W.FMADR['#B#']) pieces.push(`ACB/${maybeSymbolic(W.ACB)}`);
-  if (cond === W.COND['FM WRITE'] && acOp) pieces.push(`AC-OP/${maybeSymbolic(W['AC-OP'])}`);
+  if (fmadr === W.FMADR['#B#']) pieces.push(setFor('ACB'));
+  if (cond === W.COND['FM WRITE'] && acOp) pieces.push(setFor('AC-OP'));
   if (acb || acOp) pieces.push(`AC#/${octal(W['AC#'].get(), 2)}`);
 
   if (spec === W.SPEC['ARL IND']) {
     if (W['AR0-8'].get()) pieces.push(`AR0-8/LOAD`);
-    if (W.CLR.get()) pieces.push(`CLR/${maybeSymbolic(W.CLR)}`);
-    if (W.ARL.get()) pieces.push(`CLR/${maybeSymbolic(W.ARL)}`);
+    if (W.CLR.get()) pieces.push(setFor('CLR'));
+    if (W.ARL.get()) pieces.push(setFor('ARL'));
   } else if (cond === W.COND['REG CTL']) {
     if (W['EXP TST'].get()) pieces.push(`EXP TST/AR_EXP`);
   } else if (cond === W.COND['PCF_#']) {
-    if (W['PC FLAGS'].get()) pieces.push(`PC FLAGS/${maybeSymbolic(W['PC FLAGS'])}`);
+    if (W['PC FLAGS'].get()) pieces.push(setFor('PC FLAGS'));
   } else if (spec === W.SPEC['FLAG CTL']) {
-    if (W['FLAG CTL'].get()) pieces.push(`FLAG CTL/${maybeSymbolic(W['FLAG CTL'])}`);
+    if (W['FLAG CTL'].get()) pieces.push(setFor('FLAG CTL'));
   } else if (cond === W.COND['SPEC INSTR']) {
-    if (W['SPEC INSTR'].get()) pieces.push(`SPEC INSTR/${maybeSymbolic(W['SPEC INSTR'])}`);
+    if (W['SPEC INSTR'].get()) pieces.push(setFor('SPEC INSTR'));
   } else if (mem === W.MEM.FETCH) {
-    if (W['FETCH'].get()) pieces.push(`FETCH/${maybeSymbolic(W['FETCH'])}`);
+    if (W['FETCH'].get()) pieces.push(setFor('FETCH'));
   } else if (mem === W.MEM['EA CALC']) {
-    if (W['EA CALC'].get()) pieces.push(`EA CALC/${maybeSymbolic(W['EA CALC'])}`);
+    if (W['EA CALC'].get()) pieces.push(setFor('EA CALC'));
   } else if (mem === W.MEM['SP MEM CYCLE']) {
-    if (W['SP MEM'].get()) pieces.push(`SP MEM/${maybeSymbolic(W['SP MEM'])}`);
+    if (W['SP MEM'].get()) pieces.push(setFor('SP MEM'));
   } else if (mem === W.MEM['REG FUNC']) {
-    if (W['MREG FNC'].get()) pieces.push(`MREG FNC/${maybeSymbolic(W['MREG FNC'])}`);
+    if (W['MREG FNC'].get()) pieces.push(setFor('MREG FNC'));
   } else if (mem === W.MEM['MBOX CTL']) {
-    if (W['MBOX CTL'].get()) pieces.push(`MBOX CTL/${maybeSymbolic(W['MBOX CTL'])}`);
+    if (W['MBOX CTL'].get()) pieces.push(setFor('MBOX CTL'));
   } else if (spec === W.SPEC['MTR CTL']) {
-    if (W['MTR CTL'].get()) pieces.push(`MTR CTL/${maybeSymbolic(W['MTR CTL'])}`);
+    if (W['MTR CTL'].get()) pieces.push(setFor('MTR CTL'));
   } else if (cond === W.COND['EBUS CTL']) {
-    if (W['EBUS CTL'].get()) pieces.push(`EBUS CTL/${maybeSymbolic(W['EBUS CTL'])}`);
+    if (W['EBUS CTL'].get()) pieces.push(setFor('EBUS CTL'));
   } else if (cond === W.COND['DIAG FUNC']) {
-    if (W['DIAG FUNC'].get()) pieces.push(`DIAG FUNC/${maybeSymbolic(W['DIAG FUNC'])}`);
+    if (W['DIAG FUNC'].get()) pieces.push(setFor('DIAG FUNC'));
   } else {
     pieces.push(`#/${octal(magic, 3)}`);
   }
@@ -447,6 +448,14 @@ function disassembleCRAMWord(w, a) {
   }, `${codeS}\t; ${makeSeq(seq++)}  `);
 
   console.log(disS);
+
+
+  function setFor(fieldName) {
+    const field = W[fieldName];
+    const v = field.get();
+    const value = field.namesForValues[v] || octal(v);
+    return `${fieldName}/${value}`;
+  }
 }
 
 
@@ -474,14 +483,15 @@ function parseMacros(src) {
 
     const [, macro, expansion] = m;
     const parameterized = expansion.includes('@');
-    list[macro] = {expansion, parameterized};
+    list[macro] = {expansion, parameterized, fields: {}};
     return list;
   }, {});
 }
 
 
 function markMacroFields(macros) {
-  EBOX.reset();                 // Enables W to work properly with all bitwidths populated
+  // Enable W to work properly with all bitwidths populated
+  EBOX.reset();
 
   Object.entries(macros)
     .filter(([macName, mac]) => !mac.parameterized)
@@ -507,6 +517,8 @@ function markMacroFields(macros) {
               sets.splice(x, 1, ...expansionSets);
               did1 = true;
             }
+          } else {
+            mac.fields[field] = value;
           }
         });
       }
@@ -515,7 +527,6 @@ function markMacroFields(macros) {
       // the full expansion.
       sets.forEach(set => {
         const [field, ] = set.split(/\//);
-        console.log(`marking "${field}" for macro "${macName}"`);
         W[field] = W[field].ones;
       });
 
@@ -533,7 +544,7 @@ function main() {
                                      .toString()
                                      .split(/\n/)));
 
-  klx.slice(0, 99999).forEach((w, a) => disassembleCRAMWord(w, a));
+  klx.slice(0, 99999).forEach((w, a) => disassembleCRAMWord(w, a, macros));
 }
 
 
