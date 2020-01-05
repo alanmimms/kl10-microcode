@@ -353,10 +353,17 @@ function disassembleCRAMWord(w, a, macros) {
     pieces.push(`SC/SCAD`);
   }
 
-  if (ar === W.AR.SH || arx === W.ARX.SH || mq === W.MQ.SH || disp === W.DISP['SH0-3'] || arl === W.ARL.SH) {
+  if (ar === W.AR.SH || arx === W.ARX.SH ||
+      mq === W.MQ.SH || disp === W.DISP['SH0-3'] ||
+      arl === W.ARL.SH)
+  {
     pieces.push(setFor('SH'));
+  } else if (W.AR.get() === W.AR.ARMM && W.COND.get() === W.COND['ARL IND']) {
+    pieces.push(setFor('ARMM'));
+  } else if (W.SPEC.get() === W.SPEC['SP MEM CYCLE']) {
+    pieces.push(setFor('VMAX'));
   }
-  
+
   if (specName) {
     pieces.push(`SPEC/${specName}`);
 
@@ -379,18 +386,26 @@ function disassembleCRAMWord(w, a, macros) {
   if (skipName) pieces.push(`SKIP/${skipName}}`);
   if (condName) pieces.push(`COND/${condName}`);
   if (W.VMA.get()) pieces.push(setFor('VMA'));
-  // XXX missing VMAX and ARMM
 
   if (W.MEM.get()) pieces.push(setFor('MEM'));
   if (disp < 8n || disp >= 0o30n && disp < 0o40n) pieces.push(setFor('DISP'));
 
-  if (cond === W.COND['SR_#'] || cond === W.COND['LOAD IR'] || cond === W.MEM['A RD']) {
+  if (cond === W.COND['SR_#'] ||
+      cond === W.COND['LOAD IR'] ||
+      cond === W.MEM['A RD'])
+  {
     pieces.push(`PXCT/${octal(W.PXCT.get(), 3)}`);
   }
 
-  if (fmadr === W.FMADR['#B#']) pieces.push(setFor('ACB'));
-  if (cond === W.COND['FM WRITE'] && acOp) pieces.push(setFor('AC-OP'));
-  if (acb || acOp) pieces.push(`AC#/${octal(W['AC#'].get(), 2)}`);
+  if (fmadr === W.FMADR['#B#']) {
+    pieces.push(setFor('ACB'));
+    pieces.push(`AC#/${octal(W['AC#'].get(), 2)}`);
+  }
+
+  if (cond === W.COND['FM WRITE'] && acOp) {
+    pieces.push(setFor('AC-OP'));
+    pieces.push(`AC#/${octal(W['AC#'].get(), 2)}`);
+  }
 
   if (spec === W.SPEC['ARL IND']) {
     if (W['AR0-8'].get()) pieces.push(`AR0-8/LOAD`);
@@ -438,14 +453,14 @@ function disassembleCRAMWord(w, a, macros) {
     const lastLineLen = lastNL < 0 ? accum.length : accum.length - lastNL;
 
     if (lastLineLen + piece.length > lineWidthMax) {
-        accum += `,\n${''.padStart(codeS.length)}\t; ${makeSeq(seq++)}          `;
+        accum += `,\n${''.padStart(codeS.length)}\t; ${makeSeq(++seq)}          `;
     } else if (n !== 0) {
       accum += ', ';
     }
 
     accum += piece;
     return accum;
-  }, `${codeS}\t; ${makeSeq(seq++)}  `);
+  }, `${codeS}\t; ${makeSeq(++seq)}  `);
 
   console.log(disS);
 
