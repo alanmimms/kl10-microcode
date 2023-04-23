@@ -1,0 +1,1 @@
+gio info -a 'metadata::evince::bookmarks' MP00301_KL10PV_Jun80-OCR.pdf | sed -n '/metadata::/ s/^.*: //p' > MP00301_KL10PV_Jun80-OCR.pdf.bookmarks

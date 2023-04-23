@@ -1,6 +1,5 @@
 'use strict';
 const _ = require('lodash');
-const util = require('util');
 
 var wrapperEnableLevel = 1;
 module.exports.wrapperEnableLevel = wrapperEnableLevel;

@@ -62,14 +62,6 @@ just specify `yarn run build` and then `yarn run run` to run the
 emulator.
 
 
-## DEC Documentation
-You will find a lot of useful information about the PDP-10, TOPS-20,
-and associated technology in my Google Drive folder for large
-documentation files for this project.
-
-https://drive.google.com/drive/folders/15VhnAnhNS_L25S7T2u098c1plF42hNec?usp=sharing
-
-
 # Status
 The project has been going for a few months of spare time so far. I
 have most of the EBOX (execution box) emulated to at least the first
