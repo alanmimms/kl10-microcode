@@ -179,7 +179,7 @@ function readAndHandleDirectives() {
 }
 
 
-// Parse a line of microassmebly listing, extracting address and code.
+// Parse a line of microassembly listing, extracting address and code.
 // This works for CRAM or DRAM with the only different controlled by
 // the `re` parameter. `linesRE` (only specified for CRAM) is the
 // position to reference as the start of source code for the first
