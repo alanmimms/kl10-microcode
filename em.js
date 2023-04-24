@@ -124,7 +124,7 @@ microcode on simulated hardware.`,
 //          PAR -- [HALT] CFH - CAN'T FIND KL HALT LOOP
 
 // JUMP
-//      The JUMP command starts the KL a tthe specified address and exits
+//      The JUMP command starts the KL at the specified address and exits
 //      from PARSER. A this point, the CTY is connected to the
 //      TOPS-10 or TOPS-20 operating system. THe argument addr must be
 //      an octal, positive, nonzero address with a maximum value of
